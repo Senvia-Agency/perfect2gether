@@ -1,0 +1,1 @@
+ALTER TABLE public.sales ADD COLUMN edp_proposal_number text;

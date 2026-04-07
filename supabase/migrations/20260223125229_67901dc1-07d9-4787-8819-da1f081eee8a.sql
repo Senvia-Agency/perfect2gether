@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ALTER COLUMN niche SET DEFAULT NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN payment_failed_at timestamptz DEFAULT NULL;

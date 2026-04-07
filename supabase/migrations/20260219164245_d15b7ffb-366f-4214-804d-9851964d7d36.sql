@@ -1,0 +1,1 @@
+ALTER TABLE organization_profiles ADD COLUMN dashboard_widgets jsonb DEFAULT NULL;

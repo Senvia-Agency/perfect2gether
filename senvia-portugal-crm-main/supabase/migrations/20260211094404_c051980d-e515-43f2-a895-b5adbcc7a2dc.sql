@@ -1,0 +1,1 @@
+ALTER TABLE public.sales ADD COLUMN invoice_pdf_url text DEFAULT NULL;

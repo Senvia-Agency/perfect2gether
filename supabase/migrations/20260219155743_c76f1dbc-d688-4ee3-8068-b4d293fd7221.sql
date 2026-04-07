@@ -1,0 +1,1 @@
+ALTER TABLE public.proposals ADD COLUMN servicos_details jsonb DEFAULT NULL;

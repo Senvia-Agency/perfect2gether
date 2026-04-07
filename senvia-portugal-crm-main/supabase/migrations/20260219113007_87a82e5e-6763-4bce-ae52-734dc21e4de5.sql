@@ -1,0 +1,1 @@
+ALTER TABLE public.cpes ADD COLUMN nivel_tensao text;

@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN invoicexpress_id integer DEFAULT NULL;

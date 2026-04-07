@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS calendar_alert_settings JSONB DEFAULT '{}'::jsonb;

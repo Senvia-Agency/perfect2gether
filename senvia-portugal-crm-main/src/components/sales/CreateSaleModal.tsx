@@ -1,0 +1,1603 @@
+import { useState, useEffect, useMemo } from "react";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SearchableCombobox, type ComboboxOption } from "@/components/ui/searchable-combobox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Progress } from "@/components/ui/progress";
+// Lead removido - vendas são apenas para clientes
+import { useProposals, useProposalProducts } from "@/hooks/useProposals";
+import { PROPOSAL_STATUS_LABELS, type ProposalStatus } from "@/types/proposals";
+import { useProposalCpes } from "@/hooks/useProposalCpes";
+import { useClients } from "@/hooks/useClients";
+import { useProducts } from "@/hooks/useProducts";
+import { useCreateSale } from "@/hooks/useSales";
+import { useCreateSaleItems } from "@/hooks/useSaleItems";
+import { useCreateSalePayment } from "@/hooks/useSalePayments";
+import { useCreateCpe, useUpdateCpe } from "@/hooks/useCpes";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFinalStages } from "@/hooks/usePipelineStages";
+import { useUpdateLeadStatus } from "@/hooks/useLeads";
+import { formatCurrency } from "@/lib/format";
+import { getPlanById } from "@/lib/stripe-plans";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { useModules } from "@/hooks/useModules";
+import { format, addMonths } from "date-fns";
+import { ClientFiscalCard, VatBadge, useVatCalculation, isInvoiceXpressActive, getOrgTaxValue } from "./SaleFiscalInfo";
+import { pt } from "date-fns/locale";
+import { 
+  Loader2, 
+  CalendarIcon, 
+  Plus, 
+  Minus, 
+  X, 
+  Package, 
+  User,
+  FileText,
+  Router,
+  Zap,
+  CreditCard,
+  Trash2
+} from "lucide-react";
+import type { Proposal, ServicosProductDetail, ServicosDetails } from "@/types/proposals";
+import { NEGOTIATION_TYPE_LABELS } from "@/types/proposals";
+import { useServicosProducts } from "@/hooks/useServicosProducts";
+import { ServicosSection } from "@/components/proposals/ServicosSection";
+
+import { useSaleFieldsSettings } from "@/hooks/useSaleFieldsSettings";
+import { useCommissionMatrix, getVolumeTier, getTierRuleLabel } from "@/hooks/useCommissionMatrix";
+import { 
+  type ProposalType,
+  type ModeloServico,
+  type NegotiationType,
+  type PaymentMethod,
+  type SaleStatus,
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_RECORD_STATUS_LABELS,
+  PAYMENT_RECORD_STATUS_COLORS,
+  SALE_STATUS_LABELS,
+  SALE_STATUSES,
+} from "@/types/sales";
+import { calculatePaymentSummary } from "@/hooks/useSalePayments";
+import { AddDraftPaymentModal, type DraftPayment } from "./AddDraftPaymentModal";
+import { PaymentTypeSelector } from "./PaymentTypeSelector";
+import { DraftScheduleModal } from "./DraftScheduleModal";
+
+
+interface SaleItemDraft {
+  id: string;
+  product_id: string | null;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  first_due_date?: Date | null; // Data de vencimento para produtos recorrentes
+}
+
+interface PrefillSaleClient {
+  id: string;
+  name: string;
+  code?: string | null;
+  email?: string | null;
+  nif?: string | null;
+  address_line1?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+}
+
+interface CreateSaleModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  prefillProposal?: Proposal | null;
+  prefillClientId?: string | null;
+  prefillClient?: PrefillSaleClient | null;
+  onSaleCreated?: (saleId: string) => void;
+}
+
+export function CreateSaleModal({ 
+  open, 
+  onOpenChange, 
+  prefillProposal,
+  prefillClientId,
+  prefillClient,
+  onSaleCreated
+}: CreateSaleModalProps) {
+  // Lead removido - vendas são apenas para clientes
+  const { data: proposals } = useProposals();
+  const { data: clients } = useClients();
+  const { data: products } = useProducts();
+  const createSale = useCreateSale();
+  const createSaleItems = useCreateSaleItems();
+  const createSalePayment = useCreateSalePayment();
+  const createCpe = useCreateCpe();
+  const updateCpe = useUpdateCpe();
+  const { finalPositiveStage } = useFinalStages();
+  const updateLeadStatus = useUpdateLeadStatus();
+  const { organization } = useAuth();
+  const isTelecom = organization?.niche === 'telecom';
+  const { modules } = useModules();
+  const showEnergy = isTelecom && modules.energy;
+  const isSenviaOrg = organization?.id === '06fe9e1d-9670-45b0-8717-c5a6e90be380';
+  const { data: saleFields } = useSaleFieldsSettings();
+  const { calculateCommission, isAutoCalculated, calculateEnergyCommission, hasEnergyConfig, energyConfig } = useCommissionMatrix();
+  const { products: catalogProductNames, configs: servicosConfigs, catalog, isNewFormat } = useServicosProducts();
+  
+  // Fiscal info
+  const ixActive = isInvoiceXpressActive(organization);
+  const orgTaxValue = getOrgTaxValue(organization);
+  
+  // State para proposta selecionada manualmente (para buscar produtos)
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+  
+  // Gate queries by modal open state - ensures fresh data when modal opens
+  const effectiveProposalId = open ? (prefillProposal?.id || selectedProposalId || undefined) : undefined;
+  
+  // Fetch proposal products - usa prefill OU seleção manual, gated by open
+  const { data: proposalProducts } = useProposalProducts(effectiveProposalId);
+  
+  // Fetch proposal CPEs - usa prefill OU seleção manual, gated by open
+  const { data: rawProposalCpes = [] } = useProposalCpes(effectiveProposalId);
+
+  // Recalculate energy CPE commissions using current tier rules
+  const proposalCpes = useMemo(() => {
+    if (!hasEnergyConfig || rawProposalCpes.length === 0) return rawProposalCpes;
+    return rawProposalCpes.map(cpe => {
+      if (!cpe.margem || !cpe.consumo_anual) return cpe;
+      const margem = Number(cpe.margem);
+      if (margem <= 0) return cpe;
+      const calc = calculateEnergyCommission(margem, getVolumeTier(Number(cpe.consumo_anual) || 0));
+      if (calc === null) return cpe;
+      return { ...cpe, comissao: calc };
+    });
+  }, [rawProposalCpes, hasEnergyConfig, calculateEnergyCommission]);
+
+  // Form state
+  const [clientId, setClientId] = useState<string>("");
+  const [proposalId, setProposalId] = useState<string>("");
+  const [saleDate, setSaleDate] = useState<Date>(new Date());
+  const [items, setItems] = useState<SaleItemDraft[]>([]);
+  const [discount, setDiscount] = useState<string>("0");
+  const [notes, setNotes] = useState("");
+  
+  // Track which proposal we've already initialized items for
+  const [initializedProposalId, setInitializedProposalId] = useState<string | null>(null);
+  
+  // Campos específicos de proposta (Energia / Serviços)
+  const [proposalType, setProposalType] = useState<ProposalType | null>(null);
+  const [consumoAnual, setConsumoAnual] = useState<string>("");
+  const [margem, setMargem] = useState<string>("");
+  const [dbl, setDbl] = useState<string>("");
+  const [anosContrato, setAnosContrato] = useState<string>("");
+  const [modeloServico, setModeloServico] = useState<ModeloServico | null>(null);
+  const [kwp, setKwp] = useState<string>("");
+  const [comissao, setComissao] = useState<string>("");
+  const [negotiationType, setNegotiationType] = useState<NegotiationType | null>(null);
+  const [servicosProdutos, setServicosProdutos] = useState<string[]>([]);
+  const [servicosDetails, setServicosDetails] = useState<ServicosDetails>({});
+
+  // Sale status
+  const [saleStatus, setSaleStatus] = useState<SaleStatus>("in_progress");
+  const [edpProposalNumber, setEdpProposalNumber] = useState("");
+  const [activationDate, setActivationDate] = useState<Date | undefined>(undefined);
+
+  // Draft payments state
+  const [draftPayments, setDraftPayments] = useState<DraftPayment[]>([]);
+  const [showDraftPaymentModal, setShowDraftPaymentModal] = useState(false);
+  const [showPaymentTypeSelector, setShowPaymentTypeSelector] = useState(false);
+  const [showDraftScheduleModal, setShowDraftScheduleModal] = useState(false);
+
+  // Plan sale mode (Senvia only)
+  const [isPlanSale, setIsPlanSale] = useState(false);
+  // selectedPlanId removed — plan value comes from Stripe automatically
+  const [clientOrgId, setClientOrgId] = useState<string>("");
+  const [orgSearchResults, setOrgSearchResults] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [orgSearchTerm, setOrgSearchTerm] = useState("");
+  
+
+  // Helper to recalculate commission from proposal data using matrix
+  const recalcComissaoFromProposal = (proposal: Proposal): number | null => {
+    if (proposal.proposal_type !== 'servicos') return null;
+    const produtos = proposal.servicos_produtos || [];
+    const details = (proposal as any).servicos_details || {};
+    const ms = proposal.modelo_servico || null;
+    let total = 0;
+    let anyCalc = false;
+    for (const prodName of produtos) {
+      const detail: ServicosProductDetail = details[prodName] || { kwp: proposal.kwp, valor: proposal.total_value };
+      const calc = calculateCommission(prodName, detail, ms ?? undefined);
+      if (calc !== null) {
+        total += Math.round(calc * 100) / 100;
+        anyCalc = true;
+      } else if (detail.comissao != null) {
+        total += detail.comissao;
+      }
+    }
+    return anyCalc ? total : null;
+  };
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      // Reset initialization tracker
+      setInitializedProposalId(null);
+      
+      // If prefillProposal is provided, pre-populate fields
+      if (prefillProposal) {
+        setProposalId(prefillProposal.id);
+        setSelectedProposalId(null); // Não precisa, já vem do prefill
+        
+        // Find client by client_id or lead_id (retrocompatibilidade)
+        if (prefillProposal.client_id) {
+          setClientId(prefillProposal.client_id);
+        } else if (prefillProposal.lead_id) {
+          const client = clients?.find(c => c.lead_id === prefillProposal.lead_id);
+          if (client) {
+            setClientId(client.id);
+          }
+        }
+        
+        // Preencher notas da proposta
+        if (prefillProposal.notes) {
+          setNotes(prefillProposal.notes);
+        }
+        
+        // Preencher campos específicos de Energia/Serviços
+        setProposalType(prefillProposal.proposal_type || null);
+        setConsumoAnual(prefillProposal.consumo_anual?.toString() || "");
+        setMargem(prefillProposal.margem?.toString() || "");
+        setDbl(prefillProposal.dbl?.toString() || "");
+        setAnosContrato(prefillProposal.anos_contrato?.toString() || "");
+        setModeloServico(prefillProposal.modelo_servico || null);
+        setKwp(prefillProposal.kwp?.toString() || "");
+        setNegotiationType(prefillProposal.negotiation_type || null);
+        setServicosProdutos(prefillProposal.servicos_produtos || []);
+        setServicosDetails((prefillProposal as any).servicos_details || {});
+        // Recalculate commission using matrix
+        const recalcedComissao = recalcComissaoFromProposal(prefillProposal);
+        setComissao(recalcedComissao !== null ? recalcedComissao.toString() : (prefillProposal.comissao?.toString() || ""));
+      } else if (prefillClientId) {
+        setClientId(prefillClientId);
+        setSelectedProposalId(null);
+        // Reset campos específicos
+        setProposalType(null);
+        setConsumoAnual("");
+        setMargem("");
+        setDbl("");
+        setAnosContrato("");
+        setModeloServico(null);
+        setKwp("");
+        setComissao("");
+        setNegotiationType(null);
+        setServicosProdutos([]);
+        setServicosDetails({});
+      } else {
+        setClientId("");
+        setProposalId("");
+        setSelectedProposalId(null);
+        // Reset campos específicos
+        setProposalType(null);
+        setConsumoAnual("");
+        setMargem("");
+        setDbl("");
+        setAnosContrato("");
+        setModeloServico(null);
+        setKwp("");
+        setComissao("");
+        setNegotiationType(null);
+        setServicosProdutos([]);
+        setServicosDetails({});
+      }
+      
+      setSaleDate(new Date());
+      // Para telecom, quando vem de proposta, estado padrão = fulfilled (Entregue)
+      setSaleStatus(isTelecom && prefillProposal ? 'fulfilled' : 'in_progress');
+      setEdpProposalNumber("");
+      setActivationDate(undefined);
+      setItems([]);
+      setDiscount("0");
+      setDraftPayments([]);
+      setShowDraftPaymentModal(false);
+      setShowPaymentTypeSelector(false);
+      setShowDraftScheduleModal(false);
+      setIsPlanSale(false);
+      // selectedPlanId removed
+      setClientOrgId("");
+      setOrgSearchTerm("");
+      setOrgSearchResults([]);
+      if (!prefillProposal?.notes) {
+        setNotes("");
+      }
+    } else {
+      // Reset when modal closes
+      setInitializedProposalId(null);
+    }
+  }, [open, prefillProposal, prefillClientId, clients]);
+
+  // Load proposal products/value when available (prefill ou seleção manual)
+  useEffect(() => {
+    if (!open) return;
+    
+    const currentProposalId = prefillProposal?.id || selectedProposalId;
+    
+    // Skip if already initialized for this proposal
+    if (currentProposalId && initializedProposalId === currentProposalId) {
+      return;
+    }
+    
+    // Se há produtos da proposta, usar esses
+    if (proposalProducts && proposalProducts.length > 0) {
+      const newItems: SaleItemDraft[] = proposalProducts.map(pp => ({
+        id: crypto.randomUUID(),
+        product_id: pp.product_id,
+        name: pp.product?.name || "Produto",
+        quantity: pp.quantity,
+        unit_price: pp.unit_price,
+      }));
+      setItems(newItems);
+      if (currentProposalId) {
+        setInitializedProposalId(currentProposalId);
+      }
+    } 
+    else if (prefillProposal && prefillProposal.total_value > 0 && proposalProducts !== undefined) {
+      const itemName = prefillProposal.proposal_type === 'energia' 
+        ? 'Contrato de Energia' 
+        : prefillProposal.proposal_type === 'servicos'
+          ? 'Serviços'
+          : 'Proposta ' + (prefillProposal.code || '');
+      
+      setItems([{
+        id: crypto.randomUUID(),
+        product_id: null,
+        name: itemName,
+        quantity: 1,
+        unit_price: prefillProposal.total_value,
+      }]);
+      setInitializedProposalId(prefillProposal.id);
+    }
+    else if (selectedProposalId && proposalProducts !== undefined && proposalProducts.length === 0) {
+      const selectedProposal = proposals?.find(p => p.id === selectedProposalId);
+      if (selectedProposal && selectedProposal.total_value > 0) {
+        const itemName = selectedProposal.proposal_type === 'energia' 
+          ? 'Contrato de Energia' 
+          : selectedProposal.proposal_type === 'servicos'
+            ? 'Serviços'
+            : 'Proposta ' + (selectedProposal.code || '');
+        
+        setItems([{
+          id: crypto.randomUUID(),
+          product_id: null,
+          name: itemName,
+          quantity: 1,
+          unit_price: selectedProposal.total_value,
+        }]);
+        setInitializedProposalId(selectedProposalId);
+      }
+    }
+  }, [open, proposalProducts, prefillProposal, selectedProposalId, initializedProposalId, proposals]);
+
+  // Auto-fill plan price when selecting client org for plan sale
+  useEffect(() => {
+    if (!isPlanSale || !clientOrgId) return;
+    supabase
+      .from("organizations")
+      .select("plan")
+      .eq("id", clientOrgId)
+      .single()
+      .then(({ data }) => {
+        const plan = data?.plan ? getPlanById(data.plan) : null;
+        if (plan) {
+          setItems([{
+            id: crypto.randomUUID(),
+            product_id: null,
+            name: `Plano ${plan.name}`,
+            quantity: 1,
+            unit_price: plan.priceMonthly,
+          }]);
+        }
+      });
+  }, [clientOrgId, isPlanSale]);
+
+  const filteredProposals = useMemo(() => {
+    if (!proposals) return [];
+    
+    let filtered = proposals.filter(p => p.status === 'accepted');
+    
+    // Excluir propostas que já têm venda associada (exceto a do prefill)
+    filtered = filtered.filter(p => 
+      p.id === prefillProposal?.id || 
+      !p.has_sale
+    );
+    
+    if (prefillProposal && !filtered.find(p => p.id === prefillProposal.id)) {
+      filtered = [prefillProposal, ...filtered];
+    }
+    
+    if (clientId) {
+      const client = clients?.find(c => c.id === clientId);
+      filtered = filtered.filter(p => 
+        p.client_id === clientId || (client?.lead_id && p.lead_id === client.lead_id) ||
+        p.id === prefillProposal?.id
+      );
+    }
+    
+    return filtered;
+  }, [proposals, clients, clientId, prefillProposal]);
+
+  const getProposalStatusLabel = (status: string) => {
+    return PROPOSAL_STATUS_LABELS[status as ProposalStatus] || status;
+  };
+
+  // Org search for plan sales
+  useEffect(() => {
+    if (!isPlanSale || orgSearchTerm.length < 2) {
+      setOrgSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const { data } = await (await import("@/integrations/supabase/client")).supabase
+        .rpc("search_organizations_by_name", {
+          _caller_org_id: organization?.id || "",
+          _search: orgSearchTerm,
+          _limit: 10,
+        });
+      setOrgSearchResults((data as { id: string; name: string; slug: string }[]) || []);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [orgSearchTerm, isPlanSale, organization?.id]);
+
+  // Plan sale no longer needs plan selection - value comes from Stripe automatically
+
+  // Calculate totals from catalog products (telecom) 
+  const catalogTotalPrice = useMemo(() => {
+    if (!isTelecom || !isNewFormat) return 0;
+    return servicosProdutos.reduce((sum, p) => sum + (servicosDetails[p]?.price || 0), 0);
+  }, [isTelecom, isNewFormat, servicosProdutos, servicosDetails]);
+
+  const catalogTotalComissao = useMemo(() => {
+    if (!isTelecom || !isNewFormat) return 0;
+    return servicosProdutos.reduce((sum, p) => sum + (servicosDetails[p]?.comissao || 0), 0);
+  }, [isTelecom, isNewFormat, servicosProdutos, servicosDetails]);
+
+  // Auto-sync comissao from catalog products
+  useEffect(() => {
+    if (isTelecom && isNewFormat && !proposalId && servicosProdutos.length > 0) {
+      setComissao(catalogTotalComissao.toString());
+    }
+  }, [isTelecom, isNewFormat, proposalId, catalogTotalComissao, servicosProdutos]);
+
+  // Calculate totals
+  const subtotal = useMemo(() => {
+    const itemsTotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    // For telecom direct sales with catalog, use catalog price as subtotal
+    if (isTelecom && isNewFormat && !proposalId && servicosProdutos.length > 0 && itemsTotal === 0) {
+      return catalogTotalPrice;
+    }
+    return itemsTotal;
+  }, [items, isTelecom, isNewFormat, proposalId, servicosProdutos, catalogTotalPrice]);
+
+  const discountValue = parseFloat(discount) || 0;
+  const total = Math.max(0, subtotal - discountValue);
+
+  // VAT calculation
+  const vatCalc = useVatCalculation({
+    items, products, orgTaxValue, discount: discountValue, subtotal,
+  });
+
+  const clientOptions = useMemo<ComboboxOption[]>(() => {
+    const mappedClients = (clients || []).map((client): ComboboxOption => ({
+      value: client.id,
+      label: client.name,
+      sublabel: client.code || client.email || undefined,
+    }));
+
+    if (
+      prefillClient &&
+      prefillClient.id &&
+      !mappedClients.some((client) => client.value === prefillClient.id)
+    ) {
+      mappedClients.unshift({
+        value: prefillClient.id,
+        label: prefillClient.name,
+        sublabel: prefillClient.code || prefillClient.email || undefined,
+      });
+    }
+
+    return mappedClients;
+  }, [clients, prefillClient]);
+
+  // Selected client fiscal data
+  const selectedClient = useMemo(() => {
+    if (!clientId) return null;
+    return clients?.find(c => c.id === clientId) || (prefillClient?.id === clientId ? prefillClient : null);
+  }, [clientId, clients, prefillClient]);
+
+  // Handlers
+  const handleClientSelect = (value: string) => {
+    if (value === "none") {
+      setClientId("");
+      return;
+    }
+    setClientId(value);
+    if (proposalId) {
+      const proposal = proposals?.find(p => p.id === proposalId);
+      const client = clients?.find(c => c.id === value);
+      if (proposal && proposal.client_id !== value && proposal.lead_id !== client?.lead_id) {
+        setProposalId("");
+      }
+    }
+  };
+
+  const handleProposalSelect = (value: string) => {
+    if (value === "none") {
+      setProposalId("");
+      setSelectedProposalId(null);
+      setItems([]);
+      setNotes("");
+      setProposalType(null);
+      setConsumoAnual("");
+      setMargem("");
+      setDbl("");
+      setAnosContrato("");
+      setModeloServico(null);
+      setKwp("");
+      setComissao("");
+      setNegotiationType(null);
+      setServicosProdutos([]);
+      setServicosDetails({});
+      return;
+    }
+    
+    setProposalId(value);
+    setSelectedProposalId(value);
+    
+    const proposal = proposals?.find(p => p.id === value);
+    if (proposal) {
+      if (!clientId) {
+        if (proposal.client_id) {
+          setClientId(proposal.client_id);
+        } else if (proposal.lead_id) {
+          const client = clients?.find(c => c.lead_id === proposal.lead_id);
+          if (client) {
+            setClientId(client.id);
+          }
+        }
+      }
+      
+      if (proposal.notes) {
+        setNotes(proposal.notes);
+      }
+      
+      setProposalType(proposal.proposal_type || null);
+      setConsumoAnual(proposal.consumo_anual?.toString() || "");
+      setMargem(proposal.margem?.toString() || "");
+      setDbl(proposal.dbl?.toString() || "");
+      setAnosContrato(proposal.anos_contrato?.toString() || "");
+      setModeloServico(proposal.modelo_servico || null);
+      setKwp(proposal.kwp?.toString() || "");
+      setNegotiationType(proposal.negotiation_type || null);
+      setServicosProdutos(proposal.servicos_produtos || []);
+      setServicosDetails((proposal as any).servicos_details || {});
+      
+      // Recalculate commission using matrix
+      const recalcedComissao = recalcComissaoFromProposal(proposal);
+      setComissao(recalcedComissao !== null ? recalcedComissao.toString() : (proposal.comissao?.toString() || ""));
+      
+      setItems([]);
+    }
+  };
+
+  const handleAddProduct = (productId: string) => {
+    const product = products?.find(p => p.id === productId);
+    if (!product) return;
+
+    const existing = items.find(i => i.product_id === productId);
+    if (existing) {
+      setItems(items.map(i => 
+        i.product_id === productId 
+          ? { ...i, quantity: i.quantity + 1 }
+          : i
+      ));
+    } else {
+      setItems([...items, {
+        id: crypto.randomUUID(),
+        product_id: product.id,
+        name: product.name,
+        quantity: 1,
+        unit_price: product.price || 0,
+      }]);
+    }
+  };
+
+  const handleUpdateQuantity = (itemId: string, delta: number) => {
+    setItems(items.map(i => {
+      if (i.id === itemId) {
+        const newQty = Math.max(1, i.quantity + delta);
+        return { ...i, quantity: newQty };
+      }
+      return i;
+    }));
+  };
+
+  const handleUpdatePrice = (itemId: string, price: string) => {
+    setItems(items.map(i => {
+      if (i.id === itemId) {
+        return { ...i, unit_price: parseFloat(price) || 0 };
+      }
+      return i;
+    }));
+  };
+
+  const handleRemoveItem = (itemId: string) => {
+    setItems(items.filter(i => i.id !== itemId));
+  };
+
+  const handleUpdateDueDate = (itemId: string, date: Date | undefined) => {
+    setItems(items.map(i => 
+      i.id === itemId 
+        ? { ...i, first_due_date: date || null }
+        : i
+    ));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!isTelecom && !isPlanSale && total <= 0 && items.length === 0) return;
+
+    // Validate plan sale
+    if (isPlanSale && !clientOrgId) {
+      toast.error("Selecione a organização cliente para a venda de plano.");
+      return;
+    }
+
+    // Validar data de ativação quando estado é Concluída (apenas telecom)
+    if (isTelecom && saleStatus === 'delivered' && !activationDate) {
+      toast.error("A Data de Ativação é obrigatória para vendas com estado Concluída.");
+      return;
+    }
+
+    try {
+      // For plan sales, force recurring (no plan selection needed, value comes from Stripe)
+      const isPlanRecurring = isPlanSale;
+      const recurringItems = items.filter(item => {
+        if (!item.product_id) return false;
+        const product = products?.find(p => p.id === item.product_id);
+        return product?.is_recurring;
+      });
+      
+      const recurringValue = isPlanRecurring 
+        ? total 
+        : recurringItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+      const hasRecurring = isPlanRecurring || recurringValue > 0;
+      // For plan sales, don't set renewal date — it will be set by Stripe webhook on first payment
+      const nextRenewalDate = isPlanSale 
+        ? undefined 
+        : (hasRecurring ? addMonths(saleDate, 1).toISOString().split('T')[0] : undefined);
+
+      const sale = await createSale.mutateAsync({
+        client_id: clientId || undefined,
+        proposal_id: proposalId || undefined,
+        status: saleStatus,
+        total_value: total,
+        subtotal: subtotal,
+        discount: discountValue,
+        sale_date: format(saleDate, 'yyyy-MM-dd'),
+        notes: notes.trim() || undefined,
+        ...(isTelecom ? {
+          proposal_type: proposalType || (servicosProdutos.length > 0 ? 'servicos' : undefined),
+          consumo_anual: parseFloat(consumoAnual) || undefined,
+          margem: parseFloat(margem) || undefined,
+          dbl: parseFloat(dbl) || undefined,
+          anos_contrato: parseInt(anosContrato) || undefined,
+          modelo_servico: modeloServico || undefined,
+          kwp: parseFloat(kwp) || undefined,
+          comissao: parseFloat(comissao) || undefined,
+          negotiation_type: negotiationType || undefined,
+          servicos_produtos: servicosProdutos.length > 0 ? servicosProdutos : undefined,
+          servicos_details: Object.keys(servicosDetails).length > 0 ? servicosDetails : undefined,
+        } : {}),
+        edp_proposal_number: edpProposalNumber.trim() || undefined,
+        activation_date: activationDate ? format(activationDate, 'yyyy-MM-dd') : undefined,
+        has_recurring: hasRecurring || false,
+        recurring_value: recurringValue,
+        recurring_status: isPlanSale ? 'pending' : (hasRecurring ? 'active' : undefined),
+        next_renewal_date: nextRenewalDate,
+        ...(isPlanSale && clientOrgId ? { client_org_id: clientOrgId } : {}),
+      });
+
+      if (!isTelecom && items.length > 0 && sale?.id) {
+        await createSaleItems.mutateAsync(
+          items.map(item => ({
+            sale_id: sale.id,
+            product_id: item.product_id,
+            name: item.name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.quantity * item.unit_price,
+            first_due_date: item.first_due_date 
+              ? format(item.first_due_date, 'yyyy-MM-dd') 
+              : null,
+          }))
+        );
+      }
+
+      // Process CPEs
+      if (proposalCpes.length > 0 && clientId) {
+        for (const proposalCpe of proposalCpes) {
+          if (proposalCpe.existing_cpe_id) {
+            await updateCpe.mutateAsync({
+              id: proposalCpe.existing_cpe_id,
+              comercializador: 'EDP Comercial',
+              fidelizacao_start: proposalCpe.contrato_inicio || proposalCpe.fidelizacao_start || undefined,
+              fidelizacao_end: proposalCpe.contrato_fim || proposalCpe.fidelizacao_end || undefined,
+              notes: proposalCpe.notes || undefined,
+              status: 'active',
+            });
+          } else {
+            await createCpe.mutateAsync({
+              client_id: clientId,
+              equipment_type: proposalCpe.equipment_type,
+              comercializador: 'EDP Comercial',
+              serial_number: proposalCpe.serial_number || undefined,
+              fidelizacao_start: proposalCpe.contrato_inicio || proposalCpe.fidelizacao_start || undefined,
+              fidelizacao_end: proposalCpe.contrato_fim || proposalCpe.fidelizacao_end || undefined,
+              notes: proposalCpe.notes || undefined,
+              status: 'active',
+            });
+          }
+        }
+      }
+
+      // Create draft payments
+      if (!isTelecom && draftPayments.length > 0 && sale?.id && organization?.id) {
+        for (const dp of draftPayments) {
+          await createSalePayment.mutateAsync({
+            sale_id: sale.id,
+            organization_id: organization.id,
+            amount: dp.amount,
+            payment_date: dp.payment_date,
+            payment_method: dp.payment_method,
+            status: dp.status,
+            invoice_reference: dp.invoice_reference,
+            notes: dp.notes,
+          });
+        }
+      }
+
+      onSaleCreated?.(sale.id);
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error creating sale:', error);
+    }
+  };
+
+  const isValid = (items.length > 0 || total > 0 || isPlanSale);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent variant="fullScreen" className="flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pr-14 py-4 border-b border-border/50 shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Nova Venda
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto p-4 sm:p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* LEFT COLUMN (60%) */}
+              <div className="lg:col-span-3 space-y-4">
+                {/* Client & Proposal */}
+                <Card>
+                  <CardHeader className="pb-2 p-4">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      Informação Básica
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 space-y-4">
+                    {/* Plan Sale Toggle (Senvia only) */}
+                    {isSenviaOrg && !prefillProposal && (
+                      <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
+                        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                          <input
+                            type="checkbox"
+                            checked={isPlanSale}
+                            onChange={(e) => {
+                              setIsPlanSale(e.target.checked);
+                              if (!e.target.checked) {
+                                setClientOrgId("");
+                                setOrgSearchTerm("");
+                                setOrgSearchResults([]);
+                                setItems([]);
+                              }
+                            }}
+                            className="rounded border-border"
+                          />
+                          <CreditCard className="h-4 w-4 text-primary" />
+                          Venda de Plano Senvia
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Plan Sale Fields — only org search, value comes from Stripe */}
+                    {isPlanSale && (
+                      <div className="space-y-2">
+                        <Label>Organização Cliente</Label>
+                        <p className="text-xs text-muted-foreground">O valor da venda será atualizado automaticamente quando o cliente subscrever um plano.</p>
+                          <div className="relative">
+                            <Input
+                              placeholder="Pesquisar organização..."
+                              value={orgSearchTerm}
+                              onChange={(e) => setOrgSearchTerm(e.target.value)}
+                            />
+                            {orgSearchResults.length > 0 && !clientOrgId && (
+                              <div className="absolute z-50 w-full mt-1 border border-border rounded-lg bg-popover shadow-lg max-h-48 overflow-y-auto">
+                                {orgSearchResults.map(org => (
+                                  <button
+                                    key={org.id}
+                                    type="button"
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                                    onClick={() => {
+                                      setClientOrgId(org.id);
+                                      setOrgSearchTerm(org.name);
+                                      setOrgSearchResults([]);
+                                    }}
+                                  >
+                                    <span className="font-medium">{org.name}</span>
+                                    <span className="text-muted-foreground ml-2 text-xs">({org.slug})</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {clientOrgId && (
+                              <button
+                                type="button"
+                                className="absolute right-2 top-1/2 -translate-y-1/2"
+                                onClick={() => { setClientOrgId(""); setOrgSearchTerm(""); }}
+                              >
+                                <X className="h-4 w-4 text-muted-foreground" />
+                              </button>
+                            )}
+                          </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Cliente</Label>
+                        <SearchableCombobox
+                          options={clientOptions}
+                          value={clientId || null}
+                          onValueChange={(v) => handleClientSelect(v || "none")}
+                          placeholder="Selecionar cliente..."
+                          searchPlaceholder="Pesquisar cliente..."
+                          emptyLabel="Sem cliente"
+                          emptyText="Nenhum cliente encontrado."
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Proposta</Label>
+                        <SearchableCombobox
+                          options={filteredProposals.map((proposal): ComboboxOption => ({
+                            value: proposal.id,
+                            label: `[${proposal.proposal_type === 'servicos' ? 'Serviços' : 'EE'}] ${proposal.client?.name || proposal.lead?.name || "Proposta"} - ${formatCurrency(proposal.total_value)} (${getProposalStatusLabel(proposal.status)})`,
+                            sublabel: proposal.code || undefined,
+                          }))}
+                          value={proposalId || null}
+                          onValueChange={(v) => handleProposalSelect(v || "none")}
+                          placeholder="Selecionar proposta..."
+                          searchPlaceholder="Pesquisar proposta..."
+                          emptyLabel="Venda direta"
+                          emptyText="Nenhuma proposta encontrada."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Client Fiscal Card */}
+                    {clientId && (
+                      <ClientFiscalCard client={selectedClient} isInvoiceXpressActive={ixActive} />
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Data da Venda</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !saleDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {saleDate ? format(saleDate, "PPP", { locale: pt }) : "Selecionar data"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={saleDate}
+                              onSelect={(date) => date && setSaleDate(date)}
+                              locale={pt}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Estado da Venda</Label>
+                        <Select value={saleStatus} onValueChange={(v) => setSaleStatus(v as SaleStatus)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SALE_STATUSES.map(s => (
+                              <SelectItem key={s} value={s}>
+                                {SALE_STATUS_LABELS[s]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Data de Ativação - quando estado é Concluída (apenas telecom) */}
+                      {isTelecom && saleStatus === 'delivered' && (
+                        <div className="col-span-1 sm:col-span-2 space-y-2">
+                          <Label>Data de Ativação <span className="text-destructive">*</span></Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !activationDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {activationDate ? format(activationDate, "PPP", { locale: pt }) : "Selecionar data de ativação"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={activationDate}
+                                onSelect={(date) => setActivationDate(date || undefined)}
+                                locale={pt}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Telecom Data Section */}
+                {showEnergy && proposalId && (negotiationType || proposalType) && (
+                  <Card>
+                    <CardHeader className="pb-2 p-4">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        <Zap className="h-4 w-4 text-amber-500" />
+                        Dados Energia (da Proposta)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {negotiationType && (
+                          <div className="col-span-1 sm:col-span-2">
+                            <p className="text-xs text-muted-foreground">Tipo de Negociação</p>
+                            <p className="text-sm font-medium">
+                              {NEGOTIATION_TYPE_LABELS[negotiationType] || negotiationType}
+                            </p>
+                          </div>
+                        )}
+
+                        {proposalType === 'servicos' && (
+                          <>
+                            {servicosProdutos.length > 0 && (
+                              <div className="col-span-1 sm:col-span-2">
+                                <p className="text-xs text-muted-foreground">Serviços/Produtos</p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {servicosProdutos.map((s) => (
+                                    <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {modeloServico && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Modelo de Serviço</p>
+                                <p className="text-sm font-medium">
+                                  {modeloServico === 'transacional' ? 'Transacional' : modeloServico === 'saas' ? 'SAAS' : modeloServico}
+                                </p>
+                              </div>
+                            )}
+                            {kwp && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">kWp</p>
+                                <p className="text-sm font-medium">{kwp}</p>
+                              </div>
+                            )}
+                            {comissao && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Comissão</p>
+                                <p className="text-sm font-medium text-green-500">
+                                  {formatCurrency(parseFloat(comissao))}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {proposalType === 'energia' && proposalCpes.length > 0 && (
+                          <>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Pontos de Consumo</p>
+                              <p className="text-sm font-medium">{proposalCpes.length} CPE(s)</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Consumo Total</p>
+                              <p className="text-sm font-medium">
+                                {(proposalCpes.reduce((sum, c) => sum + (c.consumo_anual || 0), 0) / 1000).toLocaleString('pt-PT', { minimumFractionDigits: 2 })} MWh
+                              </p>
+                            </div>
+                            {(() => {
+                              const totalComissao = proposalCpes.reduce((sum, c) => sum + (c.comissao || 0), 0);
+                              return totalComissao > 0 ? (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Comissão Total</p>
+                                  <p className="text-sm font-medium text-green-500">
+                                    {formatCurrency(totalComissao)}
+                                  </p>
+                                </div>
+                              ) : null;
+                            })()}
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Telecom CPE/CUI Details */}
+                {showEnergy && proposalCpes.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-2 p-4">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        <Router className="h-4 w-4" />
+                        CPE/CUI (Pontos de Consumo)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 space-y-2">
+                      {proposalCpes.map((cpe) => (
+                        <div
+                          key={cpe.id}
+                          className="p-3 rounded-lg border border-border/50 bg-muted/30 space-y-2"
+                        >
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="outline" className="text-xs">{cpe.equipment_type}</Badge>
+                            <Badge variant="secondary" className="text-xs">{cpe.comercializador}</Badge>
+                            {negotiationType === 'renovacao' ? (
+                              <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/30">Renovação</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-500 border-green-500/30">Novo</Badge>
+                            )}
+                          </div>
+                          {cpe.serial_number && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Local de Consumo</p>
+                              <p className="text-sm font-mono">{cpe.serial_number}</p>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {cpe.consumo_anual != null && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Consumo Anual</p>
+                                <p className="text-sm font-medium">{cpe.consumo_anual.toLocaleString('pt-PT')} kWh</p>
+                              </div>
+                            )}
+                            {cpe.duracao_contrato != null && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Duração</p>
+                                <p className="text-sm font-medium">{cpe.duracao_contrato} {cpe.duracao_contrato === 1 ? 'ano' : 'anos'}</p>
+                              </div>
+                            )}
+                            {cpe.dbl != null && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">DBL</p>
+                                <p className="text-sm font-medium">{cpe.dbl.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</p>
+                              </div>
+                            )}
+                            {cpe.margem != null && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Margem</p>
+                                <p className="text-sm font-medium">{cpe.margem.toLocaleString('pt-PT', { minimumFractionDigits: 2 })} €/MWh</p>
+                              </div>
+                            )}
+                            {cpe.comissao != null && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Comissão</p>
+                                <p className="text-sm font-medium text-green-500">{formatCurrency(cpe.comissao)}</p>
+                              </div>
+                            )}
+                          </div>
+                          {(cpe.contrato_inicio || cpe.contrato_fim) && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Contrato</p>
+                              <p className="text-sm">
+                                {cpe.contrato_inicio ? format(new Date(cpe.contrato_inicio), "dd/MM/yyyy") : '—'}
+                                {' → '}
+                                {cpe.contrato_fim ? format(new Date(cpe.contrato_fim), "dd/MM/yyyy") : '—'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Telecom Servicos Section (direct sale without proposal or servicos proposal) */}
+                {isTelecom && (isNewFormat && catalog) && (!proposalId || proposalType === 'servicos') && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <ServicosSection
+                        hideModeloServico
+                        modeloServico={modeloServico || 'transacional'}
+                        onModeloServicoChange={(v) => setModeloServico(v)}
+                        servicosProdutos={servicosProdutos}
+                        servicosDetails={servicosDetails}
+                        isNewFormat={isNewFormat}
+                        catalog={catalog}
+                        configs={servicosConfigs}
+                        onToggleProduct={(name) => {
+                          if (servicosProdutos.includes(name)) {
+                            setServicosProdutos(prev => prev.filter(p => p !== name));
+                            setServicosDetails(prev => {
+                              const next = { ...prev };
+                              delete next[name];
+                              return next;
+                            });
+                          } else {
+                            setServicosProdutos(prev => [...prev, name]);
+                            const catProduct = catalog?.find(c => c.name === name);
+                            if (catProduct) {
+                              const comissaoVal = catProduct.has_commission ? Math.round(catProduct.price * catProduct.commission_pct) / 100 : 0;
+                              setServicosDetails(prev => ({
+                                ...prev,
+                                [name]: {
+                                  price: catProduct.price,
+                                  commission_pct: catProduct.commission_pct,
+                                  comissao: comissaoVal,
+                                },
+                              }));
+                            }
+                          }
+                        }}
+                        onUpdateDetail={() => {}}
+                        onSetProductDetail={(product, detail) => {
+                          setServicosDetails(prev => ({ ...prev, [product]: detail }));
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Products/Services */}
+                {!isTelecom && (
+                <Card>
+                  <CardHeader className="pb-2 p-4">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                      <Package className="h-4 w-4" />
+                      Produtos / Serviços
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 space-y-3">
+                    <Select onValueChange={handleAddProduct}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Adicionar produto ou serviço..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products?.filter(p => p.is_active).map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} - {formatCurrency(product.price || 0)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {items.length > 0 ? (
+                      <div className="space-y-2">
+                        {items.map((item) => {
+                          const product = products?.find(p => p.id === item.product_id);
+                          const isRecurring = product?.is_recurring;
+                          
+                          return (
+                            <div 
+                              key={item.id} 
+                              className="p-3 rounded-lg border border-border/50 bg-muted/30 space-y-2"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-medium text-sm truncate">{item.name}</p>
+                                    {ixActive && <VatBadge taxValue={vatCalc.getItemTaxRate(item.product_id)} />}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Button type="button" variant="outline" size="icon" className="h-6 w-6" onClick={() => handleUpdateQuantity(item.id, -1)}>
+                                      <Minus className="h-3 w-3" />
+                                    </Button>
+                                    <span className="text-sm w-8 text-center">{item.quantity}</span>
+                                    <Button type="button" variant="outline" size="icon" className="h-6 w-6" onClick={() => handleUpdateQuantity(item.id, 1)}>
+                                      <Plus className="h-3 w-3" />
+                                    </Button>
+                                    <span className="text-muted-foreground text-sm">×</span>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={item.unit_price}
+                                      onChange={(e) => handleUpdatePrice(item.id, e.target.value)}
+                                      className="w-24 h-7 text-sm"
+                                    />
+                                    <span className="text-muted-foreground text-sm">€</span>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="font-semibold">{formatCurrency(item.quantity * item.unit_price)}</p>
+                                </div>
+                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveItem(item.id)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              
+                              {isRecurring && (
+                                <div className="flex items-center gap-2 pl-2 text-sm border-t border-border/50 pt-2">
+                                  <CalendarIcon className="h-4 w-4 text-primary" />
+                                  <span className="text-muted-foreground">Vence em:</span>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs">
+                                        {item.first_due_date ? format(item.first_due_date, "dd/MM/yyyy") : "Selecionar data"}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                      <Calendar
+                                        mode="single"
+                                        selected={item.first_due_date || undefined}
+                                        onSelect={(date) => handleUpdateDueDate(item.id, date)}
+                                        locale={pt}
+                                        className="pointer-events-auto"
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    Mensal
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-muted-foreground text-sm border border-dashed border-border/50 rounded-lg">
+                        Adicione produtos ou serviços à venda
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                )}
+
+                {/* Payments (non-telecom) */}
+                {!isTelecom && (
+                  <Card>
+                    <CardHeader className="pb-2 p-4">
+                      <CardTitle className="text-sm font-medium flex items-center justify-between text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Pagamentos
+                        </div>
+                        {total > 0 && (() => {
+                          const summary = calculatePaymentSummary(
+                            draftPayments.map(dp => ({ ...dp, id: dp.id, organization_id: '', sale_id: '', invoice_file_url: null, created_at: '', updated_at: '' })),
+                            total
+                          );
+                          return summary.remaining > 0;
+                        })() && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowPaymentTypeSelector(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Adicionar
+                          </Button>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      {draftPayments.length > 0 ? (
+                        <div className="space-y-2">
+                          {draftPayments.map((dp) => (
+                            <div
+                              key={dp.id}
+                              className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-muted/30"
+                            >
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-sm">{formatCurrency(dp.amount)}</span>
+                                  <Badge variant="outline" className={cn("text-xs", PAYMENT_RECORD_STATUS_COLORS[dp.status])}>
+                                    {PAYMENT_RECORD_STATUS_LABELS[dp.status]}
+                                  </Badge>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {dp.payment_date}
+                                  {dp.payment_method && ` • ${PAYMENT_METHOD_LABELS[dp.payment_method]}`}
+                                  {dp.invoice_reference && ` • ${dp.invoice_reference}`}
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => setDraftPayments(prev => prev.filter(p => p.id !== dp.id))}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+
+                          {(() => {
+                            const summary = calculatePaymentSummary(
+                              draftPayments.map(dp => ({ ...dp, organization_id: '', sale_id: '', invoice_file_url: null, created_at: '', updated_at: '' })),
+                              total
+                            );
+                            return (
+                              <div className="p-3 rounded-lg bg-muted/30 border border-border/50 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Total pago</span>
+                                  <span className="font-medium text-green-500">{formatCurrency(summary.totalPaid)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Em falta</span>
+                                  <span className="font-medium">{formatCurrency(summary.remaining)}</span>
+                                </div>
+                                <Progress value={summary.percentage} className="h-2" />
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : total > 0 ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full border-dashed"
+                          onClick={() => setShowPaymentTypeSelector(true)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Adicionar Pagamento
+                        </Button>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Adicione produtos para registar pagamentos
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* RIGHT COLUMN (40%) - Sticky summary */}
+              <div className="lg:col-span-2">
+                <div className="lg:sticky lg:top-6 space-y-4">
+                  {/* Summary Card */}
+                  <Card>
+                    <CardHeader className="pb-2 p-4">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        <FileText className="h-4 w-4" />
+                        Resumo
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span className="font-medium">{formatCurrency(subtotal)}</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm text-muted-foreground">Desconto</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">-</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={discount}
+                            onChange={(e) => setDiscount(e.target.value)}
+                            className="w-24 h-8 text-sm"
+                          />
+                          <span className="text-muted-foreground text-sm">€</span>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {ixActive && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">IVA</span>
+                          <span className="font-medium">{formatCurrency(vatCalc.totalVat)}</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between">
+                        <span className="font-semibold">{ixActive ? 'Total (s/ IVA)' : 'Total'}</span>
+                        <span className="text-xl font-bold text-primary">{formatCurrency(total)}</span>
+                      </div>
+
+                      {ixActive && (
+                        <div className="flex justify-between text-sm border-t pt-2">
+                          <span className="text-muted-foreground font-medium">Total c/ IVA</span>
+                          <span className="font-semibold">{formatCurrency(vatCalc.totalWithVat)}</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* EDP Proposal Number */}
+                  {saleFields?.edp_proposal_number?.visible && (<Card>
+                    <CardHeader className="pb-2 p-4">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        {saleFields.edp_proposal_number.label}{saleFields.edp_proposal_number.required ? ' *' : ''}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <Input
+                        placeholder="Ex: EDP-2024-001234"
+                        value={edpProposalNumber}
+                        onChange={(e) => setEdpProposalNumber(e.target.value)}
+                        required={saleFields.edp_proposal_number.required}
+                      />
+                    </CardContent>
+                  </Card>)}
+
+                  {/* Notes */}
+                  <Card>
+                    <CardHeader className="pb-2 p-4">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Notas</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <Textarea
+                        placeholder="Observações sobre a venda..."
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={3}
+                        className="min-h-[60px]"
+                      />
+                    </CardContent>
+                  </Card>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="p-4 border-t border-border/50 shrink-0">
+          <div className="flex gap-3 max-w-6xl mx-auto">
+            <Button
+              variant="senvia"
+              className="flex-1"
+              size="lg"
+              onClick={handleSubmit}
+              disabled={!isValid || createSale.isPending}
+            >
+              {createSale.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  A criar...
+                </>
+              ) : (
+                "Criar Venda"
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              size="lg"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+
+        {/* Payment Type Selector */}
+        <PaymentTypeSelector
+          open={showPaymentTypeSelector}
+          onOpenChange={setShowPaymentTypeSelector}
+          remainingAmount={(() => {
+            const summary = calculatePaymentSummary(
+              draftPayments.map(dp => ({ ...dp, organization_id: '', sale_id: '', invoice_file_url: null, created_at: '', updated_at: '' })),
+              total
+            );
+            return summary.remaining;
+          })()}
+          onSelectTotal={() => {
+            setShowPaymentTypeSelector(false);
+            setShowDraftPaymentModal(true);
+          }}
+          onSelectInstallments={() => {
+            setShowPaymentTypeSelector(false);
+            setShowDraftScheduleModal(true);
+          }}
+        />
+
+        {/* Draft Payment Modal */}
+        <AddDraftPaymentModal
+          open={showDraftPaymentModal}
+          onOpenChange={(open) => {
+            setShowDraftPaymentModal(open);
+            if (!open) {}
+          }}
+          saleTotal={total}
+          remaining={(() => {
+            const summary = calculatePaymentSummary(
+              draftPayments.map(dp => ({ ...dp, organization_id: '', sale_id: '', invoice_file_url: null, created_at: '', updated_at: '' })),
+              total
+            );
+            return summary.remaining;
+          })()}
+          onAdd={(payment) => setDraftPayments(prev => [...prev, payment])}
+          hideInvoiceReference={
+            (organization?.integrations_enabled as any)?.invoicexpress !== false
+            && !!(organization?.invoicexpress_account_name && organization?.invoicexpress_api_key)
+          }
+          
+        />
+
+        {/* Draft Schedule Modal */}
+        <DraftScheduleModal
+          open={showDraftScheduleModal}
+          onOpenChange={setShowDraftScheduleModal}
+          remainingAmount={(() => {
+            const summary = calculatePaymentSummary(
+              draftPayments.map(dp => ({ ...dp, organization_id: '', sale_id: '', invoice_file_url: null, created_at: '', updated_at: '' })),
+              total
+            );
+            return summary.remaining;
+          })()}
+          onAdd={(payments) => setDraftPayments(prev => [...prev, ...payments])}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}

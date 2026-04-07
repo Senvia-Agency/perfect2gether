@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS servicos_products_config JSONB DEFAULT NULL;

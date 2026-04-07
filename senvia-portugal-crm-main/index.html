@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Senvia OS" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Senvia OS" />
+    <meta name="msapplication-TileColor" content="#0f172a" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- Favicon & Icons -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://senvia.pt/" />
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" /></noscript>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Senvia OS - A Infraestrutura de Vendas para Empresas de Serviços High-Ticket. CRM com automação WhatsApp e IA para clínicas, imobiliárias e empresas de construção em Portugal." />
+    <meta name="keywords" content="CRM Portugal, automação WhatsApp, gestão de leads, CRM clínicas, CRM imobiliária, software vendas, atendimento automático, sistema leads" />
+    <meta name="author" content="SENVIA" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Senvia OS - CRM Inteligente para Empresas de Serviços" />
+    <meta property="og:description" content="A Infraestrutura de Vendas para Empresas de Serviços High-Ticket. CRM com automação WhatsApp e IA." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://senvia.pt/" />
+    <meta property="og:image" content="https://senvia.pt/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="pt_PT" />
+    <meta property="og:site_name" content="Senvia OS" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@senvia" />
+    <meta name="twitter:title" content="Senvia OS - CRM Inteligente para Empresas de Serviços" />
+    <meta name="twitter:description" content="A Infraestrutura de Vendas para Empresas de Serviços High-Ticket. CRM com automação WhatsApp e IA." />
+    <meta name="twitter:image" content="https://senvia.pt/og-image.png" />
+    
+    <title>Senvia OS - CRM Inteligente para Empresas de Serviços</title>
+
+    <!-- Structured Data - Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Senvia OS",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": "CRM com automação WhatsApp e IA para empresas de serviços high-ticket em Portugal. Sistema de gestão de leads para clínicas, imobiliárias e construção.",
+      "offers": {
+        "@type": "Offer",
+        "price": "150",
+        "priceCurrency": "EUR",
+        "priceValidUntil": "2027-12-31"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "SENVIA",
+        "url": "https://senvia.pt",
+        "logo": "https://senvia.pt/icon-512.png"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "ratingCount": "47"
+      }
+    }
+    </script>
+
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+    (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '2027821837745963');
+    fbq('track', 'PageView');
+    </script>
+  </head>
+  <body>
+    <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=2027821837745963&ev=PageView&noscript=1"/></noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

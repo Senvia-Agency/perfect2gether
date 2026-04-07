@@ -1,0 +1,1 @@
+ALTER TABLE public.organization_members ADD COLUMN commission_rate numeric DEFAULT NULL;

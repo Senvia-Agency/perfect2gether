@@ -1,0 +1,538 @@
+/* Fonts loaded via <link> in index.html for non-blocking render */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Senvia OS Design System - Premium CRM */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Senvia Blue - Electric accent */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success - for "Vendido" status */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning - for "Agendado" status */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar - Deep Navy */
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 220 14% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 14%;
+    --sidebar-accent-foreground: 220 14% 96%;
+    --sidebar-border: 222 47% 16%;
+    --sidebar-ring: 217 91% 60%;
+    --sidebar-muted: 220 9% 46%;
+
+    /* Kanban Column Colors */
+    --kanban-new: 217 91% 60%;
+    --kanban-conversation: 280 84% 60%;
+    --kanban-scheduled: 38 92% 50%;
+    --kanban-sold: 142 76% 36%;
+    --kanban-lost: 0 0% 45%;
+
+    /* Gradients */
+    --gradient-senvia: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(232 84% 55%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(222 47% 6%) 100%);
+    --gradient-card-hover: linear-gradient(135deg, hsl(217 91% 60% / 0.05) 0%, hsl(232 84% 55% / 0.05) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(222 47% 11% / 0.07), 0 2px 4px -2px hsl(222 47% 11% / 0.07);
+    --shadow-lg: 0 10px 15px -3px hsl(222 47% 11% / 0.08), 0 4px 6px -4px hsl(222 47% 11% / 0.08);
+    --shadow-card: 0 1px 3px 0 hsl(222 47% 11% / 0.04), 0 1px 2px -1px hsl(222 47% 11% / 0.04);
+    --shadow-card-hover: 0 10px 25px -5px hsl(217 91% 60% / 0.15), 0 8px 10px -6px hsl(217 91% 60% / 0.1);
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 220 14% 96%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 220 14% 96%;
+
+    --popover: 222 47% 8%;
+    --popover-foreground: 220 14% 96%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 47% 14%;
+    --secondary-foreground: 220 14% 96%;
+
+    --muted: 222 47% 14%;
+    --muted-foreground: 220 9% 60%;
+
+    --accent: 222 47% 14%;
+    --accent-foreground: 220 14% 96%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 222 47% 16%;
+    --input: 222 47% 16%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 220 14% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 10%;
+    --sidebar-accent-foreground: 220 14% 96%;
+    --sidebar-border: 222 47% 12%;
+    --sidebar-ring: 217 91% 60%;
+    --sidebar-muted: 220 9% 50%;
+  }
+}
+
+@layer base {
+  :root {
+    /* Safe area CSS variables with robust fallbacks */
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+  }
+
+  @supports (padding-top: constant(safe-area-inset-top)) {
+    :root {
+      --safe-area-top: constant(safe-area-inset-top);
+      --safe-area-bottom: constant(safe-area-inset-bottom);
+      --safe-area-left: constant(safe-area-inset-left);
+      --safe-area-right: constant(safe-area-inset-right);
+    }
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Safe areas for PWA - using clamp() to guarantee minimum padding even when env() returns 0 */
+  .safe-top {
+    padding-top: var(--safe-area-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: var(--safe-area-bottom);
+  }
+
+  .pb-safe {
+    padding-bottom: calc(var(--safe-area-bottom) + 1rem);
+  }
+
+  .pt-safe {
+    /* Guarantee minimum 20px + extra padding, works even when safe-area is 0 */
+    padding-top: calc(clamp(20px, var(--safe-area-top), 50px) + 0.75rem);
+  }
+
+  /* Safe area positioning helpers (for absolute buttons) */
+  .top-safe {
+    /* Guarantee minimum 16px for close buttons */
+    top: calc(clamp(12px, var(--safe-area-top), 50px) + 0.25rem);
+  }
+
+  .bottom-safe {
+    bottom: calc(var(--safe-area-bottom) + 1rem);
+  }
+
+  .right-safe {
+    right: calc(var(--safe-area-right) + 1rem);
+  }
+
+  .left-safe {
+    left: calc(var(--safe-area-left) + 1rem);
+  }
+
+  /* PWA header/nav safe area utilities */
+  .pt-header-safe {
+    padding-top: calc(3.5rem + var(--safe-area-top));
+  }
+
+  .pb-nav-safe {
+    padding-bottom: calc(4rem + var(--safe-area-bottom));
+  }
+
+  /* Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+
+  /* Hide scrollbar but keep scroll */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  .gradient-senvia {
+    background: var(--gradient-senvia);
+  }
+
+  .gradient-sidebar {
+    background: var(--gradient-sidebar);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Kanban Status Pills */
+  .status-new {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .status-contacted {
+    background-color: hsl(280 84% 60% / 0.1);
+    color: hsl(280 84% 50%);
+  }
+
+  .status-scheduled {
+    background-color: hsl(var(--warning) / 0.1);
+    color: hsl(var(--warning));
+  }
+
+  .status-proposal {
+    @apply bg-cyan-500/10 text-cyan-500;
+  }
+
+  .status-won {
+    background-color: hsl(var(--success) / 0.1);
+    color: hsl(var(--success));
+  }
+
+  .status-lost {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  /* Animation utilities */
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+/* Print styles */
+@page {
+  margin: 1cm;
+  size: A4;
+}
+
+@media print {
+  /* ===== 1. Hide non-printable elements ===== */
+  .no-print,
+  aside,
+  [data-sidebar],
+  nav,
+  header,
+  [data-otto-fab],
+  .print\:hidden,
+  [data-radix-popper-content-wrapper],
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  /* ===== 2. Reset body & global containers ===== */
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force ALL containers to expand — no clipping */
+  *,
+  *::before,
+  *::after {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Remove fixed positioning & sidebar margin */
+  main {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  main, main > div {
+    min-height: auto !important;
+    height: auto !important;
+  }
+
+  /* ===== 3. Print header with Senvia branding ===== */
+  body::before {
+    content: "Senvia OS";
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #3b82f6;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== 4. Linearize grids for A4 paper ===== */
+  .grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Single-column for lg grids on narrow paper */
+  .grid.grid-cols-3,
+  .grid.grid-cols-4,
+  .grid.lg\:grid-cols-3,
+  .grid.xl\:grid-cols-4,
+  .grid.lg\:grid-cols-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Full-width panels (commitments, sales performance, etc.) */
+  .grid.lg\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ===== 5. Avoid page-break inside cards/widgets ===== */
+  .rounded-xl,
+  [class*="Card"],
+  [class*="card"],
+  .border {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ===== 6. Expand collapsibles ===== */
+  [data-state="closed"] > [data-radix-collapsible-content],
+  [data-state="closed"][data-radix-collapsible-content] {
+    display: block !important;
+    height: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* ===== 7. Charts — preserve colors via print-color-adjust ===== */
+  svg {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .recharts-wrapper,
+  .recharts-surface {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /* ===== 8. Ensure text contrast ===== */
+  .text-muted-foreground {
+    color: #555 !important;
+  }
+
+  .text-foreground {
+    color: #111 !important;
+  }
+
+  .bg-card, .bg-background {
+    background: white !important;
+  }
+
+  .border {
+    border-color: #ddd !important;
+  }
+
+  /* ===== 9. Safe area resets (no notch on paper) ===== */
+  .pt-header-safe,
+  .pb-nav-safe,
+  .safe-top,
+  .safe-bottom,
+  .pt-safe,
+  .pb-safe {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* ===== 10. Single-card print mode ===== */
+  .print-single-active * {
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+  }
+
+  .print-single-active body::before {
+    display: none !important;
+  }
+
+  .print-single-active .print-target,
+  .print-single-active .print-target * {
+    visibility: visible !important;
+    height: auto !important;
+    min-height: unset !important;
+    padding: unset !important;
+    margin: unset !important;
+    border: unset !important;
+    overflow: visible !important;
+  }
+
+  .print-single-active .print-target {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 1.5rem !important;
+    background: white !important;
+    color: black !important;
+    border: 1px solid #ddd !important;
+    border-radius: 0.75rem !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure table cells have proper spacing */
+  .print-single-active .print-target th,
+  .print-single-active .print-target td {
+    padding: 0.375rem 0.5rem !important;
+    border-bottom: 1px solid #eee !important;
+  }
+
+  /* ===== 11. Bank statement print ===== */
+  #bank-statement-print,
+  #bank-statement-print * {
+    visibility: visible !important;
+  }
+
+  #bank-statement-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 2rem;
+    background: white !important;
+    color: black !important;
+  }
+
+  #bank-statement-print .text-muted-foreground {
+    color: #555 !important;
+  }
+
+  #bank-statement-print .text-emerald-600 {
+    color: #059669 !important;
+  }
+
+  #bank-statement-print .text-destructive {
+    color: #dc2626 !important;
+  }
+}

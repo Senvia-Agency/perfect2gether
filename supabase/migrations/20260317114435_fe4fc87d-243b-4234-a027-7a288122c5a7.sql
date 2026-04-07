@@ -1,0 +1,2 @@
+ALTER TABLE public.proposals
+ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMP WITH TIME ZONE;

@@ -1,0 +1,4 @@
+-- Change dbl column from BOOLEAN to INTEGER
+ALTER TABLE public.proposals 
+  ALTER COLUMN dbl DROP DEFAULT,
+  ALTER COLUMN dbl TYPE INTEGER USING (CASE WHEN dbl = true THEN 1 ELSE NULL END);

@@ -1,0 +1,1 @@
+ALTER TABLE public.sale_payments ADD COLUMN invoicexpress_id bigint DEFAULT NULL;

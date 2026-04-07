@@ -1,0 +1,1 @@
+ALTER TABLE public.sales ADD COLUMN activation_date date;

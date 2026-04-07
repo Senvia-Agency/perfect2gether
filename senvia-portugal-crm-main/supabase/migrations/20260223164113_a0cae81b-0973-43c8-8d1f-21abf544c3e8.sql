@@ -1,0 +1,1 @@
+ALTER TABLE public.email_automations ADD COLUMN list_id uuid REFERENCES public.client_lists(id) ON DELETE SET NULL;

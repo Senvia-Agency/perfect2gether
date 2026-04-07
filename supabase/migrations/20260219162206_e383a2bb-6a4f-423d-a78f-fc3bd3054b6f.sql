@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN commission_matrix jsonb DEFAULT NULL;

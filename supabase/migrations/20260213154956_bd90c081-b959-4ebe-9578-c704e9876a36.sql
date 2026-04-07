@@ -1,0 +1,1 @@
+ALTER TABLE public.crm_clients ADD COLUMN IF NOT EXISTS whatsapp TEXT;

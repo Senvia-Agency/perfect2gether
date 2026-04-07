@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN brevo_sender_email text;

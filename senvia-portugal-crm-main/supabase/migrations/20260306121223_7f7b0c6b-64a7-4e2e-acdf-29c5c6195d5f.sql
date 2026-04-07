@@ -1,0 +1,1 @@
+ALTER TABLE public.marketing_contacts ADD COLUMN IF NOT EXISTS converted_to_lead boolean NOT NULL DEFAULT false;

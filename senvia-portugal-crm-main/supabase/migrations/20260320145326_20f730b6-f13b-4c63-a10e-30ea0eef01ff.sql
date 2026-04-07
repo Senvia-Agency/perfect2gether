@@ -1,0 +1,1 @@
+ALTER TABLE public.proposal_cpes ALTER COLUMN duracao_contrato TYPE numeric(12,6) USING duracao_contrato::numeric(12,6);
