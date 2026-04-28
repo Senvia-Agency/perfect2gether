@@ -94,7 +94,7 @@ export function OttoQuickActions({ onSelect }: OttoQuickActionsProps) {
   return (
     <div className="space-y-3">
       <div className="bg-muted rounded-2xl rounded-tl-md px-3.5 py-2.5 text-sm">
-        <p className="font-medium">Olá! 👋 Sou o Otto, o teu assistente Senvia OS.</p>
+        <p className="font-medium">Olá! 👋 Sou o Otto, o teu assistente Perfect2Gether.</p>
         <p className="text-muted-foreground mt-1">Como posso ajudar-te hoje?</p>
       </div>
       <div className="flex flex-wrap gap-1.5">

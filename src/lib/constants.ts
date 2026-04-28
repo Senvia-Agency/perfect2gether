@@ -1,8 +1,8 @@
-// Versão actual do Senvia OS
+// Versão actual do Perfect2Gether
 export const APP_VERSION = '1.30.1';
 
 // URL base da aplicação em produção
-export const PRODUCTION_URL = 'https://app.senvia.pt';
+export const PRODUCTION_URL = 'https://app.perfect2gether.pt';
 
 // Detecta o ambiente e retorna a URL base correcta
 export const getBaseUrl = () => {

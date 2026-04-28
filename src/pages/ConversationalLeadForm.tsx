@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { detectLeadSource } from "@/lib/source-detection";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -17,24 +17,24 @@ declare global {
   interface Window {
     fbq: (...args: unknown[]) => void;
     _fbq: unknown;
-    __senvia_pixel_init?: Record<string, boolean>; // Global guard to prevent double init
-    __senvia_fbq_wrapped?: boolean; // Guard to prevent double wrapping
-    __senvia_allow_lead?: boolean; // Flag to allow Lead events only when explicitly set
-    __senvia_original_fbq?: (...args: unknown[]) => void; // Original fbq function
+    __p2g_pixel_init?: Record<string, boolean>; // Global guard to prevent double init
+    __p2g_fbq_wrapped?: boolean; // Guard to prevent double wrapping
+    __p2g_allow_lead?: boolean; // Flag to allow Lead events only when explicitly set
+    __p2g_original_fbq?: (...args: unknown[]) => void; // Original fbq function
   }
 }
 
 // Install fbq firewall to block unauthorized Lead events
 const installFbqFirewall = () => {
-  if (window.__senvia_fbq_wrapped) return;
+  if (window.__p2g_fbq_wrapped) return;
   
   const checkAndWrap = () => {
     if (typeof window.fbq !== 'function') return;
-    if (window.__senvia_fbq_wrapped) return;
+    if (window.__p2g_fbq_wrapped) return;
     
     // Store original fbq
     const originalFbq = window.fbq;
-    window.__senvia_original_fbq = originalFbq;
+    window.__p2g_original_fbq = originalFbq;
     
     // Create wrapper that blocks unauthorized Lead events
     const wrappedFbq = (...args: unknown[]) => {
@@ -45,7 +45,7 @@ const installFbqFirewall = () => {
       if ((command === 'track' || command === 'trackSingle' || command === 'trackCustom') && 
           eventName === 'Lead') {
         // Only allow if our flag is set
-        if (!window.__senvia_allow_lead) {
+        if (!window.__p2g_allow_lead) {
           console.warn('[Meta Pixel] BLOCKED unauthorized Lead event. Stack trace:', new Error().stack);
           return;
         }
@@ -61,7 +61,7 @@ const installFbqFirewall = () => {
     
     // Replace global fbq
     window.fbq = wrappedFbq;
-    window.__senvia_fbq_wrapped = true;
+    window.__p2g_fbq_wrapped = true;
     console.log('[Meta Pixel] Firewall installed - unauthorized Lead events will be blocked');
   };
   
@@ -120,7 +120,7 @@ const ConversationalLeadForm = () => {
   useEffect(() => {
     const fetchForm = async () => {
       if (!slug) {
-        setError("Formulário não encontrado.");
+        setError("FormulÃ¡rio nÃ£o encontrado.");
         setIsLoading(false);
         return;
       }
@@ -134,7 +134,7 @@ const ConversationalLeadForm = () => {
           });
 
         if (error || !data || data.length === 0) {
-          setError("Formulário não encontrado.");
+          setError("FormulÃ¡rio nÃ£o encontrado.");
           setIsLoading(false);
           return;
         }
@@ -153,7 +153,7 @@ const ConversationalLeadForm = () => {
           public_key: formResult.public_key,
         });
       } catch (err) {
-        setError("Erro ao carregar formulário.");
+        setError("Erro ao carregar formulÃ¡rio.");
       } finally {
         setIsLoading(false);
       }
@@ -166,7 +166,7 @@ const ConversationalLeadForm = () => {
   useEffect(() => {
     if (typeof window === 'undefined' || window.parent === window) return;
     const sendHeight = () => {
-      window.parent.postMessage({ type: 'senvia-resize', height: document.body.scrollHeight }, '*');
+      window.parent.postMessage({ type: 'p2g-resize', height: document.body.scrollHeight }, '*');
     };
     sendHeight();
     const observer = new ResizeObserver(sendHeight);
@@ -213,18 +213,18 @@ const ConversationalLeadForm = () => {
     // Wait for fbq to be available, then initialize
     const initPixels = () => {
       // Initialize global guard
-      if (!window.__senvia_pixel_init) {
-        window.__senvia_pixel_init = {};
+      if (!window.__p2g_pixel_init) {
+        window.__p2g_pixel_init = {};
       }
 
       activePixels.forEach(pixel => {
         if (typeof window.fbq === 'function') {
           // Check global guard to prevent duplicate init on same page
-          if (window.__senvia_pixel_init![pixel.pixel_id]) {
+          if (window.__p2g_pixel_init![pixel.pixel_id]) {
             console.log('[Meta Pixel] Already initialized globally, skipping:', pixel.pixel_id);
             return;
           }
-          window.__senvia_pixel_init![pixel.pixel_id] = true;
+          window.__p2g_pixel_init![pixel.pixel_id] = true;
 
           // CRITICAL: Disable automatic event detection BEFORE init
           window.fbq('set', 'autoConfig', false, pixel.pixel_id);
@@ -283,7 +283,7 @@ const ConversationalLeadForm = () => {
     
     // CRITICAL: Enable the firewall flag to allow our Lead event
     try {
-      window.__senvia_allow_lead = true;
+      window.__p2g_allow_lead = true;
       
       // Use fbq('track') with eventID for Facebook's automatic server-side deduplication
       activePixels.forEach((pixel) => {
@@ -295,7 +295,7 @@ const ConversationalLeadForm = () => {
       });
     } finally {
       // Always reset the flag after sending
-      window.__senvia_allow_lead = false;
+      window.__p2g_allow_lead = false;
     }
   };
 
@@ -531,7 +531,7 @@ const ConversationalLeadForm = () => {
         <div className="text-center space-y-4">
           <h1 className="text-xl font-semibold text-foreground">{error}</h1>
           <p className="text-muted-foreground">
-            Verifique se o link está correto.
+            Verifique se o link estÃ¡ correto.
           </p>
         </div>
       </div>
@@ -579,7 +579,7 @@ const ConversationalLeadForm = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
         >
-          Powered by Senvia OS
+          Powered by Perfect2Gether
         </motion.p>
       </motion.div>
     </div>

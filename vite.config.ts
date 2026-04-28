@@ -21,9 +21,9 @@ export default defineConfig(({ mode }) => ({
       injectRegister: 'auto',
       includeAssets: ["favicon.ico", "icon-192.png", "icon-512.png"],
       manifest: {
-        name: "Senvia OS",
-        short_name: "Senvia",
-        description: "A Infraestrutura de Vendas para Empresas de Serviços High-Ticket",
+        name: "Perfect2Gether",
+        short_name: "P2G",
+        description: "Perfect2Gether - CRM Inteligente",
         theme_color: "#0f172a",
         background_color: "#0f172a",
         display: "standalone",

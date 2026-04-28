@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+﻿import { useState, useMemo, useEffect } from "react";
 
 import { useSearchParams, useLocation } from "react-router-dom";
 import { usePersistedState } from "@/hooks/usePersistedState";
@@ -133,7 +133,7 @@ export default function Clients() {
     }
   }, [searchParams, clients]);
 
-  // Auto-open client drawer from location state (e.g. from Lead → Won flow)
+  // Auto-open client drawer from location state (e.g. from Lead â†’ Won flow)
   useEffect(() => {
     const openClientId = (location.state as any)?.openClientId;
     if (openClientId && clients && clients.length > 0) {
@@ -168,8 +168,8 @@ export default function Clients() {
   return (
     <>
       <SEO 
-        title={`${labels.plural} | Senvia OS`}
-        description={`Gestão de ${labels.plural.toLowerCase()} CRM`}
+        title={`${labels.plural} | Perfect2Gether`}
+        description={`GestÃ£o de ${labels.plural.toLowerCase()} CRM`}
       />
       
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -178,7 +178,7 @@ export default function Clients() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">{labels.plural}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Gestão de {labels.plural.toLowerCase()} e relacionamento comercial
+              GestÃ£o de {labels.plural.toLowerCase()} e relacionamento comercial
             </p>
           </div>
           <Button onClick={() => setShowCreateModal(true)}>
@@ -253,11 +253,11 @@ export default function Clients() {
                     <Euro className="h-5 w-5 text-success" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Comissão Total</p>
+                    <p className="text-sm text-muted-foreground">ComissÃ£o Total</p>
                     <p className="text-2xl font-bold">{formatCurrency(stats.totalComissao)}</p>
                     {showEnergy && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {stats.totalMwh.toFixed(1)} MWh · {stats.totalKwp.toFixed(1)} kWp
+                        {stats.totalMwh.toFixed(1)} MWh Â· {stats.totalKwp.toFixed(1)} kWp
                       </p>
                     )}
                   </div>

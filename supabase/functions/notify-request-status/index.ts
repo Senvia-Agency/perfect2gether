@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        sender: { email: org.brevo_sender_email, name: org.name || "Senvia" },
+        sender: { email: org.brevo_sender_email, name: org.name || "Perfect2Gether" },
         to: [{ email: userData.user.email }],
         subject: `Pedido ${statusLabel}: ${request.title}`,
         htmlContent: `

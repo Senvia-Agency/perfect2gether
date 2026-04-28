@@ -27,7 +27,7 @@ export function DashboardPeriodFilter() {
 
   const handlePrintAll = () => {
     const originalTitle = document.title;
-    document.title = "Senvia OS";
+    document.title = "Perfect2Gether";
     window.print();
     document.title = originalTitle;
   };

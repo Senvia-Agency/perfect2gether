@@ -29,7 +29,7 @@ export function TrialBanner({ daysRemaining, totalDays = 14 }: TrialBannerProps)
 
         {/* Right: CTA button */}
         <Button
-          variant="senvia"
+          variant="p2g"
           size="sm"
           className="h-7 text-xs px-3 shrink-0"
           onClick={() => navigate('/settings?tab=billing')}

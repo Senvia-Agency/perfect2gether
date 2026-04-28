@@ -95,9 +95,9 @@ export function AppSidebar({
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center border-b border-sidebar-border px-4">
             <img 
-              alt={organization?.name || "SENVIA"} 
+              alt={organization?.name || "Perfect2Gether"}
               className="h-10 w-40 object-contain" 
-              src={organization?.logo_url || "/lovable-uploads/a73ec7d1-f1a3-458c-8d12-82bca71d2d34.png"} 
+              src="/Logo-P2G.png" 
             />
           </div>
 
@@ -181,7 +181,7 @@ export function AppSidebar({
 
           <div className="px-4 py-2 text-center">
             <span className="text-[10px] text-sidebar-muted/60">
-              Senvia OS v{APP_VERSION}
+              Perfect2Gether v{APP_VERSION}
             </span>
           </div>
         </div>

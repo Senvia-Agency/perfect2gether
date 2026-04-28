@@ -125,8 +125,8 @@ async function syncOrganization(supabase: any, organization_id: string, org: any
 
       // Match 0: by proprietary_uid in raw_data
       const proprietaryUid = doc.proprietary_uid || null
-      if (proprietaryUid && typeof proprietaryUid === 'string' && proprietaryUid.startsWith('senvia-sale-')) {
-        const extractedSaleId = proprietaryUid.replace('senvia-sale-', '')
+      if (proprietaryUid && typeof proprietaryUid === 'string' && proprietaryUid.startsWith('p2g-sale-')) {
+        const extractedSaleId = proprietaryUid.replace('p2g-sale-', '')
         const { data: saleByUid } = await supabase
           .from('sales')
           .select('id')

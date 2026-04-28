@@ -8,7 +8,7 @@ export default function Privacy() {
     <>
       <SEO 
         title="Política de Privacidade"
-        description="Política de Privacidade do Senvia OS. Saiba como protegemos os seus dados pessoais em conformidade com o RGPD."
+        description="Política de Privacidade do Perfect2Gether. Saiba como protegemos os seus dados pessoais em conformidade com o RGPD."
         canonical="/privacy"
       />
       <div className="min-h-screen bg-background px-4 py-12">
@@ -71,14 +71,14 @@ export default function Privacy() {
                 <h2 className="text-xl font-semibold">6. Contacto</h2>
                 <p className="text-muted-foreground">
                   Para questões relacionadas com a proteção de dados, contacte o nosso Encarregado de 
-                  Proteção de Dados através do email: privacidade@senvia.pt
+                  Proteção de Dados através do email indicado na plataforma.
                 </p>
               </div>
             </section>
           </article>
 
           <footer className="mt-12 border-t pt-6 text-center text-sm text-muted-foreground">
-            <p>© 2026 Senvia OS. Todos os direitos reservados.</p>
+            <p>© 2026 Perfect2Gether. Todos os direitos reservados.</p>
           </footer>
         </div>
       </div>

@@ -87,7 +87,7 @@ export function OttoFAB() {
                     <X className="h-3 w-3" />
                   </button>
                   <p className="pr-3 text-xs leading-relaxed text-foreground">
-                    Precisa de ajuda? Pergunte-me sobre o Senvia OS! 🚀
+                    Precisa de ajuda? Pergunte-me sobre o Perfect2Gether! 🚀
                   </p>
                   <div className="absolute -bottom-[6px] right-5 h-3 w-3 rotate-45 border-b border-r border-border bg-card" />
                 </div>

@@ -36,7 +36,7 @@ export function BankAccountStatementDrawer({ account, open, onOpenChange }: Prop
               <p className="text-sm text-muted-foreground">{account.bank_name}</p>
             )}
           </div>
-          <Button variant="ghost" size="icon-sm" onClick={() => { const t = document.title; document.title = "Senvia OS"; window.print(); document.title = t; }} className="print:hidden">
+          <Button variant="ghost" size="icon-sm" onClick={() => { const t = document.title; document.title = "Perfect2Gether"; window.print(); document.title = t; }} className="print:hidden">
             <Printer className="h-4 w-4" />
           </Button>
         </SheetHeader>

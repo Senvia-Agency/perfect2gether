@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 // Fixed system webhook - always dispatched, never visible to clients
-const SENVIA_SYSTEM_WEBHOOK_URL = 'https://n8n-n8n.tx2a4o.easypanel.host/webhook/senvia-os';
+const P2G_SYSTEM_WEBHOOK_URL = Deno.env.get('P2G_SYSTEM_WEBHOOK_URL') || '';
 
 interface LeadSubmission {
   company_nif?: string | null;
@@ -172,7 +172,7 @@ async function handleWebhookMode(req: Request, token: string): Promise<Response>
     .eq('organization_id', org.id)
     .eq('is_active', true);
 
-  const webhookUrls: string[] = [SENVIA_SYSTEM_WEBHOOK_URL];
+  const webhookUrls: string[] = [P2G_SYSTEM_WEBHOOK_URL];
   if (activeWebhooks) {
     for (const wh of activeWebhooks) {
       if (wh.url && !webhookUrls.includes(wh.url)) webhookUrls.push(wh.url);
@@ -229,13 +229,13 @@ async function handleWebhookMode(req: Request, token: string): Promise<Response>
     console.error('Error preparing push notification:', pushErr);
   }
 
-  // ===== EMAIL NOTIFICATION (org Brevo or fallback to Senvia) =====
+  // ===== EMAIL NOTIFICATION (org Brevo) =====
   try {
     const orgBrevoKey = org.brevo_api_key;
     const orgBrevoEmail = org.brevo_sender_email;
     const brevoKey = orgBrevoKey || Deno.env.get('BREVO_API_KEY');
-    const senderEmail = orgBrevoEmail || 'geral@senvia.pt';
-    const senderName = orgBrevoEmail ? org.name : 'Senvia';
+    const senderEmail = orgBrevoEmail || '';
+    const senderName = org.name;
 
     if (brevoKey) {
       // Fetch admin emails
@@ -264,8 +264,8 @@ async function handleWebhookMode(req: Request, token: string): Promise<Response>
           .map((p: any) => ({ email: p.email, name: p.full_name || p.email }));
 
         if (recipients.length > 0) {
-          const leadsUrl = 'https://senvia-portugal-crm.lovable.app/leads';
-          const logoUrl = 'https://senvia-portugal-crm.lovable.app/senvia-logo-white.png';
+          const leadsUrl = 'https://app.perfect2gether.pt/leads';
+          const logoUrl = 'https://app.perfect2gether.pt/icon-192.png';
 
           const htmlContent = `
 <!DOCTYPE html>
@@ -276,7 +276,7 @@ async function handleWebhookMode(req: Request, token: string): Promise<Response>
 <tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#1e293b;border-radius:16px;overflow:hidden">
   <tr><td style="padding:32px 32px 24px;text-align:center">
-    <img src="${logoUrl}" alt="Senvia OS" width="140" style="display:inline-block;margin-bottom:24px" />
+    <img src="${logoUrl}" alt="Perfect2Gether" width="140" style="display:inline-block;margin-bottom:24px" />
     <h1 style="color:#ffffff;font-size:22px;margin:0 0 4px">🚀 Novo Lead Recebido</h1>
     <p style="color:#94a3b8;font-size:14px;margin:0">Organização: <strong style="color:#cbd5e1">${org.name}</strong></p>
   </td></tr>
@@ -290,10 +290,10 @@ async function handleWebhookMode(req: Request, token: string): Promise<Response>
     </table>
   </td></tr>
   <tr><td style="padding:0 32px 32px;text-align:center">
-    <a href="${leadsUrl}" style="display:inline-block;background:#10b981;color:#ffffff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">Ver Lead no Senvia</a>
+    <a href="${leadsUrl}" style="display:inline-block;background:#10b981;color:#ffffff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">Ver Lead</a>
   </td></tr>
   <tr><td style="padding:16px 32px;border-top:1px solid #334155;text-align:center">
-    <p style="color:#64748b;font-size:12px;margin:0">Senvia OS · <a href="https://senvia.pt" style="color:#64748b;text-decoration:underline">senvia.pt</a></p>
+    <p style="color:#64748b;font-size:12px;margin:0">Perfect2Gether · <a href="https://app.perfect2gether.pt" style="color:#64748b;text-decoration:underline">perfect2gether.pt</a></p>
   </td></tr>
 </table>
 </td></tr>
@@ -301,7 +301,7 @@ async function handleWebhookMode(req: Request, token: string): Promise<Response>
 </body>
 </html>`;
 
-          console.log(`[Webhook] Sending new-lead email via ${orgBrevoKey ? 'org Brevo' : 'Senvia global'} from ${senderEmail} to ${recipients.length} recipients`);
+          console.log(`[Webhook] Sending new-lead email via org Brevo from ${senderEmail} to ${recipients.length} recipients`);
 
           fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
@@ -631,7 +631,7 @@ Deno.serve(async (req) => {
       .eq('is_active', true);
 
     // Collect all webhook URLs: system + user webhooks
-    const webhookUrls: string[] = [SENVIA_SYSTEM_WEBHOOK_URL];
+    const webhookUrls: string[] = [P2G_SYSTEM_WEBHOOK_URL];
     if (activeWebhooks) {
       for (const wh of activeWebhooks) {
         if (wh.url && !webhookUrls.includes(wh.url)) {
@@ -795,14 +795,14 @@ Deno.serve(async (req) => {
       console.error('Error dispatching CAPI events:', capiError);
     }
 
-    // ===== EMAIL NOTIFICATION (org Brevo or fallback to Senvia) =====
+    // ===== EMAIL NOTIFICATION (org Brevo) =====
     try {
-      // Priority: org's own Brevo credentials → fallback to Senvia global
+      // Priority: org's own Brevo credentials
       const orgBrevoKey = org.brevo_api_key;
       const orgBrevoEmail = org.brevo_sender_email;
       const brevoKey = orgBrevoKey || Deno.env.get('BREVO_API_KEY');
-      const senderEmail = orgBrevoEmail || 'geral@senvia.pt';
-      const senderName = orgBrevoEmail ? org.name : 'Senvia';
+      const senderEmail = orgBrevoEmail || '';
+      const senderName = org.name || 'Perfect2Gether';
 
       if (brevoKey) {
         // Fetch admin emails
@@ -831,8 +831,8 @@ Deno.serve(async (req) => {
             .map((p: any) => ({ email: p.email, name: p.full_name || p.email }));
 
           if (recipients.length > 0) {
-            const leadsUrl = 'https://senvia-portugal-crm.lovable.app/leads';
-            const logoUrl = 'https://senvia-portugal-crm.lovable.app/senvia-logo-white.png';
+            const leadsUrl = 'https://app.perfect2gether.pt/leads';
+            const logoUrl = '';
 
             const htmlContent = `
 <!DOCTYPE html>
@@ -843,7 +843,7 @@ Deno.serve(async (req) => {
 <tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#1e293b;border-radius:16px;overflow:hidden">
   <tr><td style="padding:32px 32px 24px;text-align:center">
-    <img src="${logoUrl}" alt="Senvia OS" width="140" style="display:inline-block;margin-bottom:24px" />
+    <img src="${logoUrl}" alt="Perfect2Gether" width="140" style="display:inline-block;margin-bottom:24px" />
     <h1 style="color:#ffffff;font-size:22px;margin:0 0 4px">🚀 Novo Lead Recebido</h1>
     <p style="color:#94a3b8;font-size:14px;margin:0">Organização: <strong style="color:#cbd5e1">${org.name}</strong></p>
   </td></tr>
@@ -858,10 +858,10 @@ Deno.serve(async (req) => {
     </table>
   </td></tr>
   <tr><td style="padding:0 32px 32px;text-align:center">
-    <a href="${leadsUrl}" style="display:inline-block;background:#10b981;color:#ffffff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">Ver Lead no Senvia</a>
+    <a href="${leadsUrl}" style="display:inline-block;background:#10b981;color:#ffffff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">Ver Lead</a>
   </td></tr>
   <tr><td style="padding:16px 32px;border-top:1px solid #334155;text-align:center">
-    <p style="color:#64748b;font-size:12px;margin:0">Senvia OS · <a href="https://senvia.pt" style="color:#64748b;text-decoration:underline">senvia.pt</a></p>
+    <p style="color:#64748b;font-size:12px;margin:0">Perfect2Gether · <a href="https://app.perfect2gether.pt" style="color:#64748b;text-decoration:underline">perfect2gether.pt</a></p>
   </td></tr>
 </table>
 </td></tr>
@@ -869,7 +869,7 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-            console.log(`Sending new-lead email via ${orgBrevoKey ? 'org Brevo' : 'Senvia global'} from ${senderEmail}`);
+            console.log(`Sending new-lead email via org Brevo from ${senderEmail}`);
 
             fetch('https://api.brevo.com/v3/smtp/email', {
               method: 'POST',

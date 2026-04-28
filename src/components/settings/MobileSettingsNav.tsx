@@ -1,7 +1,7 @@
-import { Building, UsersRound, Package, Link2, Bell, Receipt, Shield, GitBranch, LayoutGrid, FileText, List, KeyRound, UserCog, Network, BellRing, AlertTriangle, Calculator, ShoppingCart, CreditCard, Calendar, Mail, LifeBuoy } from "lucide-react";
+import { Building, UsersRound, Package, Link2, Bell, Receipt, Shield, GitBranch, LayoutGrid, FileText, List, KeyRound, UserCog, Network, BellRing, AlertTriangle, Calculator, ShoppingCart, Calendar, Mail, LifeBuoy } from "lucide-react";
 import { SettingsCard } from "./SettingsCard";
 
-export type SettingsSection = "general" | "security" | "team" | "products" | "finance" | "notifications" | "integrations" | "billing" | "support";
+export type SettingsSection = "general" | "security" | "team" | "products" | "finance" | "notifications" | "integrations" | "support";
 
 export type SettingsSubSection =
   | "org-general" | "org-pipeline" | "org-modules" | "org-forms" | "org-fields" | "org-sales" | "org-matrix"
@@ -11,7 +11,6 @@ export type SettingsSubSection =
   | "finance-expenses" | "finance-fiscal"
   | "notif-push" | "notif-alerts" | "notif-calendar" | "notif-email"
   | "integrations"
-  | "billing"
   | "support-tickets";
 
 interface MobileSettingsNavProps {
@@ -39,7 +38,6 @@ const sections: SectionItem[] = [
   { id: "finance", label: "Financeiro", icon: Receipt, description: "Despesas e configuração fiscal", requiresIntegrations: true },
   { id: "notifications", label: "Notificações", icon: Bell, description: "Push e alertas automáticos" },
   { id: "integrations", label: "Integrações", icon: Link2, description: "WhatsApp, email e faturação", requiresIntegrations: true },
-  { id: "billing", label: "Plano e Faturação", icon: CreditCard, description: "Subscrição e pagamentos" },
   { id: "support", label: "Suporte", icon: LifeBuoy, description: "Tickets e pedidos de ajuda" },
 ];
 
@@ -107,7 +105,6 @@ export const subSectionsMap: Record<SettingsSection, SubSectionItem[]> = {
     { id: "notif-alerts", label: "Fidelização", icon: AlertTriangle, description: "Alertas de contratos CPE/CUI" },
   ],
   integrations: [],
-  billing: [],
   support: [],
 };
 
@@ -140,7 +137,7 @@ export function MobileSubSectionNav({ group, onSelectSubSection, isTelecom = fal
 }
 
 // Groups that go directly to content (no sub-sections)
-export const directContentGroups: SettingsSection[] = ["security", "products", "integrations", "billing", "support"];
+export const directContentGroups: SettingsSection[] = ["security", "products", "integrations", "support"];
 
 // Section titles
 export const sectionTitles: Record<SettingsSection, string> = {
@@ -151,6 +148,5 @@ export const sectionTitles: Record<SettingsSection, string> = {
   finance: "Financeiro",
   notifications: "Notificações",
   integrations: "Integrações",
-  billing: "Plano e Faturação",
   support: "Suporte",
 };

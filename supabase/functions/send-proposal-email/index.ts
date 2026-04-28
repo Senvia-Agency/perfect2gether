@@ -188,8 +188,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     // Use organization's sender email or fallback
-    const senderEmail = orgData?.brevo_sender_email || "noreply@senvia.pt";
-    const senderName = orgData?.name || data.orgName || "SENVIA Software House";
+    const senderEmail = orgData?.brevo_sender_email || "noreply@perfect2gether.pt";
+    const senderName = orgData?.name || data.orgName || "Perfect2Gether";
 
     const htmlContent = generateEmailHtml(data, senderName);
 

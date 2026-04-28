@@ -22,3 +22,19 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+
+# Environment — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Data export / migration — contains PII
+perfect2gether_export/
+perfect2gether_export.zip
+migrate.mjs
+
+# Local tooling
+.claude/
+supabase/.temp/

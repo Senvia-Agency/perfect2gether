@@ -146,7 +146,7 @@ export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizat
           </button>
           
           <p className="text-center text-xs text-muted-foreground/50">
-            Senvia OS v{APP_VERSION}
+            Perfect2Gether v{APP_VERSION}
           </p>
         </div>
       </div>

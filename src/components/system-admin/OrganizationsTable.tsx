@@ -91,7 +91,7 @@ export function OrganizationsTable({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base lg:text-lg">Clientes Senvia OS</CardTitle>
+        <CardTitle className="text-base lg:text-lg">Clientes Perfect2Gether</CardTitle>
         <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)} className="mt-2">
           <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="all" className="text-xs">Todos ({organizations.length})</TabsTrigger>

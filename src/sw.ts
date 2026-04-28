@@ -5,7 +5,7 @@ declare let self: ServiceWorkerGlobalScope;
 
 // Service Worker Version (increment to force update)
 const SW_VERSION = '1.2.0';
-console.log(`[SW] Senvia OS Service Worker v${SW_VERSION} loaded`);
+console.log(`[SW] Perfect2Gether Service Worker v${SW_VERSION} loaded`);
 
 // Precache assets from Vite build
 precacheAndRoute(self.__WB_MANIFEST);
@@ -33,14 +33,14 @@ self.addEventListener('push', (event) => {
     console.log('[SW] Push data:', JSON.stringify(data));
   } catch (e) {
     console.error('[SW] Error parsing push data:', e);
-    data = { title: 'Senvia OS', body: event.data?.text() || 'Nova notificação' };
+    data = { title: 'Perfect2Gether', body: event.data?.text() || 'Nova notificação' };
   }
 
   const options: NotificationOptions = {
     body: data.body || 'Nova atualização disponível',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    tag: data.tag || 'senvia-notification',
+    tag: data.tag || 'p2g-notification',
     data: { url: data.url || '/leads' },
     requireInteraction: true,
     silent: false,
@@ -49,7 +49,7 @@ self.addEventListener('push', (event) => {
   console.log('[SW] Showing notification:', data.title, options);
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Senvia OS', options)
+    self.registration.showNotification(data.title || 'Perfect2Gether', options)
       .then(() => console.log('[SW] Notification shown successfully'))
       .catch((err) => console.error('[SW] Error showing notification:', err))
   );

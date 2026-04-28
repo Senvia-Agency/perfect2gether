@@ -10,7 +10,7 @@ interface MobileHeaderProps {
 
 export function MobileHeader({
   onMenuToggle,
-  organizationName = "Senvia OS"
+  organizationName = "Perfect2Gether"
 }: MobileHeaderProps) {
   const { organization } = useAuth();
 
@@ -21,9 +21,9 @@ export function MobileHeader({
           <Menu className="h-5 w-5" />
         </Button>
         <img 
-          alt={organization?.name || "SENVIA"} 
+          alt={organization?.name || "Perfect2Gether"}
           className="h-8 w-28 object-contain" 
-          src={organization?.logo_url || "/lovable-uploads/7d06b8aa-41ca-4a96-a4b1-699608629148.png"} 
+          src="/Logo-P2G.png" 
         />
         <div className="w-10" />
       </div>

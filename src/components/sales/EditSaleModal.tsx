@@ -1254,7 +1254,7 @@ export function EditSaleModal({
             <div className="flex gap-3 max-w-6xl mx-auto">
               <Button
                 type="submit"
-                variant="senvia"
+                variant="p2g"
                 className="flex-1"
                 size="lg"
                 disabled={isSubmitting || isDeliveredLocked}

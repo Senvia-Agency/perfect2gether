@@ -63,7 +63,7 @@ async function createVapidJwt(audience: string, privateKeyBase64: string): Promi
   const payload = {
     aud: audience,
     exp: now + 12 * 60 * 60,
-    sub: 'mailto:suporte@senvia.pt',
+    sub: 'mailto:suporte@perfect2gether.pt',
   };
 
   const headerB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));

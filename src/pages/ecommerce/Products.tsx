@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,7 +12,7 @@ export default function EcommerceProducts() {
 
   return (
     <>
-      <SEO title="Produtos | E-commerce | Senvia OS" description="Gerir catálogo de produtos" />
+      <SEO title="Produtos | E-commerce | Perfect2Gether" description="Gerir catÃ¡logo de produtos" />
 
       <div className="space-y-6 p-4 md:p-6 pb-24 md:pb-6">
         <div className="flex items-center gap-4">
@@ -23,7 +23,7 @@ export default function EcommerceProducts() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Produtos</h1>
-            <p className="text-sm text-muted-foreground">Gerir catálogo e categorias</p>
+            <p className="text-sm text-muted-foreground">Gerir catÃ¡logo e categorias</p>
           </div>
         </div>
 

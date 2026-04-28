@@ -54,7 +54,7 @@ export default function Unsubscribe() {
     <>
       <SEO
         title="Cancelar subscrição"
-        description="Cancele a subscrição de newsletters do Senvia OS."
+        description="Cancele a subscrição de newsletters do Perfect2Gether."
         canonical="/unsubscribe"
         noindex
       />

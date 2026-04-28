@@ -49,7 +49,7 @@ export function PWAInstallButton() {
       {/* Botão principal */}
       <Button
         onClick={handleClick}
-        variant="senvia"
+        variant="p2g"
         className="h-12 px-4 rounded-full shadow-lg hover:shadow-xl transition-all gap-2"
       >
         <Plus className="h-5 w-5" />

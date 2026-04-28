@@ -1,4 +1,4 @@
-// Proposal Types for Senvia OS
+// Proposal Types for Perfect2Gether
 
 export type ProposalStatus = 'draft' | 'sent' | 'negotiating' | 'accepted' | 'rejected' | 'expired';
 export type ProposalType = 'energia' | 'servicos';

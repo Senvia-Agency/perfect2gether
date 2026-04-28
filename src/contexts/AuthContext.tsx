@@ -3,7 +3,7 @@ import type { User, Session } from '@supabase/auth-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole } from '@/types';
 
-const ACTIVE_ORG_KEY = 'senvia_active_organization_id';
+const ACTIVE_ORG_KEY = 'p2g_active_organization_id';
 
 type MFAStatus = 'none' | 'pending' | 'verified';
 

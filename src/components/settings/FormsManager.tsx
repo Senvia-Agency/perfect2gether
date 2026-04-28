@@ -85,7 +85,7 @@ export function FormsManager() {
     
     let code: string;
     if (embedMode === 'iframe') {
-      code = `<div id="senvia-form"></div>\n<script src="${PRODUCTION_URL}/embed.js" data-form="${slug}" data-path="${formPath}" data-mode="iframe"></script>`;
+      code = `<div id="p2g-form"></div>\n<script src="${PRODUCTION_URL}/embed.js" data-form="${slug}" data-path="${formPath}" data-mode="iframe"></script>`;
     } else {
       code = `<script src="${PRODUCTION_URL}/embed.js" data-form="${slug}" data-path="${formPath}" data-mode="redirect"></script>`;
     }

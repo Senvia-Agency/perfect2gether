@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { Package, ShoppingCart, Users, Truck, Tag, BarChart3, AlertTriangle, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ export default function Ecommerce() {
   const modules = [
     {
       title: "Produtos",
-      description: "Gerir catálogo, variantes e imagens",
+      description: "Gerir catÃ¡logo, variantes e imagens",
       icon: Package,
       href: "/ecommerce/products",
       color: "bg-blue-500/10 text-blue-500",
@@ -39,8 +39,8 @@ export default function Ecommerce() {
       stat: stats?.total_customers,
     },
     {
-      title: "Inventário",
-      description: "Gestão de stock e movimentos",
+      title: "InventÃ¡rio",
+      description: "GestÃ£o de stock e movimentos",
       icon: Truck,
       href: "/ecommerce/inventory",
       color: "bg-orange-500/10 text-orange-500",
@@ -49,15 +49,15 @@ export default function Ecommerce() {
     },
     {
       title: "Descontos",
-      description: "Códigos promocionais e cupões",
+      description: "CÃ³digos promocionais e cupÃµes",
       icon: Tag,
       href: "/ecommerce/discounts",
       color: "bg-pink-500/10 text-pink-500",
       stat: null,
     },
     {
-      title: "Relatórios",
-      description: "Análise de vendas e métricas",
+      title: "RelatÃ³rios",
+      description: "AnÃ¡lise de vendas e mÃ©tricas",
       icon: BarChart3,
       href: "/ecommerce/reports",
       color: "bg-cyan-500/10 text-cyan-500",
@@ -68,8 +68,8 @@ export default function Ecommerce() {
   return (
     <>
       <SEO
-        title="E-commerce | Senvia OS"
-        description="Gestão completa da sua loja online"
+        title="E-commerce | Perfect2Gether"
+        description="GestÃ£o completa da sua loja online"
       />
       
       <div className="space-y-6 p-4 md:p-6 pb-24 md:pb-6">
@@ -77,7 +77,7 @@ export default function Ecommerce() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">E-commerce</h1>
           <p className="text-muted-foreground">
-            Gestão completa da sua loja online
+            GestÃ£o completa da sua loja online
           </p>
         </div>
 
@@ -189,7 +189,7 @@ export default function Ecommerce() {
               <Package className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold">Módulo E-commerce Ativo</h3>
+              <h3 className="font-semibold">MÃ³dulo E-commerce Ativo</h3>
               <p className="text-sm text-muted-foreground">
                 Gerencie produtos, pedidos e clientes numa plataforma integrada.
               </p>

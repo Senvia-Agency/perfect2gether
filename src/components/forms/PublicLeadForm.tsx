@@ -37,7 +37,7 @@ interface PublicLeadFormProps {
   onSubmit: (data: LeadFormValues) => Promise<void>;
 }
 
-export function PublicLeadForm({ organizationName = "Senvia OS", onSubmit }: PublicLeadFormProps) {
+export function PublicLeadForm({ organizationName = "Perfect2Gether", onSubmit }: PublicLeadFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -93,7 +93,7 @@ export function PublicLeadForm({ organizationName = "Senvia OS", onSubmit }: Pub
     <div className="rounded-2xl border bg-card p-8 shadow-card">
       {/* Header */}
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl gradient-senvia">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl gradient-p2g">
           <Sparkles className="h-6 w-6 text-primary-foreground" />
         </div>
         <h2 className="text-2xl font-bold text-card-foreground">
@@ -211,7 +211,7 @@ export function PublicLeadForm({ organizationName = "Senvia OS", onSubmit }: Pub
 
           <Button 
             type="submit" 
-            variant="senvia" 
+            variant="p2g" 
             size="lg" 
             className="w-full"
             disabled={isSubmitting}

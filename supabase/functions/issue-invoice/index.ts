@@ -759,7 +759,7 @@ Deno.serve(async (req) => {
 
     const clientName = sale.client?.company || sale.client?.name || sale.lead?.name || 'Cliente'
     const clientCode = sale.client?.code || clientNif
-    const proprietary_uid = `senvia-sale-${sale_id}`
+    const proprietary_uid = `p2g-sale-${sale_id}`
 
     // Build observations from payments if not provided by frontend
     let finalObservations = observations || ''

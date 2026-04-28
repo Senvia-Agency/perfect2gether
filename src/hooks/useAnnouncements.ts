@@ -13,7 +13,7 @@ interface Announcement {
 }
 
 function getStorageKey(userId: string) {
-  return `senvia_last_seen_announcement_${userId}`;
+  return `p2g_last_seen_announcement_${userId}`;
 }
 
 export function useAnnouncements() {

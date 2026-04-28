@@ -9,9 +9,9 @@ interface SEOProps {
   ogType?: string;
 }
 
-const DEFAULT_TITLE = "Senvia OS - CRM Inteligente para Empresas de Serviços";
-const DEFAULT_DESCRIPTION = "A Infraestrutura de Vendas para Empresas de Serviços High-Ticket. CRM com automação WhatsApp e IA para clínicas, imobiliárias e empresas de construção em Portugal.";
-const SITE_URL = "https://senvia.pt";
+const DEFAULT_TITLE = "Perfect2Gether - CRM Inteligente";
+const DEFAULT_DESCRIPTION = "Perfect2Gether - CRM com automação WhatsApp e IA.";
+const SITE_URL = "https://app.perfect2gether.pt";
 
 export function SEO({ 
   title, 
@@ -21,7 +21,7 @@ export function SEO({
   ogImage = "/og-image.png",
   ogType = "website"
 }: SEOProps) {
-  const fullTitle = title ? `${title} | Senvia OS` : DEFAULT_TITLE;
+  const fullTitle = title ? `${title} | Perfect2Gether` : DEFAULT_TITLE;
   const metaDescription = description || DEFAULT_DESCRIPTION;
   const canonicalUrl = canonical ? `${SITE_URL}${canonical}` : undefined;
   const fullOgImage = ogImage.startsWith('http') ? ogImage : `${SITE_URL}${ogImage}`;
@@ -44,7 +44,7 @@ export function SEO({
       <meta property="og:image" content={fullOgImage} />
       {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
       <meta property="og:locale" content="pt_PT" />
-      <meta property="og:site_name" content="Senvia OS" />
+      <meta property="og:site_name" content="Perfect2Gether" />
       
       {/* Twitter Card */}
       <meta name="twitter:card" content="summary_large_image" />

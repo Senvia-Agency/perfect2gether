@@ -1,4 +1,4 @@
-// Senvia OS Type Definitions
+// Perfect2Gether Type Definitions
 
 export type AppRole = 'super_admin' | 'admin' | 'viewer' | 'salesperson';
 export type LeadStatus = 'new' | 'contacted' | 'scheduled' | 'proposal' | 'won' | 'lost';

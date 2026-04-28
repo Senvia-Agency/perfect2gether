@@ -101,7 +101,7 @@ export function ConversationalFormPreview({
       </div>
 
       <p className="text-center text-xs text-muted-foreground pb-4">
-        Powered by Senvia OS
+        Powered by Perfect2Gether
       </p>
     </div>
   );

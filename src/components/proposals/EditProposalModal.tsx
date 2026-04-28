@@ -900,7 +900,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
           <div className="p-4 border-t border-border/50 shrink-0">
             <div className="flex gap-3 max-w-6xl mx-auto">
               <Button
-                variant="senvia"
+                variant="p2g"
                 className="flex-1"
                 size="lg"
                 onClick={handleSubmit}

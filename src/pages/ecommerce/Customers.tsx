@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
@@ -10,7 +10,7 @@ export default function EcommerceCustomers() {
 
   return (
     <>
-      <SEO title="Clientes | E-commerce | Senvia OS" description="Gerir base de clientes" />
+      <SEO title="Clientes | E-commerce | Perfect2Gether" description="Gerir base de clientes" />
 
       <div className="space-y-6 p-4 md:p-6 pb-24 md:pb-6">
         <div className="flex items-center gap-4">

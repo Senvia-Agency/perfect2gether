@@ -1,6 +1,6 @@
-# Senvia OS
+# Perfect2Gether
 
-A Infraestrutura de Vendas para Empresas de Serviços High-Ticket.
+CRM e plataforma de vendas para uso interno da Perfect2Gether.
 
 ## Tecnologias
 
@@ -8,6 +8,7 @@ A Infraestrutura de Vendas para Empresas de Serviços High-Ticket.
 - Vite
 - Tailwind CSS
 - shadcn/ui
+- Supabase
 
 ## Desenvolvimento local
 

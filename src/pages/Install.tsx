@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Smartphone, Check, Share, MoreVertical, PlusSquare } from "lucide-react";
-import senviaLogo from "@/assets/senvia-logo.png";
+import p2gLogo from "@/assets/p2g-logo.png";
 import { Link } from "react-router-dom";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 
@@ -17,8 +17,8 @@ export default function Install() {
       <div className="max-w-md w-full space-y-6">
         {/* Logo */}
         <div className="text-center">
-          <img src={senviaLogo} alt="Senvia OS" className="h-20 w-20 mx-auto rounded-2xl shadow-lg" />
-          <h1 className="mt-4 text-2xl font-bold text-foreground">Instalar Senvia OS</h1>
+          <img src={p2gLogo} alt="Perfect2Gether" className="h-20 w-20 mx-auto rounded-2xl shadow-lg" />
+          <h1 className="mt-4 text-2xl font-bold text-foreground">Instalar Perfect2Gether</h1>
           <p className="mt-2 text-muted-foreground">
             Aceda rapidamente à aplicação diretamente do seu telemóvel
           </p>
@@ -32,7 +32,7 @@ export default function Install() {
                 <div>
                   <p className="font-medium">App já instalada!</p>
                   <p className="text-sm text-green-500/80">
-                    O Senvia OS já está no seu dispositivo.
+                    O Perfect2Gether já está no seu dispositivo.
                   </p>
                 </div>
               </div>
@@ -57,7 +57,7 @@ export default function Install() {
                     Instruções para iPhone/iPad
                   </CardTitle>
                   <CardDescription>
-                    Siga os passos para instalar o Senvia OS
+                    Siga os passos para instalar o Perfect2Gether
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -107,7 +107,7 @@ export default function Install() {
                     Instruções para Android
                   </CardTitle>
                   <CardDescription>
-                    Siga os passos para instalar o Senvia OS
+                    Siga os passos para instalar o Perfect2Gether
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

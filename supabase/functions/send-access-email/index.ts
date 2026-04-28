@@ -72,7 +72,7 @@ serve(async (req) => {
     }
 
     const brevoApiKey = org.brevo_api_key || Deno.env.get('BREVO_API_KEY');
-    const senderEmail = org.brevo_sender_email || 'noreply@senvia.pt';
+    const senderEmail = org.brevo_sender_email || 'noreply@perfect2gether.pt';
 
     if (!brevoApiKey) {
       return new Response(

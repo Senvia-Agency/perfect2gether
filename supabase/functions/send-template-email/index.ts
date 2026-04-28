@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const BATCH_SIZE = 10;
-const APP_BASE_URL = "https://app.senvia.pt";
+const APP_BASE_URL = "https://app.perfect2gether.pt";
 
 interface Recipient {
   email: string;

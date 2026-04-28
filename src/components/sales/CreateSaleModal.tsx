@@ -137,7 +137,6 @@ export function CreateSaleModal({
   const isTelecom = organization?.niche === 'telecom';
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
-  const isSenviaOrg = organization?.id === '06fe9e1d-9670-45b0-8717-c5a6e90be380';
   const { data: saleFields } = useSaleFieldsSettings();
   const { calculateCommission, isAutoCalculated, calculateEnergyCommission, hasEnergyConfig, energyConfig } = useCommissionMatrix();
   const { products: catalogProductNames, configs: servicosConfigs, catalog, isNewFormat } = useServicosProducts();
@@ -206,7 +205,7 @@ export function CreateSaleModal({
   const [showPaymentTypeSelector, setShowPaymentTypeSelector] = useState(false);
   const [showDraftScheduleModal, setShowDraftScheduleModal] = useState(false);
 
-  // Plan sale mode (Senvia only)
+  // Plan sale mode
   const [isPlanSale, setIsPlanSale] = useState(false);
   // selectedPlanId removed — plan value comes from Stripe automatically
   const [clientOrgId, setClientOrgId] = useState<string>("");
@@ -817,29 +816,6 @@ export function CreateSaleModal({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 pt-0 space-y-4">
-                    {/* Plan Sale Toggle (Senvia only) */}
-                    {isSenviaOrg && !prefillProposal && (
-                      <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
-                        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
-                          <input
-                            type="checkbox"
-                            checked={isPlanSale}
-                            onChange={(e) => {
-                              setIsPlanSale(e.target.checked);
-                              if (!e.target.checked) {
-                                setClientOrgId("");
-                                setOrgSearchTerm("");
-                                setOrgSearchResults([]);
-                                setItems([]);
-                              }
-                            }}
-                            className="rounded border-border"
-                          />
-                          <CreditCard className="h-4 w-4 text-primary" />
-                          Venda de Plano Senvia
-                        </label>
-                      </div>
-                    )}
 
                     {/* Plan Sale Fields — only org search, value comes from Stripe */}
                     {isPlanSale && (
@@ -1514,7 +1490,7 @@ export function CreateSaleModal({
         <div className="p-4 border-t border-border/50 shrink-0">
           <div className="flex gap-3 max-w-6xl mx-auto">
             <Button
-              variant="senvia"
+              variant="p2g"
               className="flex-1"
               size="lg"
               onClick={handleSubmit}

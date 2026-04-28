@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Check, X } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import senviaLogo from "@/assets/senvia-logo.png";
+const p2gLogo = "/Logo-P2G.png";
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -130,13 +130,11 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const companyCode = loginCompanyCode.toLowerCase().trim();
     const email = loginEmail.toLowerCase().trim();
     
     const result = loginSchema.safeParse({ 
       email: loginEmail, 
       password: loginPassword,
-      companyCode 
     });
     if (!result.success) {
       toast({
@@ -150,49 +148,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // 1. Verify organization and membership BEFORE login (avoids RLS race condition)
-      const { data: membershipCheck, error: checkError } = await supabase
-        .rpc('verify_user_org_membership', { 
-          p_email: email,
-          p_org_slug: companyCode 
-        });
-
-      if (checkError) {
-        console.error('Membership check error:', checkError);
-        toast({
-          title: 'Erro de verificação',
-          description: 'Não foi possível verificar o acesso. Tente novamente.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // No results = email or org doesn't exist
-      if (!membershipCheck || membershipCheck.length === 0) {
-        toast({
-          title: 'Dados inválidos',
-          description: 'O código da empresa ou email não existe.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const membership = membershipCheck[0];
-      
-      // User exists but is not a member of this org
-      if (!membership.is_member) {
-        toast({
-          title: 'Acesso negado',
-          description: 'Não tem acesso a esta empresa. Verifique o código ou contacte o administrador.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // 2. Now we can safely authenticate - membership is confirmed
+      // Authenticate directly - AuthContext will handle organization selection
       const { error: authError } = await signIn(loginEmail, loginPassword);
 
       if (authError) {
@@ -207,15 +163,12 @@ export default function Login() {
         return;
       }
 
-      // 3. Set active organization and redirect
-      localStorage.setItem('senvia_active_organization_id', membership.organization_id);
-
       toast({
         title: 'Bem-vindo!',
-        description: `Sessão iniciada em ${membership.organization_name}`,
+        description: `Sessão iniciada com sucesso`,
       });
       
-      // Force reload to ensure AuthContext picks up the active org
+      // Force reload to ensure AuthContext picks up the data
       window.location.href = '/dashboard';
       
     } catch (error: any) {
@@ -284,7 +237,7 @@ export default function Login() {
         const capiEventId = `signup-${authData.user.id}`;
         if (typeof window.fbq === 'function') {
           window.fbq('track', 'Lead', {
-            content_name: 'Senvia OS Registration',
+            content_name: 'Perfect2Gether Registration',
             content_category: 'signup',
           }, { eventID: capiEventId });
         }
@@ -300,7 +253,7 @@ export default function Login() {
               event_id: `signup-${authData.user.id}`,
               event_source_url: window.location.href,
               user_data: { em: signupEmail, fbc: fbc || undefined, fbp: fbp || undefined, client_user_agent: navigator.userAgent },
-              custom_data: { content_name: 'Senvia OS Registration', content_category: 'signup' },
+              custom_data: { content_name: 'Perfect2Gether Registration', content_category: 'signup' },
             }),
           }).catch(() => {});
         } catch {}
@@ -339,7 +292,7 @@ export default function Login() {
       const capiEventId2 = `signup-${authData.user!.id}`;
       if (typeof window.fbq === 'function') {
         window.fbq('track', 'Lead', {
-          content_name: 'Senvia OS Registration',
+          content_name: 'Perfect2Gether Registration',
           content_category: 'signup',
         }, { eventID: capiEventId2 });
       }
@@ -355,14 +308,14 @@ export default function Login() {
               event_id: `signup-${authData.user!.id}`,
               event_source_url: window.location.href,
               user_data: { em: signupEmail, fbc: fbc || undefined, fbp: fbp || undefined, client_user_agent: navigator.userAgent },
-              custom_data: { content_name: 'Senvia OS Registration', content_category: 'signup' },
+              custom_data: { content_name: 'Perfect2Gether Registration', content_category: 'signup' },
           }),
         }).catch(() => {});
       } catch {}
 
       toast({
         title: 'Conta criada com sucesso!',
-        description: 'Bem-vindo ao SENVIA. A redirecionar para o dashboard...',
+        description: 'Bem-vindo ao Perfect2Gether. A redirecionar para o dashboard...',
       });
 
       // Force page reload to ensure AuthContext picks up all data
@@ -391,19 +344,23 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+      <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,hsl(var(--secondary)/0.05)_0%,transparent_50%)]" />
+      
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src={senviaLogo} alt="SENVIA" className="h-12 w-48 object-contain mx-auto" width={192} height={48} fetchPriority="high" loading="eager" decoding="async" />
+          <img src={p2gLogo} alt="Perfect2Gether" className="h-12 w-48 object-contain mx-auto" width={192} height={48} fetchPriority="high" loading="eager" decoding="async" />
         </div>
 
-        <Card className="border-slate-800 bg-slate-900/50 backdrop-blur">
+        <Card className="border-border bg-card/80 backdrop-blur shadow-xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-white">
+            <CardTitle className="text-foreground text-2xl font-bold">
               {activeTab === 'signup' ? 'Comece o seu teste grátis' : 'Aceder à Plataforma'}
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-muted-foreground">
               {activeTab === 'signup' ? (
                 <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-1 text-xs font-medium mt-1">
                   ✨ 14 dias grátis · Sem cartão de crédito
@@ -415,54 +372,38 @@ export default function Login() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-slate-800">
-                <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+              <TabsList className="grid w-full grid-cols-2 bg-muted p-1">
+                <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all">
                   Entrar
                 </TabsTrigger>
-                <TabsTrigger value="signup" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+                <TabsTrigger value="signup" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md transition-all">
                   Registar
                 </TabsTrigger>
               </TabsList>
               
-              {/* Login Tab */}
               <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4 mt-4">
+                <form onSubmit={handleLogin} className="space-y-4 mt-6">
                   <div className="space-y-2">
-                    <Label htmlFor="login-company-code" className="text-slate-300">Código da Empresa</Label>
-                    <Input
-                      id="login-company-code"
-                      type="text"
-                      placeholder="minha-empresa"
-                      value={loginCompanyCode}
-                      onChange={(e) => setLoginCompanyCode(e.target.value.toLowerCase())}
-                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 font-mono"
-                      required
-                    />
-                    <p className="text-xs text-slate-500">
-                      Código fornecido pelo administrador da empresa
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email" className="text-slate-300">Email</Label>
+                    <Label htmlFor="login-email" className="text-foreground font-medium">Email</Label>
                     <Input
                       id="login-email"
                       type="email"
                       placeholder="seu@email.com"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                      className="bg-background border-border text-foreground"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="login-password" className="text-slate-300">Palavra-passe</Label>
+                    <Label htmlFor="login-password" className="text-foreground font-medium">Palavra-passe</Label>
                     <Input
                       id="login-password"
                       type="password"
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                      className="bg-background border-border text-foreground"
                       required
                     />
                   </div>
@@ -521,72 +462,72 @@ export default function Login() {
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-4 mt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name" className="text-slate-300">Nome Completo</Label>
+                    <Label htmlFor="signup-name" className="text-foreground font-medium">Nome Completo</Label>
                     <Input
                       id="signup-name"
                       type="text"
                       placeholder="João Silva"
                       value={signupFullName}
                       onChange={(e) => setSignupFullName(e.target.value)}
-                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                      className="bg-background border-border text-foreground"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-slate-300">Email</Label>
+                    <Label htmlFor="signup-email" className="text-foreground font-medium">Email</Label>
                     <Input
                       id="signup-email"
                       type="email"
                       placeholder="seu@email.com"
                       value={signupEmail}
                       onChange={(e) => setSignupEmail(e.target.value)}
-                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                      className="bg-background border-border text-foreground"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-slate-300">Palavra-passe</Label>
+                    <Label htmlFor="signup-password" className="text-foreground font-medium">Palavra-passe</Label>
                     <Input
                       id="signup-password"
                       type="password"
                       placeholder="••••••••"
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
-                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                      className="bg-background border-border text-foreground"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-confirm-password" className="text-slate-300">Confirmar Palavra-passe</Label>
+                    <Label htmlFor="signup-confirm-password" className="text-foreground font-medium">Confirmar Palavra-passe</Label>
                     <Input
                       id="signup-confirm-password"
                       type="password"
                       placeholder="••••••••"
                       value={signupConfirmPassword}
                       onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                      className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                      className="bg-background border-border text-foreground"
                       required
                     />
                   </div>
                   
-                  <div className="border-t border-slate-700 pt-4 mt-4">
-                    <p className="text-sm text-slate-400 mb-3">Dados da sua empresa</p>
+                  <div className="border-t border-border pt-4 mt-4">
+                    <p className="text-sm text-muted-foreground mb-3 font-medium">Dados da sua empresa</p>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="org-name" className="text-slate-300">Nome da Empresa</Label>
+                      <Label htmlFor="org-name" className="text-foreground font-medium">Nome da Empresa</Label>
                       <Input
                         id="org-name"
                         type="text"
                         placeholder="Minha Empresa Lda"
                         value={organizationName}
                         onChange={(e) => setOrganizationName(e.target.value)}
-                        className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                        className="bg-background border-border text-foreground"
                         required
                       />
                     </div>
                     
                     <div className="space-y-2 mt-3">
-                      <Label htmlFor="org-slug" className="text-slate-300">
+                      <Label htmlFor="org-slug" className="text-foreground font-medium">
                         Código da Empresa
                       </Label>
                       <div className="relative">
@@ -596,7 +537,7 @@ export default function Login() {
                           placeholder="minha-empresa"
                           value={organizationSlug}
                           onChange={(e) => handleSlugChange(e.target.value)}
-                          className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 pr-10"
+                          className="bg-background border-border text-foreground pr-10"
                           required
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -612,7 +553,7 @@ export default function Login() {
                         </div>
                       </div>
                       <p className="text-xs text-slate-500">
-                        senvia.app/<span className="text-primary">{organizationSlug || 'slug'}</span>
+                        perfect2gether.pt/<span className="text-primary">{organizationSlug || 'slug'}</span>
                       </p>
                       {isSlugAvailable === false && (
                         <p className="text-xs text-red-400">Este slug já está em uso</p>

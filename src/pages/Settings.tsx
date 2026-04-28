@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateOrganization } from '@/hooks/useOrganization';
@@ -28,7 +27,6 @@ import { FiscalSettingsTab } from '@/components/settings/FiscalSettingsTab';
 import { SalesSettingsTab } from '@/components/settings/SalesSettingsTab';
 import { CommissionMatrixTab } from '@/components/settings/CommissionMatrixTab';
 import { PushNotificationsCard } from '@/components/settings/PushNotificationsCard';
-import { BillingTab } from '@/components/settings/BillingTab';
 import { SupportTicketsTab } from '@/components/settings/SupportTicketsTab';
 
 import { ProfilesTab } from '@/components/settings/ProfilesTab';
@@ -52,21 +50,9 @@ export default function Settings() {
   const pushNotifications = usePushNotifications();
 
   // Unified navigation state (3 levels) for both mobile and desktop
-  const [searchParams, setSearchParams] = useSearchParams();
   const [activeGroup, setActiveGroup] = useState<SettingsSection | null>(null);
   const [activeSub, setActiveSub] = useState<SettingsSubSection | null>(null);
 
-  // Auto-navigate to billing tab if ?tab=billing is present
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'billing') {
-      setActiveGroup('billing');
-      setActiveSub('billing');
-      setSearchParams({}, { replace: true });
-    }
-  }, []);
-
-  
   const [isLoadingIntegrations, setIsLoadingIntegrations] = useState(true);
   
   // WhatsApp Business state
@@ -329,7 +315,6 @@ export default function Settings() {
       case "notif-email": return <NotificationEmailSettings />;
       case "notif-alerts": return <FidelizationAlertsSettings />;
       case "integrations": return <IntegrationsContent {...integrationsContentProps} />;
-      case "billing": return <BillingTab />;
       case "support-tickets": return <SupportTicketsTab />;
       default: return null;
     }
@@ -341,7 +326,6 @@ export default function Settings() {
       case "security": return "security";
       case "products": return "products";
       case "integrations": return "integrations";
-      case "billing": return "billing";
       case "support": return "support-tickets";
       default: return "security"; // fallback
     }

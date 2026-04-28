@@ -1,18 +1,18 @@
 /**
- * Senvia OS — Embed Script v1.0
- * 
+ * Perfect2Gether — Embed Script v1.0
+ *
  * Usage:
  *   Mode iframe (form inline):
- *     <div id="senvia-form"></div>
- *     <script src="https://app.senvia.pt/embed.js" data-form="slug" data-mode="iframe"></script>
+ *     <div id="p2g-form"></div>
+ *     <script src="https://app.perfect2gether.pt/embed.js" data-form="slug" data-mode="iframe"></script>
  *
  *   Mode redirect (floating button):
- *     <script src="https://app.senvia.pt/embed.js" data-form="slug" data-mode="redirect"></script>
+ *     <script src="https://app.perfect2gether.pt/embed.js" data-form="slug" data-mode="redirect"></script>
  */
 (function () {
   'use strict';
 
-  var SENVIA_BASE = 'https://app.senvia.pt';
+  var P2G_BASE = 'https://app.perfect2gether.pt';
 
   // Find our own script tag
   var scripts = document.getElementsByTagName('script');
@@ -24,7 +24,7 @@
   var buttonColor = currentScript.getAttribute('data-color') || '#6366f1';
 
   if (!formSlug) {
-    console.error('[Senvia Embed] data-form attribute is required');
+    console.error('[P2G Embed] data-form attribute is required');
     return;
   }
 
@@ -44,7 +44,7 @@
   }
 
   function buildFormUrl() {
-    var url = SENVIA_BASE + '/' + formPath + '/' + formSlug;
+    var url = P2G_BASE + '/' + formPath + '/' + formSlug;
     var tracking = getTrackingParams();
     if (tracking) url += '?' + tracking;
     return url;
@@ -52,9 +52,9 @@
 
   // ===== IFRAME MODE =====
   if (mode === 'iframe') {
-    var container = document.getElementById('senvia-form') || currentScript.parentElement;
+    var container = document.getElementById('p2g-form') || currentScript.parentElement;
     if (!container) {
-      console.error('[Senvia Embed] No container found. Add <div id="senvia-form"></div> before the script tag.');
+      console.error('[P2G Embed] No container found. Add <div id="p2g-form"></div> before the script tag.');
       return;
     }
 
@@ -69,7 +69,7 @@
 
     // Listen for resize messages from the form
     window.addEventListener('message', function (e) {
-      if (e.data && e.data.type === 'senvia-resize' && typeof e.data.height === 'number') {
+      if (e.data && e.data.type === 'p2g-resize' && typeof e.data.height === 'number') {
         iframe.style.height = e.data.height + 'px';
       }
     });

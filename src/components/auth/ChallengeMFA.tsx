@@ -5,7 +5,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ShieldCheck } from 'lucide-react';
-import senviaLogo from '@/assets/senvia-logo.png';
+import p2gLogo from '@/assets/p2g-logo.png';
 
 interface ChallengeMFAProps {
   onSuccess: () => void;
@@ -66,7 +66,7 @@ export function ChallengeMFA({ onSuccess, onCancel }: ChallengeMFAProps) {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src={senviaLogo} alt="SENVIA" className="h-12 w-48 object-contain mx-auto" />
+          <img src={p2gLogo} alt="Perfect2Gether" className="h-12 w-48 object-contain mx-auto" />
         </div>
 
         <Card className="border-slate-800 bg-slate-900/50 backdrop-blur">

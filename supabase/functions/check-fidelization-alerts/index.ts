@@ -111,7 +111,7 @@ async function sendBrevoEmail(
             <p>Recomendamos que contacte o cliente para renovar ou renegociar o contrato.</p>
           </div>
           <div class="footer">
-            Enviado por ${orgName} via SENVIA Software House
+            Enviado por ${orgName} via Perfect2Gether
           </div>
         </div>
       </body>

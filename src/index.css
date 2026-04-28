@@ -6,28 +6,29 @@
 
 @layer base {
   :root {
-    /* Senvia OS Design System - Premium CRM */
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
+    /* Perfect2Gether Design System - Light & Professional */
+    --background: 189 100% 98%;
+    --foreground: 75 8% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 75 8% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 75 8% 8%;
 
-    /* Senvia Blue - Electric accent */
-    --primary: 217 91% 60%;
+    /* P2G Purple - Primary brand color from site */
+    --primary: 243 34% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 47% 11%;
+    /* P2G Blue - Secondary energy blue */
+    --secondary: 214 100% 34%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 189 20% 94%;
+    --muted-foreground: 189 10% 40%;
 
-    --accent: 220 14% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 189 30% 96%;
+    --accent-foreground: 243 34% 45%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -40,42 +41,44 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 60%;
+    --border: 189 30% 90%;
+    --input: 189 30% 90%;
+    --ring: 243 34% 45%;
 
-    --radius: 0.625rem;
+    /* Pill-shaped buttons and modern rounded corners */
+    --radius: 1rem;
 
-    /* Sidebar - Deep Navy */
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 220 14% 96%;
-    --sidebar-primary: 217 91% 60%;
+    /* Sidebar - Light & Clean */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 75 8% 15%;
+    --sidebar-primary: 243 34% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 14%;
-    --sidebar-accent-foreground: 220 14% 96%;
-    --sidebar-border: 222 47% 16%;
-    --sidebar-ring: 217 91% 60%;
-    --sidebar-muted: 220 9% 46%;
+    --sidebar-accent: 189 30% 96%;
+    --sidebar-accent-foreground: 243 34% 45%;
+    --sidebar-border: 189 30% 90%;
+    --sidebar-ring: 243 34% 45%;
+    --sidebar-muted: 189 10% 40%;
 
     /* Kanban Column Colors */
-    --kanban-new: 217 91% 60%;
-    --kanban-conversation: 280 84% 60%;
+    --kanban-new: 214 100% 34%;
+    --kanban-conversation: 243 34% 45%;
     --kanban-scheduled: 38 92% 50%;
     --kanban-sold: 142 76% 36%;
     --kanban-lost: 0 0% 45%;
 
-    /* Gradients */
-    --gradient-senvia: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(232 84% 55%) 100%);
-    --gradient-sidebar: linear-gradient(180deg, hsl(222 47% 8%) 0%, hsl(222 47% 6%) 100%);
-    --gradient-card-hover: linear-gradient(135deg, hsl(217 91% 60% / 0.05) 0%, hsl(232 84% 55% / 0.05) 100%);
+    /* Gradients inspired by the site */
+    --gradient-p2g: linear-gradient(135deg, hsl(243 34% 45%) 0%, hsl(214 100% 34%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(189 100% 98%) 100%);
+    --gradient-card-hover: linear-gradient(135deg, hsl(243 34% 45% / 0.03) 0%, hsl(214 100% 34% / 0.03) 100%);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(222 47% 11% / 0.07), 0 2px 4px -2px hsl(222 47% 11% / 0.07);
-    --shadow-lg: 0 10px 15px -3px hsl(222 47% 11% / 0.08), 0 4px 6px -4px hsl(222 47% 11% / 0.08);
-    --shadow-card: 0 1px 3px 0 hsl(222 47% 11% / 0.04), 0 1px 2px -1px hsl(222 47% 11% / 0.04);
-    --shadow-card-hover: 0 10px 25px -5px hsl(217 91% 60% / 0.15), 0 8px 10px -6px hsl(217 91% 60% / 0.1);
+    --shadow-sm: 0 1px 2px 0 hsl(189 30% 10% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(189 30% 10% / 0.07), 0 2px 4px -2px hsl(189 30% 10% / 0.07);
+    --shadow-lg: 0 10px 15px -3px hsl(189 30% 10% / 0.08), 0 4px 6px -4px hsl(189 30% 10% / 0.08);
+    --shadow-card: 0 1px 3px 0 hsl(189 30% 10% / 0.04), 0 1px 2px -1px hsl(189 30% 10% / 0.04);
+    --shadow-card-hover: 0 10px 25px -5px hsl(243 34% 45% / 0.1), 0 8px 10px -6px hsl(243 34% 45% / 0.05);
   }
+
 
   .dark {
     --background: 222 47% 6%;
@@ -226,8 +229,8 @@
 }
 
 @layer utilities {
-  .gradient-senvia {
-    background: var(--gradient-senvia);
+  .gradient-p2g {
+    background: var(--gradient-p2g);
   }
 
   .gradient-sidebar {
@@ -244,31 +247,32 @@
 
   /* Kanban Status Pills */
   .status-new {
-    @apply bg-primary/10 text-primary;
+    @apply bg-secondary/10 text-secondary;
   }
 
   .status-contacted {
-    background-color: hsl(280 84% 60% / 0.1);
-    color: hsl(280 84% 50%);
+    background-color: hsl(243 34% 45% / 0.1);
+    color: hsl(243 34% 45%);
   }
 
   .status-scheduled {
-    background-color: hsl(var(--warning) / 0.1);
-    color: hsl(var(--warning));
+    background-color: hsl(38 92% 50% / 0.1);
+    color: hsl(38 92% 40%);
   }
 
   .status-proposal {
-    @apply bg-cyan-500/10 text-cyan-500;
+    @apply bg-primary/10 text-primary;
   }
 
   .status-won {
-    background-color: hsl(var(--success) / 0.1);
-    color: hsl(var(--success));
+    background-color: hsl(142 76% 36% / 0.1);
+    color: hsl(142 76% 30%);
   }
 
   .status-lost {
     @apply bg-muted text-muted-foreground;
   }
+
 
   /* Animation utilities */
   .animate-slide-in {
@@ -367,9 +371,9 @@
     height: auto !important;
   }
 
-  /* ===== 3. Print header with Senvia branding ===== */
+  /* ===== 3. Print header with Perfect2Gether branding ===== */
   body::before {
-    content: "Senvia OS";
+    content: "Perfect2Gether";
     display: block;
     font-size: 14px;
     font-weight: 700;

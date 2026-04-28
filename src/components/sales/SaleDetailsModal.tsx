@@ -980,7 +980,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                         Ver Rascunho Fatura
                       </Button>
                       <Button
-                        variant="senvia"
+                        variant="p2g"
                         className="flex-1"
                         disabled={issueInvoice.isPending || issueInvoiceReceipt.isPending}
                         onClick={() => {

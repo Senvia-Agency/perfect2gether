@@ -15,8 +15,8 @@ const buttonVariants = cva(
         secondary: "bg-muted text-foreground border border-border hover:bg-accent shadow-sm",
         ghost: "text-muted-foreground hover:bg-accent hover:text-accent-foreground border border-transparent hover:border-border",
         link: "text-primary underline-offset-4 hover:underline",
-        // Senvia Custom Variants
-        senvia: "gradient-senvia text-primary-foreground shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]",
+        // P2G Custom Variants
+        p2g: "gradient-p2g text-primary-foreground shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]",
         whatsapp: "bg-[#25D366] text-white hover:bg-[#22c55e] shadow-sm hover:shadow-md",
       },
       size: {

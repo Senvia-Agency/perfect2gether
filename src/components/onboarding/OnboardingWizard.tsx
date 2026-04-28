@@ -82,7 +82,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
       <div className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-border" style={{ paddingTop: 'calc(clamp(20px, env(safe-area-inset-top, 0px), 50px) + 1rem)' }}>
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          <span className="text-lg font-semibold text-foreground">Senvia OS</span>
+          <span className="text-lg font-semibold text-foreground">Perfect2Gether</span>
         </div>
         <div className="flex items-center gap-2">
           {steps.map((s, i) => (
@@ -204,7 +204,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                       Cada formulário tem um link público que pode usar em anúncios, Landing Pages ou redes sociais.
                     </p>
                     <div className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-muted border border-border">
-                      <span className="text-xs text-muted-foreground">senvia.app/f/</span>
+                      <span className="text-xs text-muted-foreground">app.perfect2gether.pt/f/</span>
                       <span className="text-xs text-primary font-medium">{orgSlug || 'slug'}</span>
                     </div>
                   </div>

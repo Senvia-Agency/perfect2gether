@@ -270,7 +270,7 @@ function WebhooksManager() {
       <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4">
         <h4 className="font-medium text-sm text-blue-900 dark:text-blue-300 mb-1">🔗 O que são Webhooks?</h4>
         <p className="text-sm text-blue-600 dark:text-blue-400">
-          Webhooks permitem notificar automaticamente sistemas externos (como CRMs, ferramentas de automação ou o n8n) sempre que um novo lead é registado. Cada webhook configurado recebe um pedido HTTP POST com os dados do lead em tempo real, permitindo integrar o Senvia OS com qualquer plataforma.
+          Webhooks permitem notificar automaticamente sistemas externos (como CRMs, ferramentas de automação ou o n8n) sempre que um novo lead é registado. Cada webhook configurado recebe um pedido HTTP POST com os dados do lead em tempo real, permitindo integrar o Perfect2Gether com qualquer plataforma.
         </p>
       </div>
 
@@ -484,7 +484,7 @@ function WhatsAppForm({ whatsappBaseUrl, setWhatsappBaseUrl, whatsappInstance, s
       </div>
       <div className="space-y-2">
         <Label htmlFor="whatsapp-base-url">URL do Servidor</Label>
-        <Input id="whatsapp-base-url" type="url" placeholder="https://api.senvia.com" value={whatsappBaseUrl} onChange={(e) => setWhatsappBaseUrl(e.target.value)} />
+        <Input id="whatsapp-base-url" type="url" placeholder="https://api.seuvps.com" value={whatsappBaseUrl} onChange={(e) => setWhatsappBaseUrl(e.target.value)} />
         <p className="text-xs text-muted-foreground">Endereço do seu servidor Evolution API.</p>
       </div>
       <div className="space-y-2">

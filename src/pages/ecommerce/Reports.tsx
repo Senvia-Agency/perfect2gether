@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { ArrowLeft, TrendingUp, Package, Users, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ export default function EcommerceReports() {
 
   return (
     <>
-      <SEO title="Relatórios | E-commerce | Senvia OS" description="Análise e métricas da loja" />
+      <SEO title="RelatÃ³rios | E-commerce | Perfect2Gether" description="AnÃ¡lise e mÃ©tricas da loja" />
 
       <div className="space-y-6 p-4 md:p-6 pb-24 md:pb-6">
         <div className="flex items-center gap-4">
@@ -25,8 +25,8 @@ export default function EcommerceReports() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
-            <p className="text-sm text-muted-foreground">Análise e métricas da loja</p>
+            <h1 className="text-2xl font-bold tracking-tight">RelatÃ³rios</h1>
+            <p className="text-sm text-muted-foreground">AnÃ¡lise e mÃ©tricas da loja</p>
           </div>
         </div>
 
@@ -42,7 +42,7 @@ export default function EcommerceReports() {
               ) : (
                 <div className="text-2xl font-bold">{formatCurrency(stats?.total_revenue || 0)}</div>
               )}
-              <p className="text-xs text-muted-foreground">Desde o início</p>
+              <p className="text-xs text-muted-foreground">Desde o inÃ­cio</p>
             </CardContent>
           </Card>
 
@@ -72,7 +72,7 @@ export default function EcommerceReports() {
               ) : (
                 <div className="text-2xl font-bold">{stats?.total_products || 0}</div>
               )}
-              <p className="text-xs text-muted-foreground">No catálogo</p>
+              <p className="text-xs text-muted-foreground">No catÃ¡logo</p>
             </CardContent>
           </Card>
 
@@ -95,7 +95,7 @@ export default function EcommerceReports() {
         <Card>
           <CardHeader>
             <CardTitle>Resumo de Atividade</CardTitle>
-            <CardDescription>Visão geral do desempenho da loja</CardDescription>
+            <CardDescription>VisÃ£o geral do desempenho da loja</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -126,7 +126,7 @@ export default function EcommerceReports() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Produtos com Stock Baixo</p>
-                  <p className="text-sm text-muted-foreground">Necessitam reposição</p>
+                  <p className="text-sm text-muted-foreground">Necessitam reposiÃ§Ã£o</p>
                 </div>
                 {isLoading ? (
                   <Skeleton className="h-8 w-12" />

@@ -41,7 +41,7 @@ export function BillingTab() {
       // Fire Meta Pixel Purchase event
       if (typeof window.fbq === 'function') {
         window.fbq('track', 'Purchase', {
-          content_name: 'Senvia OS Subscription',
+          content_name: 'Perfect2Gether Subscription',
           content_category: 'subscription',
           currency: 'EUR',
           value: 0,

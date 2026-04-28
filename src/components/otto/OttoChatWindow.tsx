@@ -114,7 +114,7 @@ export function OttoChatWindow({ onClose }: OttoChatWindowProps) {
           </div>
           <div>
             <h3 className="text-sm font-semibold">Otto</h3>
-            <p className="text-[10px] text-muted-foreground">Assistente Senvia OS</p>
+            <p className="text-[10px] text-muted-foreground">Assistente Perfect2Gether</p>
           </div>
         </div>
         <div className="flex items-center gap-1">

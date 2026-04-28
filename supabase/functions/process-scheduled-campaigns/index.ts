@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const BATCH_SIZE = 10;
-const APP_BASE_URL = "https://app.senvia.pt";
+const APP_BASE_URL = "https://app.perfect2gether.pt";
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const chunks: T[][] = [];

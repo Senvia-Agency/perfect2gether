@@ -39,5 +39,4 @@ BEGIN
 END;
 $function$;
 
--- Create the lists immediately for Senvia Agency
-SELECT ensure_stripe_auto_lists('06fe9e1d-9670-45b0-8717-c5a6e90be380');
+-- SENVIA-specific data seed removed (not applicable to Perfect2Gether)

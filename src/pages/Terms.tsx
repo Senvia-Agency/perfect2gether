@@ -8,7 +8,7 @@ export default function Terms() {
     <>
       <SEO 
         title="Termos de Uso"
-        description="Termos de Uso do Senvia OS. Leia as condições de utilização da nossa plataforma CRM."
+        description="Termos de Uso do Perfect2Gether. Leia as condições de utilização da nossa plataforma CRM."
         canonical="/terms"
       />
       <div className="min-h-screen bg-background px-4 py-12">
@@ -28,7 +28,7 @@ export default function Terms() {
               <div>
                 <h2 className="text-xl font-semibold">1. Aceitação dos Termos</h2>
                 <p className="text-muted-foreground">
-                  Ao utilizar a plataforma Senvia OS, aceita ficar vinculado por estes Termos de Uso. 
+                  Ao utilizar a plataforma Perfect2Gether, aceita ficar vinculado por estes Termos de Uso. 
                   Se não concordar com alguma parte destes termos, não poderá aceder ao serviço.
                 </p>
               </div>
@@ -36,8 +36,7 @@ export default function Terms() {
               <div>
                 <h2 className="text-xl font-semibold">2. Descrição do Serviço</h2>
                 <p className="text-muted-foreground">
-                  O Senvia OS é uma plataforma de gestão de relacionamento com clientes (CRM) 
-                  desenhada para empresas de serviços de alto valor em Portugal.
+                  O Perfect2Gether é uma plataforma de gestão de relacionamento com clientes (CRM).
                 </p>
               </div>
 
@@ -60,7 +59,7 @@ export default function Terms() {
               <div>
                 <h2 className="text-xl font-semibold">5. Propriedade Intelectual</h2>
                 <p className="text-muted-foreground">
-                  Todo o conteúdo e funcionalidades da plataforma são propriedade da Senvia OS 
+                  Todo o conteúdo e funcionalidades da plataforma são propriedade do Perfect2Gether
                   e estão protegidos por direitos de autor e outras leis de propriedade intelectual.
                 </p>
               </div>
@@ -84,7 +83,7 @@ export default function Terms() {
           </article>
 
           <footer className="mt-12 border-t pt-6 text-center text-sm text-muted-foreground">
-            <p>© 2026 Senvia OS. Todos os direitos reservados.</p>
+            <p>© 2026 Perfect2Gether. Todos os direitos reservados.</p>
           </footer>
         </div>
       </div>
