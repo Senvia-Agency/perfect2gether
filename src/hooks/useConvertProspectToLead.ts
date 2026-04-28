@@ -68,11 +68,11 @@ export function useConvertProspectToLead() {
         if ((contact as any).metadata) prospectCustomData.metadata = (contact as any).metadata;
 
         const insertData: any = {
-            name: contact.name,
-            email: contact.email || '',
-            phone: contact.phone || '',
-            company_name: contact.company || undefined,
-            company_nif: (contact as any).nif || undefined,
+            name: contact.name || contact.company || '(sem nome)',
+            email: contact.email?.trim() || '',
+            phone: contact.phone?.trim() || '',
+            company_name: contact.company?.trim() || undefined,
+            company_nif: (contact as any).nif?.trim() || undefined,
             consumo_anual: (contact as any).annual_consumption_kwh || undefined,
             source: 'prospect',
             organization_id: organization.id,

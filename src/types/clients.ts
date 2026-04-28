@@ -26,6 +26,9 @@ export interface CrmClient {
   city?: string | null;
   postal_code?: string | null;
   country?: string | null;
+  distrito?: string | null;
+  conselho?: string | null;
+  grupo_economico?: string | null;
   
   status: ClientStatus;
   source?: string | null;

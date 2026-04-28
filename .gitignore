@@ -38,3 +38,5 @@ migrate.mjs
 # Local tooling
 .claude/
 supabase/.temp/
+
+.vercel

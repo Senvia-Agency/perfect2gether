@@ -71,6 +71,9 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("PT");
+  const [distrito, setDistrito] = useState("");
+  const [conselho, setConselho] = useState("");
+  const [grupoEconomico, setGrupoEconomico] = useState("");
 
   const createClient = useCreateClient();
 
@@ -103,9 +106,11 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
     if (settings.company_nif?.visible && settings.company_nif?.required && !companyNif.trim()) return false;
     if (settings.address.visible && settings.address.required && !addressLine1.trim()) return false;
     if (settings.notes.visible && settings.notes.required && !notes.trim()) return false;
+    if (!distrito.trim()) return false;
+    if (!conselho.trim()) return false;
     if (nifValidation.isDuplicate || companyNifValidation.isDuplicate) return false;
     return true;
-  }, [name, email, phone, company, nif, companyNif, addressLine1, notes, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
+  }, [name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +133,9 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
         city: city.trim() || undefined,
         postal_code: postalCode.trim() || undefined,
         country: country || undefined,
+        distrito: distrito.trim() || undefined,
+        conselho: conselho.trim() || undefined,
+        grupo_economico: grupoEconomico.trim() || undefined,
         lead_id: initialData?.leadId || undefined,
         assigned_to: assignedTo || undefined,
       },
@@ -158,6 +166,9 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
     setCity("");
     setPostalCode("");
     setCountry("PT");
+    setDistrito("");
+    setConselho("");
+    setGrupoEconomico("");
   };
 
   return (
@@ -291,64 +302,95 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
                             )}
                           </div>
                         )}
+                        <div className="space-y-2 sm:col-span-2">
+                          <Label htmlFor="grupo-economico">Grupo Económico</Label>
+                          <Input
+                            id="grupo-economico"
+                            value={grupoEconomico}
+                            onChange={(e) => setGrupoEconomico(e.target.value)}
+                            placeholder="Grupo económico (opcional)"
+                          />
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
                 )}
 
                 {/* Address */}
-                {settings.address.visible && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">
-                        {settings.address.label} {settings.address.required && '*'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="sm:col-span-2">
-                          <Input
-                            value={addressLine1}
-                            onChange={(e) => setAddressLine1(e.target.value)}
-                            placeholder="Rua, número"
-                            required={settings.address.required}
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <Input
-                            value={addressLine2}
-                            onChange={(e) => setAddressLine2(e.target.value)}
-                            placeholder="Apartamento, andar (opcional)"
-                          />
-                        </div>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      {settings.address.label} {settings.address.required && '*'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="distrito">Distrito *</Label>
                         <Input
-                          value={postalCode}
-                          onChange={(e) => setPostalCode(e.target.value)}
-                          placeholder="Código Postal"
+                          id="distrito"
+                          value={distrito}
+                          onChange={(e) => setDistrito(e.target.value)}
+                          placeholder="Distrito"
+                          required
                         />
-                        <Input
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          placeholder="Cidade"
-                        />
-                        <div className="sm:col-span-2">
-                          <Select value={country} onValueChange={setCountry}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="País" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {COUNTRIES.map((c) => (
-                                <SelectItem key={c.code} value={c.code}>
-                                  {c.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                      <div className="space-y-2">
+                        <Label htmlFor="conselho">Conselho *</Label>
+                        <Input
+                          id="conselho"
+                          value={conselho}
+                          onChange={(e) => setConselho(e.target.value)}
+                          placeholder="Conselho"
+                          required
+                        />
+                      </div>
+                      {settings.address.visible && (
+                        <>
+                          <div className="sm:col-span-2">
+                            <Input
+                              value={addressLine1}
+                              onChange={(e) => setAddressLine1(e.target.value)}
+                              placeholder="Rua, número"
+                              required={settings.address.required}
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <Input
+                              value={addressLine2}
+                              onChange={(e) => setAddressLine2(e.target.value)}
+                              placeholder="Apartamento, andar (opcional)"
+                            />
+                          </div>
+                          <Input
+                            value={postalCode}
+                            onChange={(e) => setPostalCode(e.target.value)}
+                            placeholder="Código Postal"
+                          />
+                          <Input
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            placeholder="Cidade"
+                          />
+                          <div className="sm:col-span-2">
+                            <Select value={country} onValueChange={setCountry}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="País" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {COUNTRIES.map((c) => (
+                                  <SelectItem key={c.code} value={c.code}>
+                                    {c.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* Notes */}
                 {settings.notes.visible && (

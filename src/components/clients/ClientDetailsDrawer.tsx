@@ -139,7 +139,7 @@ export function ClientDetailsDrawer({
     other: 'Outro',
   }[client.source || ''] || client.source;
 
-  const hasAddress = client.address_line1 || client.city || client.postal_code;
+  const hasAddress = client.address_line1 || client.city || client.postal_code || client.distrito || client.conselho;
 
   return (
     <>
@@ -254,10 +254,19 @@ export function ClientDetailsDrawer({
                         <span>{client.company_nif}</span>
                       </div>
                     )}
+                    {client.grupo_economico && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Grupo Económico</span>
+                        <span>{client.grupo_economico}</span>
+                      </div>
+                    )}
                     {hasAddress && (
                       <div className="flex items-start gap-3 text-sm pt-1">
                         <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div>
+                          {(client.distrito || client.conselho) && (
+                            <p>{[client.distrito, client.conselho].filter(Boolean).join(', ')}</p>
+                          )}
                           {client.address_line1 && <p>{client.address_line1}</p>}
                           {client.address_line2 && <p>{client.address_line2}</p>}
                           {(client.postal_code || client.city) && (
