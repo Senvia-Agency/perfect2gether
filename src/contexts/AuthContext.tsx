@@ -59,7 +59,6 @@ interface AuthContextType {
   mfaStatus: MFAStatus;
   completeMfaChallenge: () => void;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refetchUserData: () => Promise<void>;
   switchOrganization: (orgId: string) => Promise<void>;
@@ -246,22 +245,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-        },
-      },
-    });
-    return { error };
-  };
-
   const signOut = async () => {
     // Limpar estados ANTES de chamar o Supabase para evitar race conditions
     setUser(null);
@@ -352,7 +335,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mfaStatus,
         completeMfaChallenge,
         signIn,
-        signUp,
         signOut,
         refetchUserData,
         switchOrganization,

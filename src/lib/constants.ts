@@ -8,8 +8,9 @@ export const PRODUCTION_URL = 'https://app.perfect2gether.pt';
 export const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    // Se for ambiente de desenvolvimento/preview, usar PRODUCTION_URL
-    if (hostname.includes('lovableproject.com') || hostname.includes('lovable.app') || hostname === 'localhost') {
+    // Se for localhost, usar PRODUCTION_URL para testes de integração se necessário, 
+    // ou simplesmente retornar a origem atual.
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return PRODUCTION_URL;
     }
     // Caso contrário, usar o domínio actual (já é produção)

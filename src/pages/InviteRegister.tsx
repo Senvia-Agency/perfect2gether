@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, UserPlus, AlertCircle, CheckCircle2, Building, LogOut } from 'lucide-react';
 
+const p2gLogo = "/Logo-P2G.png";
+
 interface InviteData {
   id: string;
   email: string;
@@ -143,7 +145,7 @@ export default function InviteRegister() {
     setIsSubmitting(true);
 
     try {
-      // Create user account with emailRedirectTo
+      // Create user account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: invite.email,
         password,
@@ -158,7 +160,7 @@ export default function InviteRegister() {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Não foi possível criar a conta.');
 
-      // Accept invite (this updates profile and adds role)
+      // Accept invite
       const { data: accepted, error: acceptError } = await supabase.rpc('accept_invite', {
         _token: invite.token,
         _user_id: authData.user.id,
@@ -173,13 +175,11 @@ export default function InviteRegister() {
         description: 'A redirecionar para o dashboard...',
       });
 
-      // Trigger redirect via useEffect
       setShouldRedirect(true);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro ao criar a conta.';
+    } catch (err: any) {
       toast({
         title: 'Erro',
-        description: errorMessage,
+        description: err.message || 'Ocorreu um erro ao criar a conta.',
         variant: 'destructive',
       });
     }
@@ -189,25 +189,26 @@ export default function InviteRegister() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
-        <Card className="max-w-md w-full bg-slate-900/50 border-slate-800">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+        <Card className="max-w-md w-full relative z-10 border-border bg-card/80 backdrop-blur shadow-xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
               <AlertCircle className="h-6 w-6 text-destructive" />
             </div>
-            <CardTitle className="text-white">Convite Inválido</CardTitle>
+            <CardTitle className="text-foreground">Convite Inválido</CardTitle>
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button asChild>
+            <Button asChild className="w-full">
               <Link to="/">Ir para Login</Link>
             </Button>
           </CardContent>
@@ -216,27 +217,27 @@ export default function InviteRegister() {
     );
   }
 
-  // Show warning if user is already logged in
   if (currentSession === true) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
-        <Card className="max-w-md w-full bg-slate-900/50 border-slate-800">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+        <Card className="max-w-md w-full relative z-10 border-border bg-card/80 backdrop-blur shadow-xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
               <LogOut className="h-6 w-6 text-amber-500" />
             </div>
-            <CardTitle className="text-white">Já está autenticado</CardTitle>
+            <CardTitle className="text-foreground">Já está autenticado</CardTitle>
             <CardDescription>
               Para aceitar este convite e criar uma nova conta, precisa primeiro terminar a sessão atual.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
-              <div className="flex items-center gap-2 text-sm">
+            <div className="p-4 rounded-lg bg-muted border border-border">
+              <div className="flex items-center gap-2 text-sm text-foreground">
                 <Building className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-white">{invite?.organization_name}</span>
+                <span className="font-semibold">{invite?.organization_name}</span>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Convite para: {invite?.email}
               </p>
             </div>
@@ -244,7 +245,7 @@ export default function InviteRegister() {
               <Button 
                 onClick={handleLogout} 
                 disabled={loggingOut}
-                className="w-full"
+                className="w-full bg-primary"
               >
                 {loggingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Terminar Sessão e Continuar
@@ -261,20 +262,21 @@ export default function InviteRegister() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
-        <Card className="max-w-md w-full bg-slate-900/50 border-slate-800">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+        <Card className="max-w-md w-full relative z-10 border-border bg-card/80 backdrop-blur shadow-xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
               <CheckCircle2 className="h-6 w-6 text-green-500" />
             </div>
-            <CardTitle className="text-white">Conta Criada!</CardTitle>
+            <CardTitle className="text-foreground">Conta Criada!</CardTitle>
             <CardDescription>
               A sua conta foi criada e já está associada à organização.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mt-2">A redirecionar...</p>
+            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+            <p className="text-sm text-muted-foreground mt-4">A redirecionar...</p>
           </CardContent>
         </Card>
       </div>
@@ -282,96 +284,115 @@ export default function InviteRegister() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
-      <Card className="max-w-md w-full bg-slate-900/50 border-slate-800">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <UserPlus className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle className="text-white">Criar Conta</CardTitle>
-          <CardDescription>
-            Foi convidado para se juntar a uma organização.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6 p-4 rounded-lg bg-slate-800/50 border border-slate-700 space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Building className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-white">{invite?.organization_name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Perfil:</span>
-              <Badge variant="secondary">
-                {invite?.role ? ROLE_LABELS[invite.role] : invite?.role}
-              </Badge>
-            </div>
-          </div>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+      <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,hsl(var(--secondary)/0.05)_0%,transparent_50%)]" />
+      
+      <div className="w-full max-w-md relative z-10">
+        <div className="text-center mb-8">
+          <img src={p2gLogo} alt="Perfect2Gether" className="h-12 w-48 object-contain mx-auto" width={192} height={48} />
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-200">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={invite?.email || ''}
-                disabled
-                className="bg-slate-800/50 border-slate-700 text-slate-400"
-              />
+        <Card className="border-border bg-card/80 backdrop-blur shadow-xl">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <UserPlus className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="text-foreground text-2xl font-bold">Criar Conta</CardTitle>
+            <CardDescription>
+              Foi convidado para se juntar à organização
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6 p-4 rounded-lg bg-muted border border-border space-y-2">
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <Building className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">{invite?.organization_name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Perfil:</span>
+                <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                  {invite?.role ? ROLE_LABELS[invite.role] : invite?.role}
+                </Badge>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="fullName" className="text-slate-200">Nome Completo</Label>
-              <Input
-                id="fullName"
-                type="text"
-                placeholder="O seu nome"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                required
-              />
-            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={invite?.email || ''}
+                  disabled
+                  className="bg-muted border-border text-muted-foreground opacity-70"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-200">Palavra-passe</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Mínimo 6 caracteres"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                required
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-foreground font-medium">Nome Completo</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="O seu nome"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="bg-background border-border"
+                  required
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-slate-200">Confirmar Palavra-passe</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Repita a palavra-passe"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                required
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-foreground font-medium">Palavra-passe</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Mínimo 6 caracteres"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-background border-border"
+                  required
+                />
+              </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Criar Conta e Juntar-me
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-foreground font-medium">Confirmar Palavra-passe</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Repita a palavra-passe"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="bg-background border-border"
+                  required
+                />
+              </div>
 
-          <p className="text-xs text-muted-foreground text-center mt-4">
-            Já tem conta?{' '}
-            <Link to="/" className="text-primary hover:underline">
-              Faça login
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 text-lg mt-4" 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    A criar conta...
+                  </>
+                ) : (
+                  'Criar Conta'
+                )}
+              </Button>
+            </form>
+
+            <p className="text-xs text-muted-foreground text-center mt-6">
+              Já tem conta?{' '}
+              <Link to="/" className="text-primary font-medium hover:underline">
+                Faça login
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

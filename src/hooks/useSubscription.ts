@@ -44,11 +44,7 @@ const MODULE_REQUIRED_PLAN: Record<string, string> = {
 };
 
 function isOrgOnTrial(org: { trial_ends_at?: string; billing_exempt?: boolean } | null): boolean {
-  if (!org) return false;
-  if ((org as any).billing_exempt) return false;
-  const trialEnd = (org as any).trial_ends_at;
-  if (!trialEnd) return false;
-  return new Date(trialEnd).getTime() > Date.now();
+  return false;
 }
 
 export function useSubscription() {
