@@ -7,6 +7,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTeamMembers } from "@/hooks/useTeam";
 import { useModules } from "@/hooks/useModules";
+import { useCreateCpe } from "@/hooks/useCpes";
+import { supabase } from "@/integrations/supabase/client";
 
 // Formata número com espaços nos milhares (estilo PT)
 const formatNumberWithSpaces = (value: string | number): string => {
@@ -128,6 +130,7 @@ export function LeadDetailsModal({
   const { organization } = useAuth();
   const { data: teamMembers } = useTeamMembers();
   const { data: stages } = usePipelineStages();
+  const createCpe = useCreateCpe();
 
   // Check if lead is in a final stage
   const isLeadLocked = (() => {
@@ -494,8 +497,8 @@ export function LeadDetailsModal({
                   </CardContent>
                 </Card>
 
-                {/* CPE/CUI Card - P2G only */}
-                {isP2G && (
+                {/* CPE/CUI Card */}
+                {(isP2G || isTelecom) && (
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -510,12 +513,49 @@ export function LeadDetailsModal({
                         value={editCpe}
                         onChange={(e) => setEditCpe(e.target.value)}
                         onFocus={() => setIsEditingCpe(true)}
-                        onBlur={() => {
+                        onBlur={async () => {
                           const currentCpe = (lead.custom_data as Record<string, unknown>)?.cpe as string || "";
-                          if (editCpe !== currentCpe) {
+                          if (editCpe.trim() !== currentCpe) {
                             onUpdate?.(lead.id, {
-                              custom_data: { ...(lead.custom_data as Record<string, unknown> || {}), cpe: editCpe || null },
+                              custom_data: { ...(lead.custom_data as Record<string, unknown> || {}), cpe: editCpe.trim() || null },
                             } as Partial<Lead>);
+
+                            // If this lead matches an existing client, sync the CPE
+                            if (editCpe.trim()) {
+                              try {
+                                // Search for client by lead_id or company_nif
+                                const { data: client } = await supabase
+                                  .from('crm_clients')
+                                  .select('id')
+                                  .or(`lead_id.eq.${lead.id}${lead.company_nif ? `,company_nif.eq.${lead.company_nif}` : ''}`)
+                                  .eq('organization_id', organization?.id)
+                                  .limit(1)
+                                  .maybeSingle();
+
+                                if (client) {
+                                  // Check if CPE exists for client
+                                  const { data: existingCpe } = await supabase
+                                    .from('cpes')
+                                    .select('id')
+                                    .eq('client_id', client.id)
+                                    .eq('serial_number', editCpe.trim())
+                                    .maybeSingle();
+
+                                  if (!existingCpe) {
+                                    await createCpe.mutateAsync({
+                                      client_id: client.id,
+                                      equipment_type: isTelecom ? 'Energia' : 'Equipamento',
+                                      serial_number: editCpe.trim(),
+                                      comercializador: 'Outro',
+                                      status: 'active',
+                                      notes: `Criado automaticamente via Lead #${lead.id.slice(0, 8)}`,
+                                    });
+                                  }
+                                }
+                              } catch (err) {
+                                console.error('Erro ao sincronizar CPE com cliente:', err);
+                              }
+                            }
                           }
                           setTimeout(() => setIsEditingCpe(false), 600);
                         }}

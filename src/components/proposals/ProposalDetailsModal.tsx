@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Trash2, Printer, Mail, Loader2, Router, Zap, Wrench, Pencil, MoreHorizontal, CalendarDays, TrendingUp, FileText, User } from 'lucide-react';
+import { calculateExactDuration, formatDurationBreakdown } from '@/lib/date-utils';
 import { LeadAttachments } from '@/components/leads/LeadAttachments';
 import {
   DropdownMenu,
@@ -295,7 +296,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                   <div class="cpe-grid">
                     <div class="cpe-field"><strong>Comercializador:</strong> ${cpe.comercializador}</div>
                     ${cpe.consumo_anual ? `<div class="cpe-field"><strong>Consumo:</strong> ${Number(cpe.consumo_anual).toLocaleString('pt-PT')} kWh</div>` : ''}
-                    ${cpe.duracao_contrato ? `<div class="cpe-field"><strong>Duração:</strong> ${cpe.duracao_contrato} anos</div>` : ''}
+                    ${cpe.duracao_contrato ? `<div class="cpe-field"><strong>Duração:</strong> ${Number(cpe.duracao_contrato).toLocaleString('pt-PT')} ${Number(cpe.duracao_contrato) === 1 ? 'ano' : 'anos'}</div>` : ''}
                     ${cpe.dbl ? `<div class="cpe-field"><strong>DBL:</strong> ${cpe.dbl} €/MWh</div>` : ''}
                     ${cpe.margem ? `<div class="cpe-field"><strong>Margem:</strong> ${formatCurrency(Number(cpe.margem))}</div>` : ''}
                     ${cpe.comissao ? `<div class="cpe-field"><strong>Comissão:</strong> ${formatCurrency(Number(cpe.comissao))}</div>` : ''}
@@ -528,7 +529,17 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                               {cpe.duracao_contrato && (
                                 <div>
                                   <span className="text-muted-foreground text-xs">Duração:</span>
-                                  <p className="font-medium">{cpe.duracao_contrato} {cpe.duracao_contrato === 1 ? 'ano' : 'anos'}</p>
+                                  <p className="font-medium">
+                                    {(() => {
+                                      const dur = calculateExactDuration(cpe.contrato_inicio || '', cpe.contrato_fim || '');
+                                      return (dur || Number(cpe.duracao_contrato)).toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                                    })()} {Number(cpe.duracao_contrato) === 1 ? 'ano' : 'anos'}
+                                  </p>
+                                  {cpe.contrato_inicio && cpe.contrato_fim && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {formatDurationBreakdown(cpe.contrato_inicio, cpe.contrato_fim)}
+                                    </p>
+                                  )}
                                 </div>
                               )}
                               {cpe.dbl && (

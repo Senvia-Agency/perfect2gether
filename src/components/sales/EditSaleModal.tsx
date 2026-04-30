@@ -61,6 +61,7 @@ import type { ServicosDetails } from "@/types/proposals";
 import { useServicosProducts } from '@/hooks/useServicosProducts';
 import { ServicosSection } from '@/components/proposals/ServicosSection';
 import { useCommissionMatrix, getVolumeTier } from "@/hooks/useCommissionMatrix";
+import { calculateExactDuration } from '@/lib/date-utils';
 import type { NegotiationType, ModeloServico } from "@/types/proposals";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CPE_STATUS_LABELS, CPE_STATUS_STYLES } from "@/types/cpes";
@@ -191,6 +192,13 @@ export function EditSaleModal({
   useEffect(() => {
     if (open && proposalCpes.length > 0) {
       setEditableCpes(proposalCpes.map(cpe => {
+        // Recalculate duration using exact calendar logic
+        let duracao_contrato = cpe.duracao_contrato;
+        if (cpe.contrato_inicio && cpe.contrato_fim) {
+          const dur = calculateExactDuration(cpe.contrato_inicio, cpe.contrato_fim);
+          if (dur > 0) duracao_contrato = dur;
+        }
+
         // Recalculate commission using current tier rules
         let comissao = cpe.comissao;
         if (hasEnergyConfigRef.current && cpe.margem && cpe.consumo_anual) {
@@ -210,7 +218,7 @@ export function EditSaleModal({
           fidelizacao_end: cpe.fidelizacao_end,
           notes: cpe.notes,
           consumo_anual: cpe.consumo_anual,
-          duracao_contrato: cpe.duracao_contrato,
+          duracao_contrato,
           dbl: cpe.dbl,
           margem: cpe.margem,
           comissao,
@@ -279,6 +287,28 @@ export function EditSaleModal({
       setComissao(total.toString());
     }
   }, [open, sale?.proposal_type, servicosProdutos, kwp, modeloServico, manualTotalValue, calculateCommission]);
+
+  // Auto-recalculate margem when DBL, consumo, or anos change (energia sales)
+  useEffect(() => {
+    if (!open || sale?.proposal_type !== 'energia') return;
+    const c = parseFloat(consumoAnual) || 0;
+    const d = parseFloat(anosContrato) || 0;
+    const db = parseFloat(dbl) || 0;
+    if (c > 0 && d > 0 && db > 0) {
+      setMargem(((c * d * db) / 1000).toFixed(2));
+    }
+  }, [open, sale?.proposal_type, consumoAnual, anosContrato, dbl]);
+
+  // Auto-recalculate comissao when margem changes (energia sales, no CPEs)
+  useEffect(() => {
+    if (!open || sale?.proposal_type !== 'energia' || !hasEnergyConfig || editableCpes.length > 0) return;
+    const m = parseFloat(margem) || 0;
+    const c = parseFloat(consumoAnual) || 0;
+    if (m > 0) {
+      const calc = calculateEnergyCommission(m, getVolumeTier(c));
+      if (calc !== null) setComissao(calc.toFixed(2));
+    }
+  }, [open, sale?.proposal_type, margem, consumoAnual, hasEnergyConfig, editableCpes.length, calculateEnergyCommission]);
 
   // Check if sale can be fully edited
   const canFullEdit = isAdmin || (sale?.status !== 'delivered' && sale?.status !== 'cancelled' && sale?.status !== 'fulfilled');
@@ -410,7 +440,7 @@ export function EditSaleModal({
           consumo_anual: parseFloat(consumoAnual) || null,
           margem: parseFloat(margem) || null,
           dbl: parseFloat(dbl) || null,
-          anos_contrato: parseInt(anosContrato) || null,
+          anos_contrato: parseFloat(anosContrato) || null,
           comissao: parseFloat(comissao) || null,
           modelo_servico: (modeloServico as ModeloServico) || null,
           kwp: parseFloat(kwp) || null,
@@ -680,10 +710,10 @@ export function EditSaleModal({
                             <Label className="text-xs text-muted-foreground">Margem (€/MWh)</Label>
                             <Input type="number" value={margem} onChange={e => setMargem(e.target.value)} className="h-9" step="0.01" />
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">Anos de Contrato (auto)</Label>
-                            <Input type="number" value={anosContrato} className="h-9 bg-muted" step="1" min="0" disabled />
-                          </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">Anos de Contrato (auto)</Label>
+                              <Input type="number" value={anosContrato} className="h-9 bg-muted" step="any" min="0" disabled />
+                            </div>
                           <div className="space-y-1.5">
                             <Label className="text-xs text-muted-foreground">DBL</Label>
                             <Input type="number" value={dbl} onChange={e => setDbl(e.target.value)} className="h-9" step="0.01" />
@@ -846,8 +876,7 @@ export function EditSaleModal({
                                   const fim = u[idx].contrato_fim;
                                   let duracao = u[idx].duracao_contrato;
                                   if (inicio && fim) {
-                                    const days = (new Date(fim).getTime() - new Date(inicio).getTime()) / 86400000;
-                                    duracao = days > 0 ? parseFloat((days / 365).toFixed(3)) : null;
+                                    duracao = calculateExactDuration(inicio, fim);
                                   }
                                   u[idx] = { ...u[idx], contrato_inicio: inicio || null, duracao_contrato: duracao };
                                   setEditableCpes(u);
@@ -861,8 +890,7 @@ export function EditSaleModal({
                                   const inicio = u[idx].contrato_inicio;
                                   let duracao = u[idx].duracao_contrato;
                                   if (inicio && fim) {
-                                    const days = (new Date(fim).getTime() - new Date(inicio).getTime()) / 86400000;
-                                    duracao = days > 0 ? parseFloat((days / 365).toFixed(3)) : null;
+                                    duracao = calculateExactDuration(inicio, fim);
                                   }
                                   u[idx] = { ...u[idx], contrato_fim: fim || null, duracao_contrato: duracao };
                                   setEditableCpes(u);
@@ -870,7 +898,7 @@ export function EditSaleModal({
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">Duração (anos)</Label>
-                                <Input type="number" value={cpe.duracao_contrato ?? ""} className="h-8 text-sm bg-muted" disabled />
+                                <Input type="number" value={cpe.duracao_contrato ?? ""} className="h-8 text-sm bg-muted" step="any" disabled />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">Consumo (kWh)</Label>

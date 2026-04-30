@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { calculateExactDuration, formatDurationBreakdown } from '@/lib/date-utils';
 import { useCpes } from '@/hooks/useCpes';
 import { ENERGY_COMERCIALIZADORES } from '@/types/cpes';
 import { useCommissionMatrix, getVolumeTier } from '@/hooks/useCommissionMatrix';
@@ -88,11 +89,9 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
   // Auto-calculate duracao when dates change
   useEffect(() => {
     if (updateContratoInicio && updateContratoFim) {
-      const start = new Date(updateContratoInicio);
-      const end = new Date(updateContratoFim);
-      const days = (end.getTime() - start.getTime()) / 86400000;
-      if (days > 0) {
-        setUpdateDuracaoContrato((days / 365).toFixed(3));
+      const dur = calculateExactDuration(updateContratoInicio, updateContratoFim);
+      if (dur > 0) {
+        setUpdateDuracaoContrato(dur.toString());
       } else {
         setUpdateDuracaoContrato('');
       }
@@ -173,11 +172,9 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
       }
       // Auto-recalculate duracao_contrato when dates change
       if ((field === 'contrato_inicio' || field === 'contrato_fim') && updated.contrato_inicio && updated.contrato_fim) {
-        const start = new Date(updated.contrato_inicio);
-        const end = new Date(updated.contrato_fim);
-        const days = (end.getTime() - start.getTime()) / 86400000;
-        if (days > 0) {
-          updated.duracao_contrato = (days / 365).toFixed(3);
+        const dur = calculateExactDuration(updated.contrato_inicio, updated.contrato_fim);
+        if (dur > 0) {
+          updated.duracao_contrato = dur.toString();
           updated.margem = calculateMargem(updated.consumo_anual, updated.duracao_contrato, updated.dbl);
           // Auto-calculate commission
           if (hasEnergyConfig && updated.margem) {
@@ -331,11 +328,18 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                     Duração (anos)
                   </Label>
                   <Input
+                    type="number"
+                    step="any"
                     value={cpe.duracao_contrato}
                     className="h-8 text-sm bg-muted font-medium"
                     disabled
                     placeholder="Auto"
                   />
+                  {cpe.contrato_inicio && cpe.contrato_fim && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">
+                      {formatDurationBreakdown(cpe.contrato_inicio, cpe.contrato_fim)}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs flex items-center gap-1">
@@ -343,6 +347,8 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                     Margem (€)
                   </Label>
                   <Input
+                    type="number"
+                    step="any"
                     value={cpe.margem}
                     className="h-8 text-sm bg-muted font-medium"
                     disabled
@@ -498,11 +504,18 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                       Duração (anos)
                     </Label>
                     <Input
+                      type="number"
+                      step="any"
                       value={updateDuracaoContrato}
                       className="h-8 bg-muted font-medium"
                       disabled
                       placeholder="Auto"
                     />
+                    {updateContratoInicio && updateContratoFim && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">
+                        {formatDurationBreakdown(updateContratoInicio, updateContratoFim)}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs flex items-center gap-1">
@@ -510,6 +523,8 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                       Margem (€)
                     </Label>
                     <Input
+                      type="number"
+                      step="any"
                       value={updateMargem}
                       className="h-8 bg-muted font-medium"
                       disabled

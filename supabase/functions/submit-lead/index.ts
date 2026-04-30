@@ -143,7 +143,7 @@ async function handleWebhookMode(req: Request, token: string): Promise<Response>
       organization_id: org.id,
       assigned_to: autoAssignedTo,
       name: String(name).substring(0, 200),
-      email: cleanEmail || 'nao-fornecido@placeholder.local',
+      email: cleanEmail || '',
       phone: cleanPhone || '000000000',
       company_name: company ? String(company).substring(0, 200) : null,
       gdpr_consent: true,
@@ -570,7 +570,7 @@ Deno.serve(async (req) => {
         name: org.niche === 'telecom'
           ? (body.company_name?.trim() || body.name?.trim() || 'Anónimo')
           : (body.name?.trim() || body.company_name?.trim() || 'Anónimo'),
-        email: body.email?.trim()?.toLowerCase() || 'nao-fornecido@placeholder.local',
+        email: body.email?.trim()?.toLowerCase() || '',
         phone: cleanPhone || '000000000',
         gdpr_consent: true,
         source: body.source || formSettings.form_name || 'Formulário Público',

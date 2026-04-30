@@ -34,7 +34,6 @@ import { InvoicesContent } from "@/components/finance/InvoicesContent";
 import InternalRequests from "@/pages/finance/InternalRequests";
 import { BankAccountsTab } from "@/components/finance/BankAccountsTab";
 import { CommissionsTab } from "@/components/finance/CommissionsTab";
-import { CommissionAnalysisTab } from "@/components/finance/CommissionAnalysisTab";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useSalesCommissions } from "@/hooks/useSalesCommissions";
@@ -49,14 +48,9 @@ export default function Finance() {
   const isTelecom = organization?.niche === "telecom";
   const salesSettings = (organization?.sales_settings as { commissions_enabled?: boolean }) || {};
   const commissionsEnabled = !!salesSettings.commissions_enabled;
-  const canViewCommissionAnalysis = hasPerfect2GetherAccess({
-    organizationId: organization?.id,
-    memberships: organizations,
-    isSuperAdmin,
-  }) && isAdmin;
   const validTabs = isTelecom
-    ? ["outros", "comissoes", ...(canViewCommissionAnalysis ? ["analise-comissoes"] : [])]
-    : ["resumo", "contas", "faturas", "outros", ...(canViewCommissionAnalysis ? ["analise-comissoes"] : [])];
+    ? ["outros", "comissoes"]
+    : ["resumo", "contas", "faturas", "outros"];
   const [dateRange, setDateRange] = usePersistedState<DateRange | undefined>("finance-daterange-v1", undefined);
   const [activeTab, setActiveTab] = usePersistedState("finance-tab-v1", isTelecom ? "outros" : "resumo");
   const [commissionsModalOpen, setCommissionsModalOpen] = useState(false);
@@ -94,7 +88,6 @@ export default function Finance() {
           {!isTelecom && <TabsTrigger value="faturas">Faturas</TabsTrigger>}
           <TabsTrigger value="outros">Outros</TabsTrigger>
           {isTelecom && <TabsTrigger value="comissoes">Comissões</TabsTrigger>}
-          {canViewCommissionAnalysis && <TabsTrigger value="analise-comissoes">Análise de Comissões</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="resumo" className="mt-0 space-y-6">
@@ -383,12 +376,6 @@ export default function Finance() {
         {isTelecom && (
           <TabsContent value="comissoes" className="mt-0">
             <CommissionsTab />
-          </TabsContent>
-        )}
-
-        {canViewCommissionAnalysis && (
-          <TabsContent value="analise-comissoes" className="mt-0">
-            <CommissionAnalysisTab />
           </TabsContent>
         )}
       </Tabs>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, Settings, LogOut, Shield, Calendar, FileText, ShoppingBag, Store, UserCheck, Mail, Wallet, Lock, Search, Building2 } from "lucide-react";
+import { LayoutDashboard, Users, Settings, LogOut, Shield, Calendar, FileText, ShoppingBag, Store, UserCheck, Mail, Wallet, Lock, Search, Building2, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules, EnabledModules } from "@/hooks/useModules";
@@ -17,6 +17,7 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   moduleKey?: keyof EnabledModules;
+  isAdminOnly?: boolean;
 }
 
 const allNavItems: NavItem[] = [
@@ -31,6 +32,7 @@ const allNavItems: NavItem[] = [
   { to: "/prospects", icon: Search, label: "Prospects", moduleKey: 'prospects' },
   { to: "/ecommerce", icon: Store, label: "E-commerce", moduleKey: 'ecommerce' },
   { to: "/settings", icon: Settings, label: "Definições" },
+  { to: "/gestao", icon: BarChart3, label: "Gestão", isAdminOnly: true },
 ];
 
 const getRoleLabel = (roles: AppRole[]): string => {
@@ -52,6 +54,7 @@ export function AppSidebar({
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, roles, isSuperAdmin, organization, organizations } = useAuth();
+  const { isAdmin } = usePermissions();
   const { modules } = useModules();
   const { canViewModule } = usePermissions();
   const { isModuleLocked, getRequiredPlan } = useSubscription();
@@ -66,6 +69,7 @@ export function AppSidebar({
   });
 
   const navItems = allNavItems.filter(item => {
+    if (item.isAdminOnly && !isAdmin && !isSuperAdmin) return false;
     if (!item.moduleKey) return true;
     if (isModuleLocked(item.moduleKey)) return true;
     if (!modules[item.moduleKey]) return false;

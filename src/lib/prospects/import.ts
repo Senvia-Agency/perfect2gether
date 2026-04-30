@@ -2,7 +2,7 @@ import type { ProspectImportResult } from "@/types/prospects";
 
 export const PROSPECTS_ACCESS_ERROR = "A tua conta não tem acesso aos Prospects desta organização.";
 
-const normalizeHeader = (value: string) =>
+export const normalizeHeader = (value: string) =>
   value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -26,24 +26,51 @@ export const normalizeEmail = (value: unknown) => {
 export const parseNumericValue = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
 
-  const input = stringify(value);
+  const input = stringify(value).replace(/[€$£\s]/g, "");
   if (!input) return null;
 
-  const sanitized = input.replace(/\s/g, "");
-  const normalized = sanitized.includes(",") && sanitized.includes(".")
-    ? sanitized.replace(/\./g, "").replace(/,/g, ".")
-    : sanitized.replace(/,/g, ".");
+  // Handle European format (1.234,56) vs US format (1,234.56)
+  let normalized = input;
+  const hasComma = input.includes(",");
+  const hasDot = input.includes(".");
+
+  if (hasComma && hasDot) {
+    if (input.indexOf(",") > input.indexOf(".")) {
+      // European style: 1.234,56 (dot=thousands, comma=decimal)
+      normalized = input.replace(/\./g, "").replace(/,/g, ".");
+    } else {
+      // US style: 1,234.56 (comma=thousands, dot=decimal)
+      normalized = input.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    // 1234,56
+    normalized = input.replace(/,/g, ".");
+  }
 
   const numeric = Number(normalized.replace(/[^0-9.-]/g, ""));
   return Number.isFinite(numeric) ? numeric : null;
 };
 
-const findValue = (row: Record<string, unknown>, aliases: string[]) => {
-  const aliasSet = new Set(aliases.map(normalizeHeader));
+export const findValue = (row: Record<string, unknown>, aliases: string[]) => {
+  const normalizedAliases = aliases.map(normalizeHeader);
+  const aliasSet = new Set(normalizedAliases);
 
+  // Pass 1: exact match after normalization
   for (const [key, value] of Object.entries(row)) {
     if (aliasSet.has(normalizeHeader(key))) {
       return value;
+    }
+  }
+
+  // Pass 2: partial match — key contains alias or alias contains key
+  for (const [key, value] of Object.entries(row)) {
+    const nk = normalizeHeader(key);
+    if (!nk) continue;
+    for (const alias of normalizedAliases) {
+      if (!alias) continue;
+      if (nk.includes(alias) || alias.includes(nk)) {
+        return value;
+      }
     }
   }
 

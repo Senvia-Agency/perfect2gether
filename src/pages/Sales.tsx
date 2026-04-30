@@ -27,6 +27,10 @@ import { useTelecomSaleMetrics } from "@/hooks/useTelecomSaleMetrics";
 import { useModules } from "@/hooks/useModules";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { read, utils } from "xlsx";
+import { importSales } from "@/lib/sales/import";
+import { useTeamMembers } from "@/hooks/useTeam";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Sales() {
   // Subscribe to realtime updates
@@ -50,6 +54,9 @@ export default function Sales() {
   const [saleToEdit, setSaleToEdit] = useState<SaleWithDetails | null>(null);
   const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const { data: teamMembers } = useTeamMembers();
+  const queryClient = useQueryClient();
 
   // Reactively open sale details when pendingSaleId matches a sale in cache
   useEffect(() => {
@@ -223,6 +230,71 @@ export default function Sales() {
     }
   };
 
+  const handleImportClick = () => {
+    const input = document.getElementById('sales-import-input');
+    if (input) input.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !organization || !profile) return;
+
+    setIsImporting(true);
+    const toastId = toast.loading("A processar ficheiro...");
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const bstr = evt.target?.result;
+          const wb = read(bstr, { type: 'binary', cellDates: true });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = utils.sheet_to_json(ws);
+
+          if (data.length === 0) {
+            toast.error("O ficheiro está vazio.", { id: toastId });
+            setIsImporting(false);
+            return;
+          }
+
+          toast.loading(`A importar ${data.length} registos...`, { id: toastId });
+          
+          const result = await importSales(
+            data as Record<string, unknown>[],
+            organization.id,
+            profile.id,
+            teamMembers || [],
+            (current, total) => {
+              toast.loading(`A importar: ${current}/${total}...`, { id: toastId });
+            }
+          );
+
+          if (result.failed === 0) {
+            toast.success(`Importação concluída com sucesso! ${result.inserted} vendas criadas.`, { id: toastId });
+          } else {
+            toast.warning(`Importação finalizada com avisos. Sucesso: ${result.inserted}, Falhas: ${result.failed}.`, { 
+              id: toastId,
+              description: result.errors[0],
+            });
+            console.error("Import errors:", result.errors);
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['sales'] });
+        } catch (err: any) {
+          toast.error(`Erro ao processar dados: ${err.message}`, { id: toastId });
+        } finally {
+          setIsImporting(false);
+          e.target.value = '';
+        }
+      };
+      reader.readAsBinaryString(file);
+    } catch (error: any) {
+      toast.error(`Erro ao ler ficheiro: ${error.message}`, { id: toastId });
+      setIsImporting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
         {/* Header */}
@@ -239,16 +311,35 @@ export default function Sales() {
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             {isPerfect2Gether && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportPerfect2Gether}
-                disabled={isExporting}
-                className="w-full sm:w-auto"
-              >
-                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                Exportar Perfect2Gether
-              </Button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <input
+                  type="file"
+                  id="sales-import-input"
+                  className="hidden"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFileChange}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleImportClick}
+                  disabled={isImporting}
+                  className="flex-1 sm:flex-initial"
+                >
+                  {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Importar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportPerfect2Gether}
+                  disabled={isExporting}
+                  className="flex-1 sm:flex-initial"
+                >
+                  {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                  Exportar
+                </Button>
+              </div>
             )}
             <Button onClick={() => setShowCreateModal(true)} size="sm" className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-1" />

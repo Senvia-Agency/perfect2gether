@@ -336,7 +336,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
                 fidelizacao_end: cpe.fidelizacao_end || null,
                 notes: cpe.notes || null,
                 consumo_anual: cpe.consumo_anual ? parseFloat(cpe.consumo_anual) : null,
-                duracao_contrato: cpe.duracao_contrato ? parseInt(cpe.duracao_contrato) : null,
+                duracao_contrato: cpe.duracao_contrato ? parseFloat(cpe.duracao_contrato) : null,
                 dbl: cpe.dbl ? parseFloat(cpe.dbl) : null,
                 margem: cpe.margem ? parseFloat(cpe.margem) : null,
                 comissao: cpe.comissao ? parseFloat(cpe.comissao) : null,

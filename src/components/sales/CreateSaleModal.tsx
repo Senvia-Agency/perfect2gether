@@ -28,6 +28,7 @@ import { Progress } from "@/components/ui/progress";
 import { useProposals, useProposalProducts } from "@/hooks/useProposals";
 import { PROPOSAL_STATUS_LABELS, type ProposalStatus } from "@/types/proposals";
 import { useProposalCpes } from "@/hooks/useProposalCpes";
+import { Checkbox } from '@/components/ui/checkbox';
 import { useClients } from "@/hooks/useClients";
 import { useProducts } from "@/hooks/useProducts";
 import { useCreateSale } from "@/hooks/useSales";
@@ -707,7 +708,7 @@ export function CreateSaleModal({
           consumo_anual: parseFloat(consumoAnual) || undefined,
           margem: parseFloat(margem) || undefined,
           dbl: parseFloat(dbl) || undefined,
-          anos_contrato: parseInt(anosContrato) || undefined,
+          anos_contrato: parseFloat(anosContrato) || undefined,
           modelo_servico: modeloServico || undefined,
           kwp: parseFloat(kwp) || undefined,
           comissao: parseFloat(comissao) || undefined,
@@ -1099,7 +1100,17 @@ export function CreateSaleModal({
                             {cpe.duracao_contrato != null && (
                               <div>
                                 <p className="text-xs text-muted-foreground">Duração</p>
-                                <p className="text-sm font-medium">{cpe.duracao_contrato} {cpe.duracao_contrato === 1 ? 'ano' : 'anos'}</p>
+                                <p className="text-sm font-medium">
+                                  {(() => {
+                                    const dur = calculateExactDuration(cpe.contrato_inicio || '', cpe.contrato_fim || '');
+                                    return (dur || Number(cpe.duracao_contrato)).toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                                  })()} {Number(cpe.duracao_contrato) === 1 ? 'ano' : 'anos'}
+                                </p>
+                                {cpe.contrato_inicio && cpe.contrato_fim && (
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {formatDurationBreakdown(cpe.contrato_inicio, cpe.contrato_fim)}
+                                  </p>
+                                )}
                               </div>
                             )}
                             {cpe.dbl != null && (

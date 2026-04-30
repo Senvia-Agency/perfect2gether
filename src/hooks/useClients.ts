@@ -215,18 +215,29 @@ export function useConvertLeadToClient() {
 
       if (error) throw error;
 
-      // Auto-create CPE for P2G if lead has CPE data
+      // Auto-create CPE if lead has CPE data
       const customData = lead?.custom_data as Record<string, unknown> | null;
       const cpeValue = customData?.cpe as string | undefined;
-      if (cpeValue && isPerfect2GetherOrg(organizationId)) {
-        await supabase.from('cpes').insert({
-          client_id: data.id,
-          organization_id: organizationId,
-          equipment_type: 'Energia',
-          serial_number: cpeValue,
-          comercializador: '',
-          status: 'active',
-        });
+      if (cpeValue) {
+        // Check if CPE already exists for this client to avoid duplicates
+        const { data: existingCpe } = await supabase
+          .from('cpes')
+          .select('id')
+          .eq('client_id', data.id)
+          .eq('serial_number', cpeValue)
+          .maybeSingle();
+
+        if (!existingCpe) {
+          await supabase.from('cpes').insert({
+            client_id: data.id,
+            organization_id: organizationId,
+            equipment_type: (organization?.niche === 'telecom') ? 'Energia' : 'Equipamento',
+            serial_number: cpeValue,
+            comercializador: 'Outro',
+            status: 'active',
+            notes: `Criado automaticamente na conversão da Lead #${leadData.lead_id.slice(0, 8)}`,
+          });
+        }
       }
 
       return data;

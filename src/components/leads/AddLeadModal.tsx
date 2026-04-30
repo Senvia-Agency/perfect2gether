@@ -42,6 +42,7 @@ import { useUploadLeadAttachment } from "@/hooks/useLeadAttachments";
 import { useLeadFieldsSettings } from "@/hooks/useLeadFieldsSettings";
 import { LeadFieldsSettings, DEFAULT_LEAD_FIELDS_SETTINGS } from "@/types/field-settings";
 import { useModules } from "@/hooks/useModules";
+import { useCreateCpe } from "@/hooks/useCpes";
 import type { LeadTemperature, LeadTipologia } from "@/types";
 import { ROLE_LABELS as RoleLabels, TIPOLOGIA_LABELS, TIPOLOGIA_STYLES } from "@/types";
 
@@ -104,6 +105,7 @@ interface AddLeadModalProps {
 
 export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
   const createLead = useCreateLead();
+  const createCpe = useCreateCpe();
   const uploadAttachment = useUploadLeadAttachment();
   const { data: teamMembers } = useTeamMembers();
   const { canManageTeam } = usePermissions();
@@ -236,6 +238,31 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
       consumo_anual: showEnergy && data.consumo_anual ? Number(data.consumo_anual) : undefined,
       custom_data: cpeValue.trim() ? { cpe: cpeValue.trim() } : undefined,
     });
+
+    // Check and automatically create CPE for existing client if it doesn't exist
+    if (matchedClient && cpeValue.trim() && lead?.id) {
+      try {
+        const { data: existingCpe } = await supabase
+          .from('cpes')
+          .select('id')
+          .eq('client_id', matchedClient.id)
+          .eq('serial_number', cpeValue.trim())
+          .maybeSingle();
+
+        if (!existingCpe) {
+          await createCpe.mutateAsync({
+            client_id: matchedClient.id,
+            equipment_type: organization?.niche === 'telecom' ? 'Energia' : 'Equipamento',
+            serial_number: cpeValue.trim(),
+            comercializador: 'Outro',
+            status: 'active',
+            notes: `Criado automaticamente via Lead #${lead.id.slice(0, 8)}`,
+          });
+        }
+      } catch (err) {
+        console.error('Erro ao verificar/criar CPE automático:', err);
+      }
+    }
 
     if (pendingFiles.length > 0 && lead?.id) {
       for (const file of pendingFiles) {
@@ -384,7 +411,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
                             />
                           )}
                         </div>
-                        {isP2G && (
+                        {(isP2G || isTelecom) && (
                           <div className="mt-4">
                             <label className="text-sm font-medium leading-none">CPE/CUI</label>
                             <Input

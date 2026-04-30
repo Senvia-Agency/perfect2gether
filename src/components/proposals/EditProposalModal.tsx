@@ -21,6 +21,7 @@ import { useCommissionMatrix, getVolumeTier } from '@/hooks/useCommissionMatrix'
 import { CreateClientModal } from '@/components/clients/CreateClientModal';
 import { ProposalCpeSelector, type ProposalCpeDraft } from './ProposalCpeSelector';
 import { useProposalCpes, useUpdateProposalCpes } from '@/hooks/useProposalCpes';
+import { calculateExactDuration } from '@/lib/date-utils';
 import { 
   PROPOSAL_STATUS_LABELS, 
   PROPOSAL_STATUSES, 
@@ -146,6 +147,13 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
           const consumoAnual = cpe.consumo_anual?.toString() || '';
           const margem = cpe.margem?.toString() || '';
           
+          // Recalculate duration using exact calendar logic
+          let duracao_contrato = cpe.duracao_contrato?.toString() || '';
+          if (cpe.contrato_inicio && cpe.contrato_fim) {
+            const dur = calculateExactDuration(cpe.contrato_inicio, cpe.contrato_fim);
+            if (dur > 0) duracao_contrato = dur.toString();
+          }
+          
           // Recalculate commission using current tier rules (runtime derivation)
           let comissao = cpe.comissao?.toString() || '';
           if (hasEnergyConfigRef.current && margem) {
@@ -167,7 +175,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
             notes: cpe.notes || '',
             isNew: !cpe.existing_cpe_id,
             consumo_anual: consumoAnual,
-            duracao_contrato: cpe.duracao_contrato?.toString() || '',
+            duracao_contrato,
             dbl: cpe.dbl?.toString() || '',
             margem,
             comissao,
@@ -407,7 +415,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
           fidelizacao_end: cpe.fidelizacao_end || null,
           notes: cpe.notes || null,
           consumo_anual: cpe.consumo_anual ? parseFloat(cpe.consumo_anual) : null,
-          duracao_contrato: cpe.duracao_contrato ? parseInt(cpe.duracao_contrato) : null,
+          duracao_contrato: cpe.duracao_contrato ? parseFloat(cpe.duracao_contrato.toString()) : null,
           dbl: cpe.dbl ? parseFloat(cpe.dbl) : null,
           margem: cpe.margem ? parseFloat(cpe.margem) : null,
           comissao: cpe.comissao ? parseFloat(cpe.comissao) : null,
