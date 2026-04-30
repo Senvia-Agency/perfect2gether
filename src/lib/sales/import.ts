@@ -37,7 +37,9 @@ export const importSales = async (
       // 1. Extract values
       const dcName = normalizeTextValue(findValue(row, ["DC", "Comercial", "Vendedor"]));
       const companyName = normalizeTextValue(findValue(row, ["Nome da Empresa", "Empresa", "Cliente"]));
-      const nif = normalizeIdentifierValue(findValue(row, ["NIPC", "NIF", "VAT"]));
+      // NIF always stored/searched in clean format (no dots, dashes, spaces)
+      const nifRaw = normalizeIdentifierValue(findValue(row, ["NIPC", "NIF", "VAT"]));
+      const nif = nifRaw.replace(/[.\-\s]/g, "");
       const oppType = normalizeTextValue(findValue(row, ["Tipo de registro de oportunidade", "Oportunidade"]));
       const typeRaw = normalizeTextValue(findValue(row, ["Tipo", "Módulo"]));
 
@@ -81,12 +83,12 @@ export const importSales = async (
       let clientId: string | undefined;
 
       if (nif) {
-        const nifClean = nif.replace(/[.\-\s]/g, "");
+        // Two separate .eq() queries — avoids .or() PostgREST parsing issues with dotted values
         const { data: existingByNif } = await supabase
           .from("crm_clients")
           .select("id")
           .eq("organization_id", organizationId)
-          .or(`company_nif.eq.${nif},company_nif.eq.${nifClean}`)
+          .eq("company_nif", nif)
           .maybeSingle();
 
         if (existingByNif) {
