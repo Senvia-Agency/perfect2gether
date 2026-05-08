@@ -15,6 +15,7 @@ export interface Cpe {
   nivel_tensao?: NivelTensao | null;
   notes?: string | null;
   renewal_status?: RenewalStatus | null;
+  consumo_anual?: number | null;
   created_at: string;
   updated_at: string;
 }

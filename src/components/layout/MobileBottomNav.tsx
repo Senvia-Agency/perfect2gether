@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Settings, Shield, Calendar, FileText, ShoppingBag, Store, UserCheck, Mail, Wallet, Lock, Building2, Search } from "lucide-react";
+import { LayoutDashboard, Users, Settings, Shield, Calendar, FileText, ShoppingBag, Store, UserCheck, Mail, Wallet, Lock, Building2, Search, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules, EnabledModules } from "@/hooks/useModules";
@@ -34,7 +34,7 @@ export function MobileBottomNav() {
   const location = useLocation();
   const { isSuperAdmin, organization, organizations } = useAuth();
   const { modules } = useModules();
-  const { canViewModule } = usePermissions();
+  const { canViewModule, isAdmin } = usePermissions();
   const { isModuleLocked, getRequiredPlan } = useSubscription();
   const hasPerfect2GetherModuleAccess = hasPerfect2GetherAccess({
     organizationId: organization?.id,
@@ -61,9 +61,13 @@ export function MobileBottomNav() {
       ]
     : [];
 
-  const allItems = isSuperAdmin 
-    ? [...navItems, ...perfect2GetherItems, { to: "/system-admin", icon: Shield, label: "Admin" }]
-    : [...navItems, ...perfect2GetherItems];
+  const adminItems = (isAdmin || isSuperAdmin)
+    ? [{ to: "/gestao", icon: BarChart3, label: "Gestão" }]
+    : [];
+
+  const allItems = isSuperAdmin
+    ? [...navItems, ...perfect2GetherItems, ...adminItems, { to: "/system-admin", icon: Shield, label: "Admin" }]
+    : [...navItems, ...perfect2GetherItems, ...adminItems];
 
   const handleLockedClick = (e: React.MouseEvent, item: NavItem) => {
     if (item.moduleKey && isModuleLocked(item.moduleKey)) {

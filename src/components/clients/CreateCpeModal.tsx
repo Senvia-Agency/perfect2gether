@@ -41,7 +41,8 @@ export function CreateCpeModal({ open, onOpenChange, clientId, isTelecom = false
   const [status, setStatus] = useState<CpeStatus>('active');
   const [nivelTensao, setNivelTensao] = useState<NivelTensao | ''>('');
   const [notes, setNotes] = useState('');
-  
+  const [consumoAnual, setConsumoAnual] = useState('');
+
   // Conditional labels and options based on niche
   const typeLabel = isTelecom ? 'Tipo *' : 'Tipo de Equipamento *';
   const serialLabel = isTelecom ? 'Local de Consumo (CPE/CUI)' : 'Número de Série';
@@ -64,6 +65,7 @@ export function CreateCpeModal({ open, onOpenChange, clientId, isTelecom = false
     setStatus('active');
     setNivelTensao('');
     setNotes('');
+    setConsumoAnual('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -84,6 +86,7 @@ export function CreateCpeModal({ open, onOpenChange, clientId, isTelecom = false
       status,
       nivel_tensao: isTelecom && nivelTensao ? nivelTensao : undefined,
       notes: notes || undefined,
+      consumo_anual: consumoAnual ? parseFloat(consumoAnual) : undefined,
     }, {
       onSuccess: () => {
         resetForm();
@@ -211,6 +214,23 @@ export function CreateCpeModal({ open, onOpenChange, clientId, isTelecom = false
               </Select>
             </div>
           )}
+
+          {/* Consumo Anual */}
+          <div className="space-y-2">
+            <Label>Consumo Anual (kWh)</Label>
+            <div className="relative">
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Ex: 3500"
+                value={consumoAnual}
+                onChange={(e) => setConsumoAnual(e.target.value)}
+                className="pr-12"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">kWh</span>
+            </div>
+          </div>
 
           {/* Notes */}
           <div className="space-y-2">

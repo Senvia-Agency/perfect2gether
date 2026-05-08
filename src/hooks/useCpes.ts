@@ -67,6 +67,7 @@ interface CreateCpeData {
   status?: CpeStatus;
   nivel_tensao?: string;
   notes?: string;
+  consumo_anual?: number;
 }
 
 export function useCreateCpe() {

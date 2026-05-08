@@ -1,0 +1,1 @@
+ALTER TABLE cpes ADD COLUMN IF NOT EXISTS consumo_anual numeric(10,2) DEFAULT NULL;

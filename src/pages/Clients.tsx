@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Users, Crown, UserMinus, Euro, Shield } from "lucide-react";
+import { Plus, Search, Users, Crown, UserMinus, Euro, Shield, Loader2 } from "lucide-react";
 import { useClients, useClientStats, useDeleteClient } from "@/hooks/useClients";
 import { useClientLabels } from "@/hooks/useClientLabels";
 import { ClientsTable } from "@/components/clients/ClientsTable";
@@ -26,9 +26,14 @@ import { CreateProposalModal } from "@/components/proposals/CreateProposalModal"
 import { toast } from "sonner";
 import { useModules } from "@/hooks/useModules";
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from "date-fns";
+import { read, utils } from "xlsx";
+import { importClients } from "@/lib/clients/import";
+import { useTeamMembers } from "@/hooks/useTeam";
+import { useQueryClient } from "@tanstack/react-query";
+import { hasPerfect2GetherAccess } from "@/lib/perfect2gether";
 
 export default function Clients() {
-  const { profile, organization } = useAuth();
+  const { profile, organization, organizations, isSuperAdmin } = useAuth();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = usePersistedState("clients-search-v1", "");
@@ -50,6 +55,14 @@ export default function Clients() {
   const { clientTypesMap, isTelecom } = useClientProposalTypes();
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
+  const [isImporting, setIsImporting] = useState(false);
+  const { data: teamMembers } = useTeamMembers();
+  const queryClient = useQueryClient();
+  const isPerfect2Gether = hasPerfect2GetherAccess({
+    organizationId: organization?.id,
+    memberships: organizations,
+    isSuperAdmin,
+  });
 
   const filteredClients = useMemo(() => {
     if (!clients) return [];
@@ -158,6 +171,71 @@ export default function Clients() {
     toast.success(`${selectedClients.length} clientes exportados para CSV`);
   };
 
+  const handleImportClick = () => {
+    const input = document.getElementById('clients-import-input');
+    if (input) input.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !organization || !profile) return;
+
+    setIsImporting(true);
+    const toastId = toast.loading("A processar ficheiro...");
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const bstr = evt.target?.result;
+          const wb = read(bstr, { type: 'binary', cellDates: true });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = utils.sheet_to_json(ws);
+
+          if (data.length === 0) {
+            toast.error("O ficheiro está vazio.", { id: toastId });
+            setIsImporting(false);
+            return;
+          }
+
+          toast.loading(`A importar ${data.length} registos...`, { id: toastId });
+
+          const result = await importClients(
+            data as Record<string, unknown>[],
+            organization.id,
+            profile.id,
+            teamMembers || [],
+            (current, total) => {
+              toast.loading(`A importar: ${current}/${total}...`, { id: toastId });
+            }
+          );
+
+          if (result.failed === 0) {
+            toast.success(`Importação concluída! ${result.inserted} clientes criados/atualizados.`, { id: toastId });
+          } else {
+            toast.warning(`Importação com avisos. Sucesso: ${result.inserted}, Falhas: ${result.failed}.`, {
+              id: toastId,
+              description: result.errors[0],
+            });
+          }
+
+          queryClient.invalidateQueries({ queryKey: ['clients'] });
+          queryClient.invalidateQueries({ queryKey: ['cpes'] });
+        } catch (err: any) {
+          toast.error(`Erro ao processar dados: ${err.message}`, { id: toastId });
+        } finally {
+          setIsImporting(false);
+          e.target.value = '';
+        }
+      };
+      reader.readAsBinaryString(file);
+    } catch (error: any) {
+      toast.error(`Erro ao ler ficheiro: ${error.message}`, { id: toastId });
+      setIsImporting(false);
+    }
+  };
+
   const handleExportExcel = () => {
     const selectedClients = filteredClients.filter(c => selectedIds.includes(c.id));
     const data = mapClientsForExport(selectedClients, organization?.niche === 'telecom');
@@ -181,10 +259,27 @@ export default function Clients() {
               GestÃ£o de {labels.plural.toLowerCase()} e relacionamento comercial
             </p>
           </div>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {labels.new}
-          </Button>
+          <div className="flex gap-2">
+            {isPerfect2Gether && (
+              <>
+                <input
+                  type="file"
+                  id="clients-import-input"
+                  className="hidden"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFileChange}
+                />
+                <Button variant="outline" size="sm" onClick={handleImportClick} disabled={isImporting}>
+                  {isImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                  Importar
+                </Button>
+              </>
+            )}
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {labels.new}
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}

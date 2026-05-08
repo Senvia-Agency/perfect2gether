@@ -241,13 +241,16 @@ serve(async (req) => {
       // Don't fail completely, the user was created
     }
 
-    // Add role to user_roles table (upsert to handle existing roles)
+    // Replace any existing role for this user (keep super_admin untouched)
+    await supabaseAdmin
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .neq('role', 'super_admin');
+
     const { error: roleInsertError } = await supabaseAdmin
       .from('user_roles')
-      .upsert({
-        user_id: userId,
-        role: role
-      }, { onConflict: 'user_id,role' });
+      .insert({ user_id: userId, role: role });
 
     if (roleInsertError) {
       console.error('Error inserting role:', roleInsertError);

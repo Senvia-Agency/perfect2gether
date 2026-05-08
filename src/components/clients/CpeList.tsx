@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, differenceInDays, isPast } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { Router, Plus, Pencil, Trash2, AlertTriangle, Calendar, Zap, RefreshCw, ArrowLeftRight, CheckCircle } from 'lucide-react';
+import { Router, Plus, Pencil, Trash2, AlertTriangle, Calendar, Zap, RefreshCw, ArrowLeftRight, CheckCircle, BarChart2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -161,6 +161,15 @@ export function CpeList({ clientId }: CpeListProps) {
                                 {fidelizacao.label}
                               </Badge>
                             )}
+                          </div>
+                        )}
+
+                        {cpe.consumo_anual != null && (
+                          <div className="flex items-center gap-1.5">
+                            <BarChart2 className="h-3.5 w-3.5" />
+                            <span className="font-medium text-foreground">
+                              {cpe.consumo_anual.toLocaleString('pt-PT')} kWh/ano
+                            </span>
                           </div>
                         )}
 
