@@ -181,7 +181,7 @@ export function SalesPerformancePanel() {
       <TableHeader><TableHeaders /></TableHeader>
       <TableBody>
         {salesRows.map((row, i) => {
-          const obj = objectiveRows[i];
+          const obj = objectiveRows[i] || { nifs: 0, energia: 0, solar: 0, comissao: 0 };
           return (
             <TableRow key={row.userId}>
               <TableCell className="text-xs py-1.5 font-medium">{row.name}</TableCell>

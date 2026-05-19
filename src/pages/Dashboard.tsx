@@ -15,6 +15,7 @@ import { NicheType } from "@/lib/dashboard-templates";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useModules } from "@/hooks/useModules";
 import { ActivationsPanel } from "@/components/dashboard/ActivationsPanel";
+import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
 
 export default function Dashboard() {
   useRealtimeSubscription([
@@ -65,10 +66,10 @@ export default function Dashboard() {
             <div className="space-y-4">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Atividade Comercial</h2>
               <div className="space-y-4">
-                <CommitmentPanel />
-                <SalesPerformancePanel />
-                <MetricsPanel />
-                <ActivationsPanel />
+                <DashboardErrorBoundary><CommitmentPanel /></DashboardErrorBoundary>
+                <DashboardErrorBoundary><SalesPerformancePanel /></DashboardErrorBoundary>
+                <DashboardErrorBoundary><MetricsPanel /></DashboardErrorBoundary>
+                <DashboardErrorBoundary><ActivationsPanel /></DashboardErrorBoundary>
               </div>
             </div>
           )}
@@ -76,20 +77,20 @@ export default function Dashboard() {
           {(isTelecom && clientsModuleEnabled || calendarModuleEnabled) && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {isTelecom && clientsModuleEnabled && (
-                <FidelizationAlertsWidget />
+                <DashboardErrorBoundary><FidelizationAlertsWidget /></DashboardErrorBoundary>
               )}
               {calendarModuleEnabled && (
-                <CalendarAlertsWidget />
+                <DashboardErrorBoundary><CalendarAlertsWidget /></DashboardErrorBoundary>
               )}
             </div>
           )}
 
           {commissionsEnabled && (
-            <CommissionsWidget />
+            <DashboardErrorBoundary><CommissionsWidget /></DashboardErrorBoundary>
           )}
 
           {visibleWidgets.some(w => w.widget_type === 'team_performance_table') && (
-            <TeamPerformanceTable />
+            <DashboardErrorBoundary><TeamPerformanceTable /></DashboardErrorBoundary>
           )}
           
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
