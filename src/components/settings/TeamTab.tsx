@@ -419,6 +419,21 @@ export function TeamTab() {
     }
   };
 
+  const handleSendRecoveryEmail = async (member: TeamMember) => {
+    if (!member.email) {
+      toast({ title: 'Sem email', description: 'Este membro não tem email configurado.', variant: 'destructive' });
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(member.email, {
+      redirectTo: `${getBaseUrl()}/reset-password`,
+    });
+    if (error) {
+      toast({ title: 'Erro ao enviar email', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Email enviado!', description: `Email de recuperação enviado para ${member.email}.` });
+    }
+  };
+
   const loginUrl = `${getBaseUrl()}/`;
 
   // Check if member is current user
@@ -768,6 +783,10 @@ export function TeamTab() {
                           <DropdownMenuItem onClick={() => openSendAccessModal(member)}>
                             <Mail className="mr-2 h-4 w-4" />
                             Enviar Email de Acesso
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendRecoveryEmail(member)}>
+                            <Key className="mr-2 h-4 w-4" />
+                            Enviar Email de Recuperação
                           </DropdownMenuItem>
                           {!isCurrentUser(member) && member.role !== 'super_admin' && (
                             <>
