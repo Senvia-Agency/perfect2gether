@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { APP_VERSION } from "@/lib/constants";
 import type { AppRole } from "@/types";
 import { Button } from "@/components/ui/button";
-import { hasPerfect2GetherAccess } from "@/lib/perfect2gether";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Painel" },
@@ -38,12 +38,9 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizationName = "A Minha Empresa" }: MobileMenuProps) {
   const navigate = useNavigate();
-  const { signOut, roles, isSuperAdmin, organization, organizations } = useAuth();
-  const hasPerfect2GetherModuleAccess = hasPerfect2GetherAccess({
-    organizationId: organization?.id,
-    memberships: organizations,
-    isSuperAdmin,
-  });
+  const { signOut, roles, isSuperAdmin, organization } = useAuth();
+  const { canViewModule, systems } = usePermissions();
+  const isTotalLinkOnly = systems.length === 1 && systems[0] === 'total_link';
 
   const handleLogout = async () => {
     await signOut();
@@ -102,7 +99,7 @@ export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizat
             </NavLink>
           ))}
           
-          {hasPerfect2GetherModuleAccess && (
+          {(isTotalLinkOnly || canViewModule('portal_total_link')) && (
             <NavLink
               to="/portal-total-link"
               onClick={handleNavClick}

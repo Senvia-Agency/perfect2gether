@@ -10,7 +10,6 @@ import { APP_VERSION } from "@/lib/constants";
 import type { AppRole } from "@/types";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { UpgradeModal } from "@/components/shared/UpgradeModal";
-import { hasPerfect2GetherAccess } from "@/lib/perfect2gether";
 
 interface NavItem {
   to: string;
@@ -54,15 +53,10 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, roles, isSuperAdmin, organization, organizations } = useAuth();
+  const { signOut, roles, isSuperAdmin, organization } = useAuth();
   const { isAdmin, canViewModule, systems } = usePermissions();
   const { modules } = useModules();
   const { isModuleLocked, getRequiredPlan } = useSubscription();
-  const hasPerfect2GetherModuleAccess = hasPerfect2GetherAccess({
-    organizationId: organization?.id,
-    memberships: organizations,
-    isSuperAdmin,
-  });
 
   const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; feature: string; plan: string }>({
     open: false, feature: '', plan: ''
@@ -140,7 +134,7 @@ export function AppSidebar({
               );
             })}
 
-            {(isTotalLinkOnly || hasPerfect2GetherModuleAccess || canViewModule('portal_total_link')) && (
+            {(isTotalLinkOnly || canViewModule('portal_total_link')) && (
               <NavLink
                 to="/portal-total-link"
                 className={cn(

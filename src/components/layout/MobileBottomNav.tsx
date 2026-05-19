@@ -7,7 +7,7 @@ import { useModules, EnabledModules } from "@/hooks/useModules";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/shared/UpgradeModal";
-import { hasPerfect2GetherAccess } from "@/lib/perfect2gether";
+
 
 interface NavItem {
   to: string;
@@ -34,15 +34,10 @@ const allNavItems: NavItem[] = [
 
 export function MobileBottomNav() {
   const location = useLocation();
-  const { isSuperAdmin, organization, organizations } = useAuth();
+  const { isSuperAdmin } = useAuth();
   const { modules } = useModules();
   const { canViewModule, isAdmin, systems } = usePermissions();
   const { isModuleLocked, getRequiredPlan } = useSubscription();
-  const hasPerfect2GetherModuleAccess = hasPerfect2GetherAccess({
-    organizationId: organization?.id,
-    memberships: organizations,
-    isSuperAdmin,
-  });
 
   const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; feature: string; plan: string }>({
     open: false, feature: '', plan: ''
@@ -62,7 +57,7 @@ export function MobileBottomNav() {
         return true;
       });
 
-  const portalItems: NavItem[] = (isTotalLinkOnly || hasPerfect2GetherModuleAccess || canViewModule('portal_total_link'))
+  const portalItems: NavItem[] = (isTotalLinkOnly || canViewModule('portal_total_link'))
     ? [{ to: "/portal-total-link", icon: Building2, label: "Portal" }]
     : [];
 
