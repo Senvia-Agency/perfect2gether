@@ -394,12 +394,22 @@ export function TeamTab() {
 
     setSendingAccessEmail(true);
     try {
+      // First change the password
+      await new Promise<void>((resolve, reject) => {
+        manageTeamMember.mutate(
+          { action: 'change_password', user_id: selectedMember.user_id, new_password: memberNewPassword },
+          { onSuccess: () => resolve(), onError: (e) => reject(e) }
+        );
+      });
+
+      // Then send the email with the new password
       const { data, error } = await supabase.functions.invoke('send-access-email', {
         body: {
           organizationId: organization.id,
           recipientEmail: selectedMember.email,
           recipientName: selectedMember.full_name,
           loginUrl,
+          password: memberNewPassword,
         },
       });
       if (error) throw error;
@@ -408,6 +418,7 @@ export function TeamTab() {
       toast({ title: 'Email enviado!', description: `Dados de acesso enviados para ${selectedMember.email}.` });
       setSendAccessOpen(false);
       setSelectedMember(null);
+      setMemberNewPassword('');
     } catch (err: any) {
       toast({
         title: 'Erro ao enviar email',
@@ -901,7 +912,7 @@ export function TeamTab() {
       </Dialog>
 
       {/* Send Access Email Modal */}
-      <Dialog open={sendAccessOpen} onOpenChange={setSendAccessOpen}>
+      <Dialog open={sendAccessOpen} onOpenChange={(open) => { setSendAccessOpen(open); if (!open) { setMemberNewPassword(''); setShowMemberPassword(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -909,19 +920,40 @@ export function TeamTab() {
               Enviar Email de Acesso
             </DialogTitle>
             <DialogDescription>
-              Enviar os dados de acesso (link e email) para <strong>{selectedMember?.full_name}</strong>? A palavra-passe atual não será alterada.
+              Define uma nova palavra-passe para <strong>{selectedMember?.full_name}</strong>. Será redefinida e enviada no email.
             </DialogDescription>
           </DialogHeader>
+          <div className="py-4 space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="access-email-password">Nova Palavra-passe</Label>
+              <div className="relative">
+                <Input
+                  id="access-email-password"
+                  type={showMemberPassword ? 'text' : 'password'}
+                  placeholder="Mínimo 6 caracteres"
+                  value={memberNewPassword}
+                  onChange={(e) => setMemberNewPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMemberPassword(!showMemberPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showMemberPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSendAccessOpen(false)}>
               Cancelar
             </Button>
             <Button
               onClick={handleSendAccessEmailToMember}
-              disabled={sendingAccessEmail}
+              disabled={sendingAccessEmail || !memberNewPassword || memberNewPassword.length < 6}
             >
               {sendingAccessEmail && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Enviar Email
+              Redefinir e Enviar Email
             </Button>
           </DialogFooter>
         </DialogContent>
