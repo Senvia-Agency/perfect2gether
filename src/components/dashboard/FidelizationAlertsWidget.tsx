@@ -76,6 +76,21 @@ export function FidelizationAlertsWidget() {
   const isTelecom = organization?.niche === 'telecom';
   const title = isTelecom ? 'CPE/CUI a Expirar' : 'Fidelizações a Expirar';
 
+  const filtered = useMemo(() => {
+    const { urgent = [], upcoming = [], expired = [] } = data || {};
+    return {
+      urgent: filterByScope(urgent, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id),
+      upcoming: filterByScope(upcoming, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id),
+      expired: filterByScope(expired, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id),
+    };
+  }, [data, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id]);
+
+  const { urgent, upcoming, expired } = filtered;
+  const totalAlerts = expired.length + urgent.length + upcoming.length;
+  const allItems = [...expired, ...urgent, ...upcoming];
+  const previewItems = allItems.slice(0, 2);
+  const remaining = totalAlerts - previewItems.length;
+
   if (isLoading) {
     return (
       <Card className="col-span-2 lg:col-span-1">
@@ -91,21 +106,6 @@ export function FidelizationAlertsWidget() {
       </Card>
     );
   }
-
-  const filtered = useMemo(() => {
-    const { urgent = [], upcoming = [], expired = [] } = data || {};
-    return {
-      urgent: filterByScope(urgent, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id),
-      upcoming: filterByScope(upcoming, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id),
-      expired: filterByScope(expired, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id),
-    };
-  }, [data, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id]);
-
-  const { urgent, upcoming, expired } = filtered;
-  const totalAlerts = expired.length + urgent.length + upcoming.length;
-  const allItems = [...expired, ...urgent, ...upcoming];
-  const previewItems = allItems.slice(0, 2);
-  const remaining = totalAlerts - previewItems.length;
 
   if (totalAlerts === 0) {
     return (
