@@ -307,7 +307,7 @@ export function ActivationsPanel() {
         onOpenChange={(open) => setEditModal((prev) => ({ ...prev, open }))}
         periodType={editModal.periodType}
         proposalType={editModal.proposalType}
-        members={memberList}
+        members={allMemberList}
       />
     </>
   );
