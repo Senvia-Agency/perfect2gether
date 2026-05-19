@@ -1,12 +1,11 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -28,26 +27,47 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Não autenticado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { organizationId, recipientEmail, recipientName, redirectTo } = await req.json();
-    if (!organizationId || !recipientEmail || !recipientName) {
+    const { organizationId, recipientEmail, recipientName, recipientUserId, redirectTo } = await req.json();
+    if (!organizationId || !recipientName) {
       return new Response(JSON.stringify({ error: 'Campos obrigatórios em falta' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false } });
 
-    // Generate recovery link
+    // Resolve the actual auth email — profile email may differ from auth email
+    let authEmail = recipientEmail;
+    if (recipientUserId) {
+      const { data: authUser, error: authUserErr } = await adminClient.auth.admin.getUserById(recipientUserId);
+      if (authUserErr || !authUser?.user?.email) {
+        console.error('Could not find auth user:', recipientUserId, authUserErr);
+        return new Response(JSON.stringify({ error: 'Este utilizador não tem conta de acesso. Crie o acesso primeiro.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      authEmail = authUser.user.email;
+    }
+
+    if (!authEmail) {
+      return new Response(JSON.stringify({ error: 'Email não encontrado para este utilizador.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Generate recovery link using the AUTH email (not profile email)
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
       type: 'recovery',
-      email: recipientEmail,
+      email: authEmail,
       options: { redirectTo: redirectTo || `${supabaseUrl}/reset-password` },
     });
 
-    if (linkError || !linkData?.properties?.action_link) {
-      console.error('Error generating recovery link:', linkError);
-      return new Response(JSON.stringify({ error: 'Erro ao gerar link de recuperação' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (linkError) {
+      console.error('Error generating recovery link:', JSON.stringify(linkError));
+      return new Response(JSON.stringify({ error: `Erro ao gerar link: ${linkError.message}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!linkData?.properties?.action_link) {
+      console.error('No action_link in response:', JSON.stringify(linkData));
+      return new Response(JSON.stringify({ error: 'Link de recuperação não gerado' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const recoveryLink = linkData.properties.action_link;
+    console.log('Recovery link generated for:', recipientEmail);
 
     // Get org Brevo config
     const { data: org } = await adminClient
@@ -114,7 +134,7 @@ serve(async (req) => {
       headers: { 'accept': 'application/json', 'api-key': brevoApiKey, 'content-type': 'application/json' },
       body: JSON.stringify({
         sender: { email: senderEmail, name: orgName },
-        to: [{ email: recipientEmail, name: recipientName }],
+        to: [{ email: authEmail, name: recipientName }],
         subject: `${orgName} — Recuperação de Palavra-passe`,
         htmlContent,
       }),
@@ -129,7 +149,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
-    console.error('Unexpected error:', error);
-    return new Response(JSON.stringify({ error: 'Erro interno' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Unexpected error in send-recovery-email:', message, error);
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

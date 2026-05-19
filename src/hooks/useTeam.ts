@@ -54,6 +54,7 @@ export function useTeamMembers(options?: { excludeAdmins?: boolean; includeSuppo
       return (data || []) as TeamMember[];
     },
     enabled: !!organization?.id,
+    retry: false,
   });
 
   // Filtrar contas de suporte das listagens (métricas, comissões, etc.) — super admins veem tudo

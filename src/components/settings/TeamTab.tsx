@@ -443,11 +443,13 @@ export function TeamTab() {
           organizationId: organization?.id,
           recipientEmail: member.email,
           recipientName: member.full_name,
+          recipientUserId: member.user_id,
           redirectTo: `${getBaseUrl()}/reset-password`,
         },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // On non-2xx, real error message is in data.error; error is generic FunctionsHttpError
+      const errorMsg = data?.error || error?.message;
+      if (errorMsg) throw new Error(errorMsg);
       toast({ title: 'Email enviado!', description: `Email de recuperação enviado para ${member.email}.` });
     } catch (err: any) {
       toast({ title: 'Erro ao enviar email', description: err.message || 'Tente novamente.', variant: 'destructive' });

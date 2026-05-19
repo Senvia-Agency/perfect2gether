@@ -63,7 +63,18 @@ const FinanceInternalRequests = lazy(() => import("./pages/finance/InternalReque
 const Gestao = lazy(() => import("./pages/Gestao"));
 const ReleaseNotes = lazy(() => import("./pages/ReleaseNotes"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Don't retry on auth errors — session expired, retrying is pointless
+        const msg = error instanceof Error ? error.message : String(error);
+        if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('403')) return false;
+        return failureCount < 3;
+      },
+    },
+  },
+});
 
 const App = () => (
   <HelmetProvider>
