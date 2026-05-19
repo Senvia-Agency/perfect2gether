@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-import { Users, UserPlus, Copy, X, Check, Clock, Loader2, RefreshCw, Eye, EyeOff, MoreHorizontal, Key, UserCog, Ban, CheckCircle, Mail, Pencil, Phone, Trash2, Bell } from 'lucide-react';
+import { Users, UserPlus, Copy, X, Check, Clock, Loader2, RefreshCw, Eye, EyeOff, MoreHorizontal, Key, UserCog, Ban, CheckCircle, Mail, Pencil, Phone, Trash2, Bell, ShieldCheck, ShieldOff, Smartphone, QrCode } from 'lucide-react';
 
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -112,6 +112,15 @@ export function TeamTab() {
   // Delete member confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
+
+  // MFA state
+  const [mfaModalOpen, setMfaModalOpen] = useState(false);
+  const [mfaStep, setMfaStep] = useState<'loading' | 'qr' | 'verify'>('loading');
+  const [mfaQrCode, setMfaQrCode] = useState('');
+  const [mfaFactorId, setMfaFactorId] = useState('');
+  const [mfaVerifyCode, setMfaVerifyCode] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [unenrollConfirmOpen, setUnenrollConfirmOpen] = useState(false);
 
   const handleCreateMember = async () => {
     if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
@@ -456,6 +465,77 @@ export function TeamTab() {
     }
   };
 
+  // MFA handlers
+  const openMfaEnrollModal = async (member: TeamMember) => {
+    setSelectedMember(member);
+    setMfaStep('loading');
+    setMfaQrCode('');
+    setMfaFactorId('');
+    setMfaVerifyCode('');
+    setMfaModalOpen(true);
+
+    // Start enrollment immediately — no password needed
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-team-member', {
+        body: {
+          action: 'enroll_mfa',
+          user_id: member.user_id,
+        },
+      });
+      const errorMsg = data?.error || error?.message;
+      if (errorMsg) throw new Error(errorMsg);
+      setMfaQrCode(data.qr_code);
+      setMfaFactorId(data.factor_id);
+      setMfaStep('qr');
+    } catch (err: any) {
+      toast({ title: 'Erro ao ativar 2FA', description: err.message, variant: 'destructive' });
+      setMfaModalOpen(false);
+    }
+  };
+
+  const handleMfaVerify = async () => {
+    if (!selectedMember || !mfaFactorId || !mfaVerifyCode) return;
+    setMfaLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-team-member', {
+        body: {
+          action: 'verify_mfa',
+          user_id: selectedMember.user_id,
+          factor_id: mfaFactorId,
+          code: mfaVerifyCode,
+        },
+      });
+      const errorMsg = data?.error || error?.message;
+      if (errorMsg) throw new Error(errorMsg);
+      toast({ title: '2FA ativado', description: `A autenticação de dois fatores foi ativada para ${selectedMember.full_name}.` });
+      setMfaModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['team-members'] });
+    } catch (err: any) {
+      toast({ title: 'Código inválido', description: err.message || 'Verifique o código e tente novamente.', variant: 'destructive' });
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const openUnenrollConfirm = (member: TeamMember) => {
+    setSelectedMember(member);
+    setUnenrollConfirmOpen(true);
+  };
+
+  const handleMfaUnenroll = () => {
+    if (!selectedMember) return;
+    manageTeamMember.mutate(
+      { action: 'unenroll_mfa', user_id: selectedMember.user_id },
+      {
+        onSuccess: () => {
+          setUnenrollConfirmOpen(false);
+          setSelectedMember(null);
+          queryClient.invalidateQueries({ queryKey: ['team-members'] });
+        },
+      }
+    );
+  };
+
   const loginUrl = `${getBaseUrl()}/`;
 
   // Check if member is current user
@@ -776,15 +856,28 @@ export function TeamTab() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {member.is_banned ? (
-                        <Badge variant="outline" className="text-destructive border-destructive">
-                          Inativo
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-success border-success">
-                          Ativo
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {member.is_banned ? (
+                          <Badge variant="outline" className="text-destructive border-destructive">
+                            Inativo
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-success border-success">
+                            Ativo
+                          </Badge>
+                        )}
+                        {member.has_mfa ? (
+                          <Badge variant="outline" className="text-blue-600 border-blue-300 gap-1">
+                            <ShieldCheck className="h-3 w-3" />
+                            2FA
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground/50 border-muted gap-1">
+                            <ShieldOff className="h-3 w-3" />
+                            Sem 2FA
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -810,6 +903,18 @@ export function TeamTab() {
                             <Key className="mr-2 h-4 w-4" />
                             Enviar Email de Recuperação
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {member.has_mfa ? (
+                            <DropdownMenuItem onClick={() => openUnenrollConfirm(member)}>
+                              <ShieldOff className="mr-2 h-4 w-4" />
+                              Desativar 2FA
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => openMfaEnrollModal(member)}>
+                              <ShieldCheck className="mr-2 h-4 w-4" />
+                              Ativar 2FA
+                            </DropdownMenuItem>
+                          )}
                           {!isCurrentUser(member) && member.role !== 'super_admin' && (
                             <>
                               <DropdownMenuItem onClick={() => openChangeRoleModal(member)}>
@@ -1276,18 +1381,120 @@ export function TeamTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar acesso</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem a certeza que deseja eliminar o acesso de <strong>{memberToDelete?.full_name}</strong>? 
+              Tem a certeza que deseja eliminar o acesso de <strong>{memberToDelete?.full_name}</strong>?
               Esta ação é irreversível. O colaborador será removido da organização e não poderá mais iniciar sessão.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDeleteMember}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {manageTeamMember.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* MFA Enrollment Modal */}
+      <Dialog open={mfaModalOpen} onOpenChange={(open) => { if (!open) setMfaModalOpen(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              Ativar Autenticação de Dois Fatores
+            </DialogTitle>
+            <DialogDescription>
+              {mfaStep === 'loading' && `A gerar código QR para ${selectedMember?.full_name}...`}
+              {mfaStep === 'qr' && 'Leia o código QR com a aplicação de autenticação (Microsoft Authenticator, Google Authenticator, etc.)'}
+              {mfaStep === 'verify' && 'Introduza o código de 6 dígitos apresentado na aplicação para confirmar a ativação.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            {mfaStep === 'loading' && (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">A gerar código QR...</p>
+              </div>
+            )}
+
+            {mfaStep === 'qr' && mfaQrCode && (
+              <div className="space-y-4">
+                <div className="flex justify-center p-4 bg-white rounded-lg">
+                  <img
+                    src={mfaQrCode}
+                    alt="QR Code para autenticação"
+                    className="w-48 h-48"
+                  />
+                </div>
+                <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                  <QrCode className="h-4 w-4 mt-0.5 shrink-0" />
+                  <p>Abra a aplicação de autenticação no telemóvel e leia este código QR. Depois clique em "Verificar" para confirmar.</p>
+                </div>
+              </div>
+            )}
+
+            {mfaStep === 'verify' && (
+              <div className="space-y-2">
+                <Label htmlFor="mfa-verify-code">Código de verificação</Label>
+                <Input
+                  id="mfa-verify-code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={mfaVerifyCode}
+                  onChange={(e) => setMfaVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onKeyDown={(e) => e.key === 'Enter' && mfaVerifyCode.length === 6 && handleMfaVerify()}
+                  className="text-center text-2xl tracking-[0.5em] font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Introduza o código de 6 dígitos da aplicação de autenticação.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMfaModalOpen(false)}>
+              Cancelar
+            </Button>
+            {mfaStep === 'qr' && (
+              <Button onClick={() => setMfaStep('verify')}>
+                Verificar
+              </Button>
+            )}
+            {mfaStep === 'verify' && (
+              <Button onClick={handleMfaVerify} disabled={mfaVerifyCode.length !== 6 || mfaLoading}>
+                {mfaLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirmar Ativação
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unenroll MFA Confirmation */}
+      <AlertDialog open={unenrollConfirmOpen} onOpenChange={setUnenrollConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar autenticação de dois fatores</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem a certeza que deseja desativar o 2FA de <strong>{selectedMember?.full_name}</strong>?
+              O colaborador poderá iniciar sessão apenas com email e palavra-passe.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMfaUnenroll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {manageTeamMember.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Desativar 2FA
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -105,13 +105,25 @@ export function TeamsSection() {
     );
   };
 
-  // Available members for selection (exclude leader, exclude members already in OTHER teams)
+  // Leaders: only members with "CE" (Chefe de Equipa) profile
+  const leaderCandidates = useMemo(() => {
+    return orgMembers.filter(m => {
+      if (m.role === 'super_admin') return false;
+      const pName = (m.profile_name || '').toLowerCase();
+      return pName.includes('ce') || pName.includes('chefe');
+    });
+  }, [orgMembers]);
+
+  // Available members for selection: only salesperson role, exclude leader, exclude members already in OTHER teams
   const getAvailableMembers = (currentTeamId?: string) => {
     return orgMembers.filter(m => {
-      if (m.user_id === leaderId) return false; // Leader is not a "member"
-      if (m.role === 'super_admin') return false;
+      if (m.user_id === leaderId) return false;
+      if (m.role !== 'salesperson') return false;
+      const pName = (m.profile_name || '').toLowerCase();
+      // Exclude CE profiles — they are leaders, not team members
+      if (pName.includes('ce') || pName.includes('chefe')) return false;
       const existingTeam = memberTeamMap[m.user_id];
-      if (existingTeam && existingTeam !== currentTeamId) return false; // Already in another team
+      if (existingTeam && existingTeam !== currentTeamId) return false;
       return true;
     });
   };
@@ -133,22 +145,26 @@ export function TeamsSection() {
           </div>
 
           <div className="space-y-2">
-            <Label>Líder</Label>
+            <Label>Líder (Chefe de Equipa)</Label>
             <Select value={leaderId} onValueChange={setLeaderId}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecionar líder..." />
               </SelectTrigger>
               <SelectContent>
-                {orgMembers
-                  .filter(m => m.role !== 'super_admin')
-                  .map(m => (
+                {leaderCandidates.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    Nenhum membro com perfil CE encontrado.
+                  </div>
+                ) : (
+                  leaderCandidates.map(m => (
                     <SelectItem key={m.user_id} value={m.user_id}>
                       {m.full_name}
                       <span className="text-muted-foreground text-xs ml-2">
-                        ({m.role})
+                        ({m.profile_name || m.role})
                       </span>
                     </SelectItem>
-                  ))}
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

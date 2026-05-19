@@ -76,7 +76,7 @@ export function useChangePassword() {
 }
 
 interface ManageTeamMemberParams {
-  action: 'change_password' | 'change_role' | 'toggle_status' | 'update_profile' | 'delete_member';
+  action: 'change_password' | 'change_role' | 'toggle_status' | 'update_profile' | 'delete_member' | 'enroll_mfa' | 'verify_mfa' | 'unenroll_mfa';
   user_id: string;
   new_password?: string;
   new_role?: 'admin' | 'viewer' | 'salesperson';
@@ -85,6 +85,11 @@ interface ManageTeamMemberParams {
   full_name?: string;
   email?: string;
   phone?: string;
+  // MFA fields
+  factor_id?: string;
+  code?: string;
+  user_email?: string;
+  user_password?: string;
 }
 
 export function useManageTeamMember() {
@@ -185,10 +190,14 @@ export function useManageTeamMember() {
         toggle_status: { title: 'Estado alterado', description: 'O estado do colaborador foi atualizado com sucesso.' },
         update_profile: { title: 'Dados atualizados', description: 'Os dados do colaborador foram atualizados com sucesso.' },
         delete_member: { title: 'Acesso eliminado', description: 'O colaborador foi removido da organização.' },
+        unenroll_mfa: { title: '2FA desativado', description: 'A autenticação de dois fatores foi removida.' },
       };
 
+      // enroll_mfa and verify_mfa have custom success handling in TeamTab
+      if (variables.action === 'enroll_mfa' || variables.action === 'verify_mfa') return;
+
       const msg = messages[variables.action];
-      toast({ title: msg.title, description: msg.description });
+      if (msg) toast({ title: msg.title, description: msg.description });
     },
   });
 }

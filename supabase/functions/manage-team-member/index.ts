@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 interface ManageMemberRequest {
-  action: 'change_password' | 'change_role' | 'toggle_status' | 'update_profile' | 'delete_member';
+  action: 'change_password' | 'change_role' | 'toggle_status' | 'update_profile' | 'delete_member' | 'enroll_mfa' | 'verify_mfa' | 'unenroll_mfa';
   user_id: string;
   new_password?: string;
   new_role?: 'admin' | 'viewer' | 'salesperson';
@@ -14,6 +14,11 @@ interface ManageMemberRequest {
   full_name?: string;
   email?: string;
   phone?: string;
+  // MFA fields
+  factor_id?: string;
+  code?: string;
+  user_email?: string;
+  user_password?: string;
 }
 
 Deno.serve(async (req) => {
@@ -80,7 +85,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: ManageMemberRequest = await req.json();
-    const { action, user_id, new_password, new_role, profile_id, full_name, email, phone } = body;
+    const { action, user_id, new_password, new_role, profile_id, full_name, email, phone, factor_id, code, user_email, user_password } = body;
 
     console.log(`Action: ${action}, Target user: ${user_id}`);
 
@@ -430,6 +435,216 @@ Deno.serve(async (req) => {
         await redistributeLeads(user_id, sharedOrgId);
 
         console.log(`Member ${user_id} deleted from org ${sharedOrgId}`);
+        break;
+      }
+
+      case 'enroll_mfa': {
+        // Admin enrolls MFA for a user — no password needed
+        // Look up user's auth email
+        const { data: enrollTarget, error: enrollTargetErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
+        if (enrollTargetErr || !enrollTarget?.user?.email) {
+          return new Response(
+            JSON.stringify({ error: 'Utilizador não encontrado ou sem email' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Remove any existing TOTP factors via admin API BEFORE generating session
+        // (aal1 sessions can't unenroll verified factors, so we use the admin API)
+        const { data: priorFactors } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: user_id });
+        if (priorFactors?.factors && priorFactors.factors.length > 0) {
+          for (const f of priorFactors.factors) {
+            if (f.factor_type === 'totp') {
+              await supabaseAdmin.auth.admin.mfa.deleteFactor({ id: f.id, userId: user_id });
+            }
+          }
+        }
+
+        // Generate a magic link to obtain a session token without the user's password
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email: enrollTarget.user.email,
+        });
+
+        if (linkError || !linkData?.properties?.hashed_token) {
+          console.error('MFA generateLink error:', linkError);
+          return new Response(
+            JSON.stringify({ error: `Erro ao gerar sessão: ${linkError?.message || 'Unknown'}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify the OTP to get a user session
+        const enrollUserClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: { persistSession: false },
+        });
+
+        const { data: otpData, error: otpError } = await enrollUserClient.auth.verifyOtp({
+          token_hash: linkData.properties.hashed_token,
+          type: 'magiclink',
+        });
+
+        if (otpError || !otpData.session) {
+          console.error('MFA OTP verify error:', otpError);
+          return new Response(
+            JSON.stringify({ error: `Erro ao criar sessão: ${otpError?.message || 'Unknown'}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Create a client with the user's session to enroll MFA
+        const mfaClient = createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: `Bearer ${otpData.session.access_token}` } },
+          auth: { persistSession: false },
+        });
+
+        // Enroll new TOTP factor
+        const { data: enrollData, error: enrollError } = await mfaClient.auth.mfa.enroll({
+          factorType: 'totp',
+          friendlyName: 'Perfect2Gether',
+          issuer: 'Perfect2Gether',
+        });
+
+        if (enrollError || !enrollData) {
+          console.error('MFA enroll error:', enrollError);
+          return new Response(
+            JSON.stringify({ error: `Erro ao ativar MFA: ${enrollError?.message || 'Unknown'}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`MFA enrolled for user ${user_id}, factor: ${enrollData.id}`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            factor_id: enrollData.id,
+            totp_uri: enrollData.totp.uri,
+            qr_code: enrollData.totp.qr_code,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'verify_mfa': {
+        // Admin verifies the TOTP code to complete enrollment — no password needed
+        if (!factor_id || !code) {
+          return new Response(
+            JSON.stringify({ error: 'factor_id e code são obrigatórios' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Look up user's auth email
+        const { data: verifyTarget, error: verifyTargetErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
+        if (verifyTargetErr || !verifyTarget?.user?.email) {
+          return new Response(
+            JSON.stringify({ error: 'Utilizador não encontrado' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Generate magic link to get session
+        const { data: verifyLinkData, error: verifyLinkErr } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email: verifyTarget.user.email,
+        });
+
+        if (verifyLinkErr || !verifyLinkData?.properties?.hashed_token) {
+          return new Response(
+            JSON.stringify({ error: `Erro ao gerar sessão: ${verifyLinkErr?.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const verifyUserClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: { persistSession: false },
+        });
+
+        const { data: verifyOtpData, error: verifyOtpErr } = await verifyUserClient.auth.verifyOtp({
+          token_hash: verifyLinkData.properties.hashed_token,
+          type: 'magiclink',
+        });
+
+        if (verifyOtpErr || !verifyOtpData.session) {
+          return new Response(
+            JSON.stringify({ error: `Erro ao criar sessão: ${verifyOtpErr?.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const verifyMfaClient = createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: `Bearer ${verifyOtpData.session.access_token}` } },
+          auth: { persistSession: false },
+        });
+
+        // Create challenge and verify
+        const { data: challengeData, error: challengeError } = await verifyMfaClient.auth.mfa.challenge({
+          factorId: factor_id,
+        });
+
+        if (challengeError || !challengeData) {
+          console.error('MFA challenge error:', challengeError);
+          return new Response(
+            JSON.stringify({ error: `Erro ao criar challenge: ${challengeError?.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { error: verifyError } = await verifyMfaClient.auth.mfa.verify({
+          factorId: factor_id,
+          challengeId: challengeData.id,
+          code: code,
+        });
+
+        if (verifyError) {
+          console.error('MFA verify error:', verifyError);
+          return new Response(
+            JSON.stringify({ error: 'Código inválido. Verifique o código na aplicação de autenticação.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`MFA verified for user ${user_id}, factor: ${factor_id}`);
+        break;
+      }
+
+      case 'unenroll_mfa': {
+        // Admin removes MFA from a user — use admin API to list factors and remove
+        const { data: targetUser, error: targetError } = await supabaseAdmin.auth.admin.getUserById(user_id);
+        if (targetError || !targetUser?.user) {
+          return new Response(
+            JSON.stringify({ error: 'Utilizador não encontrado' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // List MFA factors via admin API
+        const { data: factors, error: factorsError } = await supabaseAdmin.auth.admin.mfa.listFactors({
+          userId: user_id,
+        });
+
+        if (factorsError) {
+          console.error('List factors error:', factorsError);
+          return new Response(
+            JSON.stringify({ error: 'Erro ao listar fatores MFA' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Delete all TOTP factors
+        const totpFactors = factors?.factors?.filter((f: any) => f.factor_type === 'totp') || [];
+        for (const factor of totpFactors) {
+          const { error: deleteError } = await supabaseAdmin.auth.admin.mfa.deleteFactor({
+            userId: user_id,
+            factorId: factor.id,
+          });
+          if (deleteError) {
+            console.error(`Error deleting factor ${factor.id}:`, deleteError);
+          }
+        }
+
+        console.log(`MFA unenrolled for user ${user_id}, removed ${totpFactors.length} factors`);
         break;
       }
 

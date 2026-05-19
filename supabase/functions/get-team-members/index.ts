@@ -183,6 +183,19 @@ Deno.serve(async (req) => {
           ? new Date(authUser.user.banned_until) > new Date()
           : false
 
+        // Check MFA status
+        let hasMfa = false
+        try {
+          const { data: mfaFactors } = await adminClient.auth.admin.mfa.listFactors({
+            userId: member.user_id,
+          })
+          hasMfa = (mfaFactors?.factors || []).some(
+            (f: any) => f.factor_type === 'totp' && f.status === 'verified'
+          )
+        } catch {
+          // MFA check failed, default to false
+        }
+
         return {
           id: member.user_id,
           full_name: profileItem?.full_name || 'Unknown',
@@ -193,6 +206,7 @@ Deno.serve(async (req) => {
           user_id: member.user_id,
           role: userRole?.role || member.role || 'viewer',
           is_banned: isBanned,
+          has_mfa: hasMfa,
           profile_id: member.profile_id || null,
           profile_name: orgProfile?.name || null,
         }
