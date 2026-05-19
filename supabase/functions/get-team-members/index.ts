@@ -199,6 +199,40 @@ Deno.serve(async (req) => {
       })
     )
 
+    // If requester is super_admin, also include other super_admin users not in organization_members
+    if (isSuperAdmin) {
+      const { data: superAdminRoles } = await adminClient
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'super_admin')
+
+      const existingIds = new Set(teamMembers.map((m) => m.user_id))
+      const extraIds = (superAdminRoles || []).map((r) => r.user_id).filter((id) => !existingIds.has(id))
+
+      if (extraIds.length > 0) {
+        const { data: extraProfiles } = await adminClient
+          .from('profiles')
+          .select('id, full_name, avatar_url, email, phone')
+          .in('id', extraIds)
+
+        for (const p of extraProfiles || []) {
+          teamMembers.push({
+            id: p.id,
+            full_name: p.full_name || 'Super Admin',
+            avatar_url: p.avatar_url,
+            email: p.email || null,
+            phone: p.phone || null,
+            organization_id: organizationId,
+            user_id: p.id,
+            role: 'super_admin',
+            is_banned: false,
+            profile_id: null,
+            profile_name: null,
+          })
+        }
+      }
+    }
+
     return new Response(JSON.stringify(teamMembers), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

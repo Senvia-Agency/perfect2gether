@@ -41,10 +41,12 @@ const ROLE_VARIANTS: Record<string, 'default' | 'secondary' | 'outline'> = {
 };
 
 export function TeamTab() {
-  const { user, organization } = useAuth();
+  const { user, organization, isSuperAdmin } = useAuth();
   const { data: orgData } = useOrganization();
   const queryClient = useQueryClient();
-  const { data: members, isLoading: loadingMembers } = useTeamMembers();
+  const { data: allMembers, isLoading: loadingMembers } = useTeamMembers();
+  // Super admins só visíveis para outros super admins
+  const members = isSuperAdmin ? allMembers : allMembers?.filter(m => m.role !== 'super_admin');
   const { data: invites, isLoading: loadingInvites } = usePendingInvites();
   const { profiles } = useOrganizationProfiles();
   const cancelInvite = useCancelInvite();
@@ -435,13 +437,20 @@ export function TeamTab() {
       toast({ title: 'Sem email', description: 'Este membro não tem email configurado.', variant: 'destructive' });
       return;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(member.email, {
-      redirectTo: `${getBaseUrl()}/reset-password`,
-    });
-    if (error) {
-      toast({ title: 'Erro ao enviar email', description: error.message, variant: 'destructive' });
-    } else {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-recovery-email', {
+        body: {
+          organizationId: organization?.id,
+          recipientEmail: member.email,
+          recipientName: member.full_name,
+          redirectTo: `${getBaseUrl()}/reset-password`,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast({ title: 'Email enviado!', description: `Email de recuperação enviado para ${member.email}.` });
+    } catch (err: any) {
+      toast({ title: 'Erro ao enviar email', description: err.message || 'Tente novamente.', variant: 'destructive' });
     }
   };
 
