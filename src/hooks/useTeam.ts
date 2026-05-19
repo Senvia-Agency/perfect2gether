@@ -38,8 +38,8 @@ export interface PendingInvite {
 
 const ADMIN_ROLES: Array<TeamMember['role']> = ['admin', 'super_admin'];
 
-export function useTeamMembers(options?: { excludeAdmins?: boolean }) {
-  const { organization } = useAuth();
+export function useTeamMembers(options?: { excludeAdmins?: boolean; includeSupport?: boolean }) {
+  const { organization, isSuperAdmin } = useAuth();
 
   const query = useQuery({
     queryKey: ['team-members', organization?.id],
@@ -51,20 +51,25 @@ export function useTeamMembers(options?: { excludeAdmins?: boolean }) {
       });
 
       if (error) throw error;
-      // Excluir contas de suporte das listagens (não aparecem em métricas, comissões, etc.)
-      return ((data || []) as TeamMember[]).filter(m => !m.email || !SUPPORT_EMAILS.includes(m.email));
+      return (data || []) as TeamMember[];
     },
     enabled: !!organization?.id,
   });
 
+  // Filtrar contas de suporte das listagens (métricas, comissões, etc.) — super admins veem tudo
+  const showSupport = options?.includeSupport || isSuperAdmin;
+  const filtered = showSupport
+    ? query.data
+    : query.data?.filter(m => !m.email || !SUPPORT_EMAILS.includes(m.email));
+
   if (options?.excludeAdmins) {
     return {
       ...query,
-      data: query.data?.filter(m => !ADMIN_ROLES.includes(m.role)),
+      data: filtered?.filter(m => !ADMIN_ROLES.includes(m.role)),
     };
   }
 
-  return query;
+  return { ...query, data: filtered };
 }
 
 export function usePendingInvites() {
