@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
 
+const p2gLogo = "/Logo-P2G.png";
+
 export default function ResetPassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -60,7 +62,7 @@ export default function ResetPassword() {
 
   const getPasswordStrength = (pass: string): { label: string; color: string; width: string } => {
     if (!pass) return { label: '', color: 'bg-muted', width: '0%' };
-    
+
     let score = 0;
     if (pass.length >= 6) score++;
     if (pass.length >= 8) score++;
@@ -129,124 +131,151 @@ export default function ResetPassword() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
-        <Card className="max-w-md w-full bg-slate-900/50 border-slate-800">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertCircle className="h-6 w-6 text-destructive" />
-            </div>
-            <CardTitle className="text-white">Link Inválido</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={() => navigate('/')}>
-              Voltar ao Login
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+        <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,hsl(var(--secondary)/0.05)_0%,transparent_50%)]" />
+        <div className="w-full max-w-md relative z-10">
+          <div className="text-center mb-8">
+            <img src={p2gLogo} alt="Perfect2Gether" className="h-12 w-48 object-contain mx-auto" width={192} height={48} />
+          </div>
+          <Card className="border-border bg-card/80 backdrop-blur shadow-xl">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-destructive" />
+              </div>
+              <CardTitle className="text-foreground">Link Inválido</CardTitle>
+              <CardDescription className="text-muted-foreground">{error}</CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <Button onClick={() => navigate('/')} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+                Voltar ao Login
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
-        <Card className="max-w-md w-full bg-slate-900/50 border-slate-800">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
-              <CheckCircle2 className="h-6 w-6 text-green-500" />
-            </div>
-            <CardTitle className="text-white">Palavra-passe Alterada!</CardTitle>
-            <CardDescription>
-              A sua palavra-passe foi alterada com sucesso. A redirecionar para o login...
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+        <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,hsl(var(--secondary)/0.05)_0%,transparent_50%)]" />
+        <div className="w-full max-w-md relative z-10">
+          <div className="text-center mb-8">
+            <img src={p2gLogo} alt="Perfect2Gether" className="h-12 w-48 object-contain mx-auto" width={192} height={48} />
+          </div>
+          <Card className="border-border bg-card/80 backdrop-blur shadow-xl">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-green-500" />
+              </div>
+              <CardTitle className="text-foreground">Palavra-passe Alterada!</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                A sua palavra-passe foi alterada com sucesso. A redirecionar para o login...
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
-      <Card className="max-w-md w-full bg-slate-900/50 border-slate-800">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <KeyRound className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle className="text-white">Nova Palavra-passe</CardTitle>
-          <CardDescription>
-            Introduza a sua nova palavra-passe.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-200">Nova Palavra-passe</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Mínimo 6 caracteres"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-slate-800/50 border-slate-700 text-white"
-                required
-              />
-              {password && (
-                <div className="space-y-1">
-                  <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-300 ${passwordStrength.color}`}
-                      style={{ width: passwordStrength.width }}
-                    />
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+      <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,hsl(var(--secondary)/0.05)_0%,transparent_50%)]" />
+      <div className="w-full max-w-md relative z-10">
+        <div className="text-center mb-8">
+          <img src={p2gLogo} alt="Perfect2Gether" className="h-12 w-48 object-contain mx-auto" width={192} height={48} />
+        </div>
+        <Card className="border-border bg-card/80 backdrop-blur shadow-xl">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <KeyRound className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="text-foreground text-2xl font-bold">Nova Palavra-passe</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Introduza a sua nova palavra-passe.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-foreground font-medium">Nova Palavra-passe</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Mínimo 6 caracteres"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-background border-border text-foreground"
+                  required
+                />
+                {password && (
+                  <div className="space-y-1">
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                        style={{ width: passwordStrength.width }}
+                      />
+                    </div>
+                    <p className={`text-xs ${
+                      passwordStrength.label === 'Fraca' ? 'text-destructive' :
+                      passwordStrength.label === 'Média' ? 'text-yellow-500' : 'text-green-500'
+                    }`}>
+                      Força: {passwordStrength.label}
+                    </p>
                   </div>
-                  <p className={`text-xs ${
-                    passwordStrength.label === 'Fraca' ? 'text-destructive' :
-                    passwordStrength.label === 'Média' ? 'text-yellow-500' : 'text-green-500'
-                  }`}>
-                    Força: {passwordStrength.label}
-                  </p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-slate-200">Confirmar Palavra-passe</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Repita a palavra-passe"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="bg-slate-800/50 border-slate-700 text-white"
-                required
-              />
-              {confirmPassword && password !== confirmPassword && (
-                <p className="text-xs text-destructive">As palavras-passe não coincidem</p>
-              )}
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-foreground font-medium">Confirmar Palavra-passe</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Repita a palavra-passe"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="bg-background border-border text-foreground"
+                  required
+                />
+                {confirmPassword && password !== confirmPassword && (
+                  <p className="text-xs text-destructive">As palavras-passe não coincidem</p>
+                )}
+              </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isSubmitting || !isValidSession}
-            >
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Alterar Palavra-passe
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 text-lg"
+                disabled={isSubmitting || !isValidSession}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    A alterar...
+                  </>
+                ) : (
+                  'Alterar Palavra-passe'
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
