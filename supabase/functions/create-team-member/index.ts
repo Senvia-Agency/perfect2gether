@@ -49,7 +49,9 @@ serve(async (req) => {
     }
 
     // Create admin client for privileged operations
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
 
     // Get current user's organization
     const { data: profile, error: profileError } = await supabaseAdmin
@@ -147,58 +149,33 @@ serve(async (req) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if user already exists
-    const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (listError) {
-      console.error('Error listing users:', listError);
-      return new Response(
-        JSON.stringify({ error: 'Erro ao verificar utilizadores existentes' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const existingUser = existingUsers.users.find(u => u.email?.toLowerCase() === normalizedEmail);
-    
     let userId: string;
 
-    if (existingUser) {
-      console.log(`User already exists: ${existingUser.id}, checking organization...`);
-      
-      // Check if user already belongs to an organization
-      const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
-        .from('profiles')
-        .select('organization_id, full_name')
-        .eq('id', existingUser.id)
-        .single();
+    // Check if a profile with this email already exists (avoids expensive listUsers)
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, organization_id')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
 
-      if (existingProfileError) {
-        console.error('Error checking existing profile:', existingProfileError);
+    if (existingProfile) {
+      if (existingProfile.organization_id === organizationId) {
         return new Response(
-          JSON.stringify({ error: 'Erro ao verificar perfil do utilizador' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'Este utilizador já pertence à sua organização' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-
-      if (existingProfile?.organization_id) {
-        if (existingProfile.organization_id === organizationId) {
-          return new Response(
-            JSON.stringify({ error: 'Este utilizador já pertence à sua organização' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        } else {
-          return new Response(
-            JSON.stringify({ error: 'Este email já está associado a outra organização' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+      if (existingProfile.organization_id) {
+        return new Response(
+          JSON.stringify({ error: 'Este email já está associado a outra organização' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-
-      // User exists but has no organization - add to this org
-      userId = existingUser.id;
+      // User exists but has no organization — add to this org
+      userId = existingProfile.id;
       console.log(`Adding existing user ${userId} to organization ${organizationId}`);
     } else {
-      // Create new user
+      // Try to create new auth user
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: normalizedEmail,
         password,
@@ -207,6 +184,16 @@ serve(async (req) => {
       });
 
       if (createError) {
+        // If user already exists in auth but not in profiles, find them
+        if (createError.message?.includes('already been registered')) {
+          // Look up by email in auth
+          const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
+          // Fallback: search in auth by creating a dummy lookup
+          return new Response(
+            JSON.stringify({ error: 'Este email já está registado. Contacte o administrador.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         console.error('Error creating user:', createError);
         return new Response(
           JSON.stringify({ error: 'Erro ao criar utilizador: ' + createError.message }),

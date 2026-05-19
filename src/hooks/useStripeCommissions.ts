@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardPeriod } from "@/stores/useDashboardPeriod";
 import { startOfMonth, endOfMonth, format } from "date-fns";
+import { SUPPORT_EMAILS } from "@/lib/constants";
 
 export interface StripeCommissionRecord {
   id: string;
@@ -56,9 +57,10 @@ export function useStripeCommissions() {
       const userIds = [...new Set(records.map((r: any) => r.user_id))] as string[];
       const clientOrgIds = [...new Set(records.map((r: any) => r.client_org_id))] as string[];
 
-      const [profilesRes, orgsRes] = await Promise.all([
-        supabase.from("profiles").select("id, full_name").in("id", userIds),
+      const [profilesRes, orgsRes, membersRes] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, email").in("id", userIds),
         supabase.from("organizations").select("id, name").in("id", clientOrgIds),
+        supabase.from("organization_members").select("user_id, role").eq("organization_id", orgId).in("user_id", userIds),
       ]);
 
       const profileMap = new Map((profilesRes.data || []).map(p => [p.id, p.full_name]));
@@ -66,7 +68,17 @@ export function useStripeCommissions() {
 
       const grouped = new Map<string, (StripeCommissionRecord & { clientOrgName: string })[]>();
 
+      // Excluir contas de suporte e admins
+      const adminUserIds = new Set(
+        (membersRes.data || []).filter((m: any) => m.role === 'admin').map((m: any) => m.user_id)
+      );
+      const supportUserIds = new Set(
+        (profilesRes.data || []).filter((p: any) => p.email && SUPPORT_EMAILS.includes(p.email)).map((p: any) => p.id)
+      );
+      const excludedUserIds = new Set([...supportUserIds, ...adminUserIds]);
+
       for (const r of records) {
+        if (excludedUserIds.has(r.user_id)) continue;
         const enriched = { ...r, clientOrgName: orgMap.get(r.client_org_id) || "Desconhecido" };
         const existing = grouped.get(r.user_id) || [];
         existing.push(enriched);

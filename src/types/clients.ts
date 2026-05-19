@@ -101,8 +101,8 @@ export const CLIENT_FIELD_DEFAULTS: Record<ClientFieldKey, { label: string; icon
 
 export const DEFAULT_CLIENT_FIELDS_SETTINGS: ClientFieldsSettings = {
   name: { visible: true, required: false, label: 'Nome' },
-  email: { visible: true, required: false, label: 'Email' },
-  phone: { visible: true, required: false, label: 'Telefone' },
+  email: { visible: true, required: true, label: 'Email' },
+  phone: { visible: true, required: true, label: 'Telefone' },
   company: { visible: true, required: false, label: 'Empresa' },
   company_nif: { visible: true, required: false, label: 'Contribuinte (Empresa)' },
   nif: { visible: true, required: false, label: 'NIF' },

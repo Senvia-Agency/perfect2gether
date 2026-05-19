@@ -17,6 +17,7 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   moduleKey?: keyof EnabledModules;
+  permissionKey?: string;
   isAdminOnly?: boolean;
 }
 
@@ -31,8 +32,8 @@ const allNavItems: NavItem[] = [
   { to: "/marketing", icon: Mail, label: "Marketing", moduleKey: 'marketing' },
   { to: "/prospects", icon: Search, label: "Prospects", moduleKey: 'prospects' },
   { to: "/ecommerce", icon: Store, label: "E-commerce", moduleKey: 'ecommerce' },
-  { to: "/settings", icon: Settings, label: "Definições" },
-  { to: "/gestao", icon: BarChart3, label: "Gestão", isAdminOnly: true },
+  { to: "/settings", icon: Settings, label: "Definições", isAdminOnly: true },
+  { to: "/gestao", icon: BarChart3, label: "Gestão", permissionKey: 'gestao' },
 ];
 
 const getRoleLabel = (roles: AppRole[]): string => {
@@ -54,9 +55,8 @@ export function AppSidebar({
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, roles, isSuperAdmin, organization, organizations } = useAuth();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, canViewModule, systems } = usePermissions();
   const { modules } = useModules();
-  const { canViewModule } = usePermissions();
   const { isModuleLocked, getRequiredPlan } = useSubscription();
   const hasPerfect2GetherModuleAccess = hasPerfect2GetherAccess({
     organizationId: organization?.id,
@@ -68,14 +68,19 @@ export function AppSidebar({
     open: false, feature: '', plan: ''
   });
 
-  const navItems = allNavItems.filter(item => {
-    if (item.isAdminOnly && !isAdmin && !isSuperAdmin) return false;
-    if (!item.moduleKey) return true;
-    if (isModuleLocked(item.moduleKey)) return true;
-    if (!modules[item.moduleKey]) return false;
-    if (!canViewModule(item.moduleKey)) return false;
-    return true;
-  });
+  const isTotalLinkOnly = systems.length === 1 && systems[0] === 'total_link';
+
+  const navItems = isTotalLinkOnly
+    ? [] // Total Link users only see the portal, injected below
+    : allNavItems.filter(item => {
+        if (item.isAdminOnly && !isAdmin && !isSuperAdmin) return false;
+        if (item.permissionKey && !canViewModule(item.permissionKey)) return false;
+        if (!item.moduleKey) return true;
+        if (isModuleLocked(item.moduleKey)) return true;
+        if (!modules[item.moduleKey]) return false;
+        if (!canViewModule(item.moduleKey)) return false;
+        return true;
+      });
 
   const handleLogout = async () => {
     await signOut();
@@ -135,7 +140,7 @@ export function AppSidebar({
               );
             })}
 
-            {hasPerfect2GetherModuleAccess && (
+            {(isTotalLinkOnly || hasPerfect2GetherModuleAccess || canViewModule('portal_total_link')) && (
               <NavLink
                 to="/portal-total-link"
                 className={cn(
@@ -150,7 +155,7 @@ export function AppSidebar({
               </NavLink>
             )}
             
-            {isSuperAdmin && (
+            {isSuperAdmin && !isTotalLinkOnly && (
               <NavLink
                 to="/system-admin"
                 className={cn(
@@ -184,9 +189,9 @@ export function AppSidebar({
           </div>
 
           <div className="px-4 py-2 text-center">
-            <span className="text-[10px] text-sidebar-muted/60">
+            <NavLink to="/notas-atualizacao" className="text-[10px] text-sidebar-muted/60 hover:text-sidebar-foreground transition-colors">
               Perfect2Gether v{APP_VERSION}
-            </span>
+            </NavLink>
           </div>
         </div>
       </aside>

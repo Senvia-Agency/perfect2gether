@@ -404,7 +404,9 @@ Deno.serve(async (req) => {
       })
     }
 
-    const supabaseAuth = createClient(supabaseUrl, supabaseServiceKey)
+    const supabaseAuth = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    })
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token)
     if (authError || !user) {
@@ -422,7 +424,9 @@ Deno.serve(async (req) => {
       })
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    })
 
     // Verify membership
     const { data: membership } = await supabase

@@ -14,6 +14,7 @@ export interface CpeWithClient {
   client_company: string | null;
   client_email: string | null;
   client_phone: string | null;
+  client_created_by: string | null;
   days_until_expiry: number;
 }
 
@@ -53,7 +54,8 @@ export function useFidelizationAlerts() {
             name,
             company,
             email,
-            phone
+            phone,
+            created_by
           )
         `)
         .eq('organization_id', organizationId)
@@ -86,6 +88,7 @@ export function useFidelizationAlerts() {
             client_company: cpe.crm_clients.company,
             client_email: cpe.crm_clients.email,
             client_phone: cpe.crm_clients.phone,
+            client_created_by: cpe.crm_clients.created_by,
             days_until_expiry: daysUntilExpiry,
           };
         });

@@ -1,15 +1,13 @@
-import { Building, UsersRound, Package, Link2, Bell, Receipt, Shield, GitBranch, LayoutGrid, FileText, List, KeyRound, UserCog, Network, BellRing, AlertTriangle, Calculator, ShoppingCart, Calendar, Mail, LifeBuoy } from "lucide-react";
+import { Building, UsersRound, Package, Link2, Receipt, GitBranch, LayoutGrid, FileText, List, KeyRound, UserCog, Network, Calculator, ShoppingCart, LifeBuoy, BellRing } from "lucide-react";
 import { SettingsCard } from "./SettingsCard";
 
-export type SettingsSection = "general" | "security" | "team" | "products" | "finance" | "notifications" | "integrations" | "support";
+export type SettingsSection = "general" | "team" | "products" | "finance" | "integrations" | "support";
 
 export type SettingsSubSection =
-  | "org-general" | "org-pipeline" | "org-modules" | "org-forms" | "org-fields" | "org-sales" | "org-matrix"
-  | "security"
+  | "org-general" | "org-pipeline" | "org-modules" | "org-forms" | "org-fields" | "org-sales" | "org-matrix" | "org-push"
   | "team-access" | "team-profiles" | "team-teams"
   | "products"
   | "finance-expenses" | "finance-fiscal"
-  | "notif-push" | "notif-alerts" | "notif-calendar" | "notif-email"
   | "integrations"
   | "support-tickets";
 
@@ -18,6 +16,7 @@ interface MobileSettingsNavProps {
   onSelectSection: (section: SettingsSection) => void;
   canManageTeam: boolean;
   canManageIntegrations: boolean;
+  isAdmin?: boolean;
   isTelecom?: boolean;
 }
 
@@ -28,27 +27,28 @@ interface SectionItem {
   description: string;
   requiresTeam?: boolean;
   requiresIntegrations?: boolean;
+  requiresAdmin?: boolean;
 }
 
 const sections: SectionItem[] = [
-  { id: "general", label: "Definições Gerais", icon: Building, description: "Organização, pipeline e formulários" },
-  { id: "security", label: "Segurança", icon: Shield, description: "Password e autenticação" },
+  { id: "general", label: "Definições Gerais", icon: Building, description: "Organização, pipeline e formulários", requiresAdmin: true },
   { id: "team", label: "Equipa e Acessos", icon: UsersRound, description: "Colaboradores, perfis e equipas", requiresTeam: true },
   { id: "products", label: "Produtos", icon: Package, description: "Catálogo de produtos", requiresIntegrations: true },
   { id: "finance", label: "Financeiro", icon: Receipt, description: "Despesas e configuração fiscal", requiresIntegrations: true },
-  { id: "notifications", label: "Notificações", icon: Bell, description: "Push e alertas automáticos" },
   { id: "integrations", label: "Integrações", icon: Link2, description: "WhatsApp, email e faturação", requiresIntegrations: true },
   { id: "support", label: "Suporte", icon: LifeBuoy, description: "Tickets e pedidos de ajuda" },
 ];
 
-export function MobileSettingsNav({ 
-  activeSection, 
-  onSelectSection, 
-  canManageTeam, 
+export function MobileSettingsNav({
+  activeSection,
+  onSelectSection,
+  canManageTeam,
   canManageIntegrations,
+  isAdmin = false,
   isTelecom = false,
 }: MobileSettingsNavProps) {
   const visibleSections = sections.filter(item => {
+    if (item.requiresAdmin && !isAdmin) return false;
     if (item.requiresTeam && !canManageTeam) return false;
     if (item.requiresIntegrations && !canManageIntegrations) return false;
     return true;
@@ -86,8 +86,8 @@ export const subSectionsMap: Record<SettingsSection, SubSectionItem[]> = {
     { id: "org-fields", label: "Campos", icon: List, description: "Campos por módulo (Leads, Clientes, etc.)" },
     { id: "org-sales", label: "Vendas", icon: ShoppingCart, description: "Regras de vendas" },
     { id: "org-matrix", label: "Matriz Comissões", icon: Calculator, description: "Cálculo automático de comissões" },
+    { id: "org-push", label: "Notificações Push", icon: BellRing, description: "Ativar alertas no seu dispositivo" },
   ],
-  security: [],
   team: [
     { id: "team-access", label: "Acessos", icon: KeyRound, description: "Convites e permissões" },
     { id: "team-profiles", label: "Perfis", icon: UserCog, description: "Níveis de acesso" },
@@ -97,12 +97,6 @@ export const subSectionsMap: Record<SettingsSection, SubSectionItem[]> = {
   finance: [
     { id: "finance-expenses", label: "Tipos de Despesas", icon: Receipt, description: "Categorias de despesas" },
     { id: "finance-fiscal", label: "Fiscal", icon: Calculator, description: "IVA e configuração fiscal" },
-  ],
-  notifications: [
-    { id: "notif-push", label: "Push", icon: BellRing, description: "Notificações no telemóvel" },
-    { id: "notif-calendar", label: "Calendário", icon: Calendar, description: "Lembretes de eventos e reuniões" },
-    { id: "notif-email", label: "Email", icon: Mail, description: "Alertas por email para todas as notificações" },
-    { id: "notif-alerts", label: "Fidelização", icon: AlertTriangle, description: "Alertas de contratos CPE/CUI" },
   ],
   integrations: [],
   support: [],
@@ -137,16 +131,14 @@ export function MobileSubSectionNav({ group, onSelectSubSection, isTelecom = fal
 }
 
 // Groups that go directly to content (no sub-sections)
-export const directContentGroups: SettingsSection[] = ["security", "products", "integrations", "support"];
+export const directContentGroups: SettingsSection[] = ["products", "integrations", "support"];
 
 // Section titles
 export const sectionTitles: Record<SettingsSection, string> = {
   general: "Definições Gerais",
-  security: "Segurança",
   team: "Equipa e Acessos",
   products: "Produtos",
   finance: "Financeiro",
-  notifications: "Notificações",
   integrations: "Integrações",
   support: "Suporte",
 };

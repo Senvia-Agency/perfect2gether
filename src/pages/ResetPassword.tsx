@@ -21,29 +21,39 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if we have a valid recovery session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // The user arrives here from a password reset email link
-      // Supabase automatically creates a session when the link is clicked
-      if (session) {
-        setIsValidSession(true);
-      } else {
-      setError('Link de recuperação inválido ou expirado. Por favor, solicite um novo link.');
-      }
-      setLoading(false);
-    };
+    let validSessionFound = false;
 
-    checkSession();
-
-    // Listen for auth state changes (when user clicks the reset link)
+    // Set up listener FIRST — before checking session — so we don't miss the
+    // PASSWORD_RECOVERY event that Supabase fires when it processes the URL token.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY' && session) {
+        validSessionFound = true;
         setIsValidSession(true);
+        setError(null);
         setLoading(false);
       }
     });
+
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        validSessionFound = true;
+        setIsValidSession(true);
+        setLoading(false);
+      } else {
+        // Don't show the error immediately: the PASSWORD_RECOVERY event may
+        // arrive shortly after if Supabase is still exchanging the URL token.
+        setTimeout(() => {
+          if (!validSessionFound) {
+            setError('Link de recuperação inválido ou expirado. Por favor, solicite um novo link.');
+            setLoading(false);
+          }
+        }, 3000);
+      }
+    };
+
+    checkSession();
 
     return () => subscription.unsubscribe();
   }, []);

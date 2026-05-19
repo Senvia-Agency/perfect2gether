@@ -105,8 +105,10 @@ export function useSyncCreditNotes() {
         body: { organization_id: organization!.id },
       });
 
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
+      if (res.error) {
+        const realMessage = res.data?.error || res.error.message || 'Erro ao sincronizar notas de crédito';
+        throw new Error(realMessage);
+      }
       return res.data as { total: number; synced: number; not_matched: number };
     },
     onSuccess: () => {

@@ -53,8 +53,8 @@ interface RitmoRow {
 export function MetricsPanel() {
   const { user, profile, organization } = useAuth();
   const { isAdmin } = usePermissions();
-  const { data: members = [] } = useTeamMembers();
-  const { selectedMemberId } = useTeamFilter();
+  const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
+  const { selectedMemberId, canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { selectedMonth } = useDashboardPeriod();
   const { metrics, isLoading: metricsLoading } = useMonthlyMetrics(selectedMonth);
   const { modules } = useModules();
@@ -181,8 +181,21 @@ export function MetricsPanel() {
 
   const loading = metricsLoading || proposalsLoading || salesLoading || nifsLoading;
 
-  const memberList = members.length > 0 ? members : (user?.id ? [{ user_id: user.id, full_name: profile?.full_name || "Eu" }] : []);
-  const filteredMembers = selectedMemberId ? memberList.filter((m) => m.user_id === selectedMemberId) : memberList;
+  const allMemberList = members.length > 0 ? members : (user?.id ? [{ user_id: user.id, full_name: profile?.full_name || "Eu" }] : []);
+
+  const filteredMembers = useMemo(() => {
+    if (dataScope === 'own' || !canFilterByTeam) {
+      return allMemberList.filter(m => m.user_id === user?.id);
+    }
+    if (selectedMemberId) {
+      return allMemberList.filter(m => m.user_id === selectedMemberId);
+    }
+    if (dataScope === 'team' && isTeamLeader) {
+      const allowed = new Set([user?.id, ...teamMemberIds].filter(Boolean));
+      return allMemberList.filter(m => allowed.has(m.user_id));
+    }
+    return allMemberList;
+  }, [allMemberList, dataScope, canFilterByTeam, selectedMemberId, isTeamLeader, teamMemberIds, user?.id]);
 
   const ritmoRows: RitmoRow[] = useMemo(() => {
     return filteredMembers.map((m) => {
@@ -229,7 +242,7 @@ export function MetricsPanel() {
     }), { opEnergia: 0, energia: 0, opSolar: 0, solar: 0, comissao: 0 });
 
   const ritmoTotals = sumRitmo(ritmoRows);
-  const showTotals = isAdmin && ritmoRows.length > 1;
+  const showTotals = canFilterByTeam && ritmoRows.length > 1;
 
   const headers = (
     <TableRow>

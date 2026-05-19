@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardPeriod } from "@/stores/useDashboardPeriod";
 import { startOfMonth, endOfMonth, format } from "date-fns";
+import { SUPPORT_EMAILS } from "@/lib/constants";
 
 export interface CommissionEntry {
   userId: string;
@@ -49,7 +50,7 @@ export function useSalesCommissions() {
       // Fetch members with commission rates
       const { data: members, error: membersError } = await supabase
         .from("organization_members")
-        .select("user_id, commission_rate")
+        .select("user_id, commission_rate, role")
         .eq("organization_id", orgId)
         .eq("is_active", true);
 
@@ -58,16 +59,24 @@ export function useSalesCommissions() {
       // Fetch profiles for names via organization_members user_ids
       const memberUserIds = (members || []).map(m => m.user_id);
       const { data: profiles } = memberUserIds.length > 0
-        ? await supabase.from("profiles").select("id, full_name").in("id", memberUserIds)
+        ? await supabase.from("profiles").select("id, full_name, email").in("id", memberUserIds)
         : { data: [] };
 
+      // Excluir contas de suporte e admins
+      const adminUserIds = new Set(
+        (members || []).filter(m => m.role === 'admin').map(m => m.user_id)
+      );
+      const supportUserIds = new Set(
+        (profiles || []).filter(p => p.email && SUPPORT_EMAILS.includes(p.email)).map(p => p.id)
+      );
+      const excludedUserIds = new Set([...supportUserIds, ...adminUserIds]);
       const profileMap = new Map((profiles || []).map(p => [p.id, p.full_name]));
       const memberRateMap = new Map(members?.map(m => [m.user_id, Number(m.commission_rate || 0)]) || []);
 
       // Group sales by created_by
       const grouped = new Map<string, { total: number; count: number }>();
       for (const sale of sales || []) {
-        if (!sale.created_by) continue;
+        if (!sale.created_by || excludedUserIds.has(sale.created_by)) continue;
         const current = grouped.get(sale.created_by) || { total: 0, count: 0 };
         current.total += Number(sale.total_value || 0);
         current.count += 1;

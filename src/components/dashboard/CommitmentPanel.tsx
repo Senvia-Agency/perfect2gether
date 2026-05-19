@@ -37,8 +37,8 @@ interface RowData {
 export function CommitmentPanel() {
   const { user, profile, organization } = useAuth();
   const { isAdmin } = usePermissions();
-  const { data: members = [] } = useTeamMembers();
-  const { selectedMemberId } = useTeamFilter();
+  const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
+  const { selectedMemberId, canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { selectedMonth } = useDashboardPeriod();
   const { commitment, isLoading, allCommitments, allLoading } = useCommitments(user?.id, selectedMonth);
   const { modules } = useModules();
@@ -49,8 +49,13 @@ export function CommitmentPanel() {
   const currentMonthLabel = format(startOfMonth(selectedMonth), "MMMM yyyy", { locale: pt });
 
   const buildRows = (): RowData[] => {
-    if (isAdmin) {
-      const memberRows = members.map((m) => {
+    if (canFilterByTeam) {
+      let visibleMembers = members;
+      if (dataScope === 'team' && isTeamLeader) {
+        const allowed = new Set([user?.id, ...teamMemberIds].filter(Boolean));
+        visibleMembers = members.filter(m => allowed.has(m.user_id));
+      }
+      const memberRows = visibleMembers.map((m) => {
         const mc = allCommitments.find((c) => c.user_id === m.user_id);
         return {
           userId: m.user_id,
@@ -148,7 +153,7 @@ export function CommitmentPanel() {
                     <TableCell className="text-xs text-right py-1.5 font-medium text-green-500">{formatCurrency(row.comissao)}</TableCell>
                   </TableRow>
                 ))}
-                {isAdmin && rows.length > 1 && (
+                {canFilterByTeam && rows.length > 1 && (
                   <TableRow className="bg-muted/20 hover:bg-muted/20">
                     <TableCell className="text-xs font-semibold py-1.5">TOTAL</TableCell>
                     <TableCell className="text-xs text-right font-semibold py-1.5">{totals.nifs}</TableCell>

@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTeamMembers } from "@/hooks/useTeam";
+import { useTeamFilter } from "@/hooks/useTeamFilter";
 import { useMonthlyMetrics, MonthlyMetric, MetricValues } from "@/hooks/useMonthlyMetrics";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules } from "@/hooks/useModules";
@@ -17,11 +18,23 @@ interface EditMetricsModalProps {
 }
 
 export function EditMetricsModal({ open, onOpenChange, metrics }: EditMetricsModalProps) {
-  const { data: members = [] } = useTeamMembers();
+  const { data: allMembers = [] } = useTeamMembers({ excludeAdmins: true });
   const { saveMetric } = useMonthlyMetrics();
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
+  const { canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { modules } = useModules();
   const showEnergy = organization?.niche === 'telecom' && modules.energy;
+
+  const members = useMemo(() => {
+    if (dataScope === 'own' || !canFilterByTeam) {
+      return allMembers.filter(m => m.user_id === user?.id);
+    }
+    if (dataScope === 'team' && isTeamLeader) {
+      const allowed = new Set([user?.id, ...teamMemberIds].filter(Boolean));
+      return allMembers.filter(m => allowed.has(m.user_id));
+    }
+    return allMembers;
+  }, [allMembers, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id]);
 
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [values, setValues] = useState<MetricValues>({

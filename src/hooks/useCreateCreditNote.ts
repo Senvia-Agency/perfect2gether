@@ -38,8 +38,10 @@ export function useCreateCreditNote() {
         },
       });
 
-      if (res.error) throw new Error(res.error.message || "Erro ao criar nota de crédito");
-      if (res.data?.error) throw new Error(res.data.error);
+      if (res.error) {
+        const realMessage = res.data?.error || res.error.message || 'Erro ao criar nota de crédito';
+        throw new Error(realMessage);
+      }
       return res.data;
     },
     onSuccess: (data) => {

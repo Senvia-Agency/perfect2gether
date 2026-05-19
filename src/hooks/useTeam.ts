@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { SUPPORT_EMAILS } from '@/lib/constants';
 
 interface CreateTeamMemberParams {
   email: string;
@@ -35,10 +36,12 @@ export interface PendingInvite {
   status: string;
 }
 
-export function useTeamMembers() {
+const ADMIN_ROLES: Array<TeamMember['role']> = ['admin', 'super_admin'];
+
+export function useTeamMembers(options?: { excludeAdmins?: boolean }) {
   const { organization } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['team-members', organization?.id],
     queryFn: async (): Promise<TeamMember[]> => {
       if (!organization?.id) return [];
@@ -48,10 +51,20 @@ export function useTeamMembers() {
       });
 
       if (error) throw error;
-      return (data || []) as TeamMember[];
+      // Excluir contas de suporte das listagens (não aparecem em métricas, comissões, etc.)
+      return ((data || []) as TeamMember[]).filter(m => !m.email || !SUPPORT_EMAILS.includes(m.email));
     },
     enabled: !!organization?.id,
   });
+
+  if (options?.excludeAdmins) {
+    return {
+      ...query,
+      data: query.data?.filter(m => !ADMIN_ROLES.includes(m.role)),
+    };
+  }
+
+  return query;
 }
 
 export function usePendingInvites() {
@@ -199,17 +212,19 @@ export function useCreateTeamMember() {
   return useMutation({
     mutationFn: async ({ email, password, fullName, role, profileId }: CreateTeamMemberParams) => {
       const { data, error } = await supabase.functions.invoke('create-team-member', {
-        body: { 
-          email: email.toLowerCase().trim(), 
-          password, 
-          full_name: fullName.trim(), 
+        body: {
+          email: email.toLowerCase().trim(),
+          password,
+          full_name: fullName.trim(),
           role,
           profile_id: profileId || null,
         }
       });
 
       if (error) {
-        throw new Error(error.message || 'Erro ao criar colaborador');
+        // When the Edge Function returns non-2xx, the real error is in data
+        const realMessage = data?.error || error.message || 'Erro ao criar colaborador';
+        throw new Error(realMessage);
       }
 
       if (data?.error) {

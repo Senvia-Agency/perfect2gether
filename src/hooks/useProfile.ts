@@ -99,7 +99,8 @@ export function useManageTeamMember() {
       });
 
       if (error) {
-        throw new Error(error.message || 'Erro ao gerir colaborador');
+        const realMessage = data?.error || error.message || 'Erro ao gerir colaborador';
+        throw new Error(realMessage);
       }
 
       if (data?.error) {

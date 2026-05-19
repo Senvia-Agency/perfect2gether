@@ -51,7 +51,7 @@ interface RowData {
 export function SalesPerformancePanel() {
   const { user, profile, organization } = useAuth();
   const { isAdmin } = usePermissions();
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
   const { selectedMemberId, canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { selectedMonth } = useDashboardPeriod();
   const { objectives, isLoading: objLoading } = useMonthlyObjectives(selectedMonth);
@@ -112,7 +112,7 @@ export function SalesPerformancePanel() {
 
   const salesTotals = sumRows(salesRows);
   const objTotals = sumRows(objectiveRows);
-  const showTotals = isAdmin && salesRows.length > 1;
+  const showTotals = canFilterByTeam && salesRows.length > 1;
 
   const TableHeaders = () => (
     <TableRow>

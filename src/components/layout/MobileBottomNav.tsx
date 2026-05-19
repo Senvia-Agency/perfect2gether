@@ -14,6 +14,8 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   moduleKey?: keyof EnabledModules;
+  permissionKey?: string;
+  isAdminOnly?: boolean;
 }
 
 const allNavItems: NavItem[] = [
@@ -27,14 +29,14 @@ const allNavItems: NavItem[] = [
   { to: "/marketing", icon: Mail, label: "Marketing", moduleKey: 'marketing' },
   { to: "/prospects", icon: Search, label: "Prospects", moduleKey: 'prospects' },
   { to: "/ecommerce", icon: Store, label: "Loja", moduleKey: 'ecommerce' },
-  { to: "/settings", icon: Settings, label: "Definições" },
+  { to: "/settings", icon: Settings, label: "Definições", isAdminOnly: true },
 ];
 
 export function MobileBottomNav() {
   const location = useLocation();
   const { isSuperAdmin, organization, organizations } = useAuth();
   const { modules } = useModules();
-  const { canViewModule, isAdmin } = usePermissions();
+  const { canViewModule, isAdmin, systems } = usePermissions();
   const { isModuleLocked, getRequiredPlan } = useSubscription();
   const hasPerfect2GetherModuleAccess = hasPerfect2GetherAccess({
     organizationId: organization?.id,
@@ -46,28 +48,32 @@ export function MobileBottomNav() {
     open: false, feature: '', plan: ''
   });
 
-  // Plan-locked items stay visible; admin-disabled or no-permission items are hidden
-  const navItems = allNavItems.filter(item => {
-    if (!item.moduleKey) return true;
-    if (isModuleLocked(item.moduleKey)) return true;
-    if (!modules[item.moduleKey]) return false;
-    if (!canViewModule(item.moduleKey)) return false;
-    return true;
-  });
+  const isTotalLinkOnly = systems.length === 1 && systems[0] === 'total_link';
 
-  const perfect2GetherItems: NavItem[] = hasPerfect2GetherModuleAccess
-    ? [
-        { to: "/portal-total-link", icon: Building2, label: "Portal" },
-      ]
+  // Plan-locked items stay visible; admin-disabled or no-permission items are hidden
+  const navItems = isTotalLinkOnly
+    ? []
+    : allNavItems.filter(item => {
+        if (item.isAdminOnly && !isAdmin && !isSuperAdmin) return false;
+        if (!item.moduleKey) return true;
+        if (isModuleLocked(item.moduleKey)) return true;
+        if (!modules[item.moduleKey]) return false;
+        if (!canViewModule(item.moduleKey)) return false;
+        return true;
+      });
+
+  const portalItems: NavItem[] = (isTotalLinkOnly || hasPerfect2GetherModuleAccess || canViewModule('portal_total_link'))
+    ? [{ to: "/portal-total-link", icon: Building2, label: "Portal" }]
     : [];
 
-  const adminItems = (isAdmin || isSuperAdmin)
+  const gestaoVisible = !isTotalLinkOnly && canViewModule('gestao');
+  const adminItems = gestaoVisible
     ? [{ to: "/gestao", icon: BarChart3, label: "Gestão" }]
     : [];
 
-  const allItems = isSuperAdmin
-    ? [...navItems, ...perfect2GetherItems, ...adminItems, { to: "/system-admin", icon: Shield, label: "Admin" }]
-    : [...navItems, ...perfect2GetherItems, ...adminItems];
+  const allItems = isSuperAdmin && !isTotalLinkOnly
+    ? [...navItems, ...portalItems, ...adminItems, { to: "/system-admin", icon: Shield, label: "Admin" }]
+    : [...navItems, ...portalItems, ...adminItems];
 
   const handleLockedClick = (e: React.MouseEvent, item: NavItem) => {
     if (item.moduleKey && isModuleLocked(item.moduleKey)) {

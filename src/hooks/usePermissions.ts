@@ -6,6 +6,7 @@ import {
   buildAllPermissions,
   convertLegacyToGranular,
   MODULE_SCHEMA,
+  SystemKey,
 } from '@/hooks/useOrganizationProfiles';
 
 const FULL_PERMISSIONS = buildAllPermissions(true);
@@ -33,7 +34,7 @@ export function usePermissions() {
 
       const { data: profile } = await supabase
         .from('organization_profiles')
-        .select('module_permissions, data_scope, dashboard_widgets')
+        .select('module_permissions, data_scope, systems, dashboard_widgets')
         .eq('id', member.profile_id)
         .single();
       
@@ -41,6 +42,7 @@ export function usePermissions() {
       return {
         permissions: profile.module_permissions ? convertLegacyToGranular(profile.module_permissions) : null,
         dataScope: (profile as any).data_scope as string | null,
+        systems: ((profile as any).systems as SystemKey[]) || ['p2g'],
         dashboardWidgets: (profile as any).dashboard_widgets as Array<{ type: string; is_visible: boolean }> | null,
       };
     },
@@ -92,6 +94,11 @@ export function usePermissions() {
     isViewer,
     isSuperAdmin,
     dataScope,
+    systems: profileData?.systems || ['p2g'],
+    hasSystem: (system: SystemKey) => {
+      if (isSuperAdmin) return true;
+      return (profileData?.systems || ['p2g']).includes(system);
+    },
     profileDashboardWidgets: profileData?.dashboardWidgets ?? null,
   };
 }
@@ -103,7 +110,7 @@ function buildDefaultFallback(isViewer: boolean): GranularPermissions {
     for (const [subKey, subSchema] of Object.entries(schema.subareas)) {
       const actions: Record<string, boolean> = {};
       for (const action of subSchema.actions) {
-        if (moduleKey === 'settings') {
+        if (moduleKey === 'settings' || moduleKey === 'gestao') {
           actions[action] = false;
         } else if (action === 'view') {
           actions[action] = true;

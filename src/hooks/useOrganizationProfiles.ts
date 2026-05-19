@@ -40,6 +40,14 @@ export const MODULE_SCHEMA: Record<string, ModuleSchema> = {
       export: { label: 'Importar / Exportar', actions: ['export', 'import'] },
     },
   },
+  prospects: {
+    label: 'Prospects',
+    subareas: {
+      list: { label: 'Lista de Prospects', actions: ['view', 'add', 'edit', 'delete', 'assign'] },
+      import_export: { label: 'Importar / Exportar', actions: ['import', 'export'] },
+      generate: { label: 'Geração Automática', actions: ['manage'] },
+    },
+  },
   clients: {
     label: 'Clientes',
     subareas: {
@@ -72,6 +80,13 @@ export const MODULE_SCHEMA: Record<string, ModuleSchema> = {
       commissions: { label: 'Comissões', actions: ['view', 'manage'] },
     },
   },
+  gestao: {
+    label: 'Gestão',
+    subareas: {
+      reports: { label: 'Relatórios e Análises', actions: ['view'] },
+      commissions: { label: 'Análise de Comissões', actions: ['view', 'manage'] },
+    },
+  },
   calendar: {
     label: 'Agenda',
     subareas: {
@@ -82,6 +97,20 @@ export const MODULE_SCHEMA: Record<string, ModuleSchema> = {
     label: 'Marketing',
     subareas: {
       templates: { label: 'Templates', actions: ['view', 'create', 'edit', 'delete', 'send'] },
+      campaigns: { label: 'Campanhas', actions: ['view', 'create', 'edit', 'delete', 'send'] },
+      lists: { label: 'Listas de Contactos', actions: ['view', 'create', 'edit', 'delete', 'import'] },
+      reports: { label: 'Relatórios', actions: ['view'] },
+    },
+  },
+  portal_total_link: {
+    label: 'Portal Total Link',
+    subareas: {
+      home: { label: 'Painel', actions: ['view'] },
+      contratos: { label: 'Contratos', actions: ['view', 'edit'] },
+      ids: { label: 'IDs', actions: ['view', 'edit'] },
+      pendentes: { label: 'Pendentes', actions: ['view', 'edit'] },
+      reclamacoes: { label: 'Reclamações', actions: ['view', 'add', 'edit'] },
+      rh: { label: 'Recursos Humanos', actions: ['view', 'add', 'edit'] },
     },
   },
   ecommerce: {
@@ -124,6 +153,18 @@ export type LegacyModulePermissions = Record<string, LegacyModulePermission>;
 // Union: can be either format from DB
 export type ModulePermissions = GranularPermissions;
 
+export type SystemKey = 'p2g' | 'total_link';
+
+export const SYSTEM_LABELS: Record<SystemKey, string> = {
+  p2g: 'Perfect2Gether',
+  total_link: 'Portal Total Link',
+};
+
+export const SYSTEM_DESCRIPTIONS: Record<SystemKey, string> = {
+  p2g: 'CRM & Gestão Comercial',
+  total_link: 'Portal Total Link',
+};
+
 export type DataScope = 'own' | 'team' | 'all';
 
 export const DATA_SCOPE_LABELS: Record<DataScope, string> = {
@@ -150,6 +191,7 @@ export interface OrganizationProfile {
   base_role: 'admin' | 'viewer' | 'salesperson';
   module_permissions: GranularPermissions;
   data_scope: DataScope;
+  systems: SystemKey[];
   is_default: boolean;
   dashboard_widgets: ProfileDashboardWidget[] | null;
   created_at: string;
@@ -212,7 +254,7 @@ export function buildDefaultPermissions(role: string): GranularPermissions {
   if (role === 'viewer') {
     const result: GranularPermissions = {};
     for (const [moduleKey, schema] of Object.entries(MODULE_SCHEMA)) {
-      if (moduleKey === 'settings') {
+      if (moduleKey === 'settings' || moduleKey === 'gestao') {
         const subareas: Record<string, SubareaPermissions> = {};
         for (const [subKey, subSchema] of Object.entries(schema.subareas)) {
           const actions: SubareaPermissions = {};
@@ -241,7 +283,7 @@ export function buildDefaultPermissions(role: string): GranularPermissions {
     for (const [subKey, subSchema] of Object.entries(schema.subareas)) {
       const actions: SubareaPermissions = {};
       for (const action of subSchema.actions) {
-        if (['finance', 'marketing', 'ecommerce', 'settings'].includes(moduleKey)) {
+        if (['finance', 'marketing', 'ecommerce', 'settings', 'gestao'].includes(moduleKey)) {
           actions[action] = false;
         } else if (action === 'delete') {
           actions[action] = false;
@@ -287,7 +329,7 @@ export function useOrganizationProfiles() {
   });
 
   const createProfile = useMutation({
-    mutationFn: async (profile: { name: string; base_role: string; module_permissions: GranularPermissions; data_scope?: DataScope; dashboard_widgets?: ProfileDashboardWidget[] | null }) => {
+    mutationFn: async (profile: { name: string; base_role: string; module_permissions: GranularPermissions; data_scope?: DataScope; systems?: SystemKey[]; dashboard_widgets?: ProfileDashboardWidget[] | null }) => {
       if (!organizationId) throw new Error('No organization');
       const { error } = await supabase
         .from('organization_profiles')
@@ -297,6 +339,7 @@ export function useOrganizationProfiles() {
           base_role: profile.base_role,
           module_permissions: profile.module_permissions as any,
           data_scope: profile.data_scope || 'own',
+          systems: profile.systems || ['p2g'],
           dashboard_widgets: profile.dashboard_widgets ?? null,
         }] as any);
       if (error) throw error;
@@ -309,12 +352,13 @@ export function useOrganizationProfiles() {
   });
 
   const updateProfile = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; name?: string; base_role?: string; module_permissions?: GranularPermissions; data_scope?: DataScope; dashboard_widgets?: ProfileDashboardWidget[] | null }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; name?: string; base_role?: string; module_permissions?: GranularPermissions; data_scope?: DataScope; systems?: SystemKey[]; dashboard_widgets?: ProfileDashboardWidget[] | null }) => {
       const updateData: any = {};
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.base_role !== undefined) updateData.base_role = updates.base_role;
       if (updates.module_permissions !== undefined) updateData.module_permissions = updates.module_permissions;
       if (updates.data_scope !== undefined) updateData.data_scope = updates.data_scope;
+      if (updates.systems !== undefined) updateData.systems = updates.systems;
       if (updates.dashboard_widgets !== undefined) updateData.dashboard_widgets = updates.dashboard_widgets;
       
       const { error } = await supabase

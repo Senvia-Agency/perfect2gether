@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTeamFilter } from "@/hooks/useTeamFilter";
@@ -35,6 +35,7 @@ interface ActivationBlockProps {
   filteredMembers: { user_id: string; full_name: string }[];
   currentUserId?: string;
   isAdmin: boolean;
+  canFilterByTeam?: boolean;
   getTarget: (userId: string, periodType: "monthly" | "annual", proposalType: "energia" | "servicos") => number;
   countActivations: (
     userId: string | null,
@@ -53,6 +54,7 @@ function ActivationBlock({
   filteredMembers,
   currentUserId,
   isAdmin,
+  canFilterByTeam: canFilterByTeamProp,
   getTarget,
   countActivations,
   onEdit,
@@ -71,7 +73,7 @@ function ActivationBlock({
   const totalTarget = rows.reduce((a, r) => a + r.target, 0);
   const totalActual = rows.reduce((a, r) => a + r.actual, 0);
   const totalPct = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
-  const showTotals = isAdmin && rows.length > 1;
+  const showTotals = (canFilterByTeamProp ?? isAdmin) && rows.length > 1;
 
   const donutData = [
     { name: "done", value: Math.min(totalPct, 100) },
@@ -169,8 +171,8 @@ function ActivationBlock({
 export function ActivationsPanel() {
   const { user, profile, organization } = useAuth();
   const { isAdmin } = usePermissions();
-  const { data: members = [] } = useTeamMembers();
-  const { selectedMemberId } = useTeamFilter();
+  const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
+  const { selectedMemberId, canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { selectedMonth } = useDashboardPeriod();
   const { isLoading, getTarget, countActivations } = useActivationObjectives(selectedMonth);
   const { modules } = useModules();
@@ -183,15 +185,25 @@ export function ActivationsPanel() {
     proposalType: "energia" | "servicos";
   }>({ open: false, periodType: "monthly", proposalType: "energia" });
 
-  const memberList = members.length > 0
+  const allMemberList = members.length > 0
     ? members
     : user?.id
       ? [{ user_id: user.id, full_name: profile?.full_name || "Eu" }]
       : [];
 
-  const filteredMembers = selectedMemberId
-    ? memberList.filter((m) => m.user_id === selectedMemberId)
-    : memberList;
+  const filteredMembers = useMemo(() => {
+    if (dataScope === 'own' || !canFilterByTeam) {
+      return allMemberList.filter(m => m.user_id === user?.id);
+    }
+    if (selectedMemberId) {
+      return allMemberList.filter(m => m.user_id === selectedMemberId);
+    }
+    if (dataScope === 'team' && isTeamLeader) {
+      const allowed = new Set([user?.id, ...teamMemberIds].filter(Boolean));
+      return allMemberList.filter(m => allowed.has(m.user_id));
+    }
+    return allMemberList;
+  }, [allMemberList, dataScope, canFilterByTeam, selectedMemberId, isTeamLeader, teamMemberIds, user?.id]);
 
   const openEdit = (periodType: "monthly" | "annual", proposalType: "energia" | "servicos") => {
     setEditModal({ open: true, periodType, proposalType });
@@ -228,10 +240,11 @@ export function ActivationsPanel() {
       ) => countActivations(userId, periodType, proposalType, countMode);
 
   const blockProps = {
-    members: memberList,
+    members: allMemberList,
     filteredMembers,
     currentUserId: user?.id,
     isAdmin,
+    canFilterByTeam,
     getTarget,
     countActivations,
   };

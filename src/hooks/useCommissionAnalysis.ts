@@ -239,7 +239,7 @@ function parseRawRow(raw: Record<string, unknown> | null): FileDataRow | null {
 
 export function useCommissionAnalysis(selectedMonth: string, effectiveUserIds?: string[] | null) {
   const { organization } = useAuth();
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
   const liveCommissions = useLiveCommissions(selectedMonth, effectiveUserIds);
   const organizationId = organization?.id;
 

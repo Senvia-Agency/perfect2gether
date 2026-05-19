@@ -107,8 +107,8 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
 
   const isValid = useMemo(() => {
     if (!name.trim()) return false;
-    if (settings.email.visible && settings.email.required && !email.trim()) return false;
-    if (settings.phone.visible && settings.phone.required && !phone.trim()) return false;
+    if (!email.trim()) return false;
+    if (!phone.trim()) return false;
     if (settings.company.visible && settings.company.required && !company.trim()) return false;
     if (settings.nif.visible && settings.nif.required && !nif.trim()) return false;
     if (settings.company_nif?.visible && settings.company_nif?.required && !companyNif.trim()) return false;
@@ -193,7 +193,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
                       {settings.email.visible && (
                         <div className="space-y-2">
                           <Label htmlFor="edit-email">
-                            {settings.email.label} {settings.email.required && '*'}
+                            {settings.email.label} *
                           </Label>
                           <Input
                             id="edit-email"
@@ -201,7 +201,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="email@exemplo.pt"
-                            required={settings.email.required}
+                            required
                           />
                         </div>
                       )}
@@ -209,7 +209,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
                       {settings.phone.visible && (
                         <div className="space-y-2">
                           <Label htmlFor="edit-phone">
-                            {settings.phone.label} {settings.phone.required && '*'}
+                            {settings.phone.label} *
                           </Label>
                           <PhoneInput
                             value={phone}
@@ -316,12 +316,12 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="edit-conselho">Conselho *</Label>
+                        <Label htmlFor="edit-conselho">Concelho *</Label>
                         <Input
                           id="edit-conselho"
                           value={conselho}
                           onChange={(e) => setConselho(e.target.value)}
-                          placeholder="Conselho"
+                          placeholder="Concelho"
                           required
                         />
                       </div>

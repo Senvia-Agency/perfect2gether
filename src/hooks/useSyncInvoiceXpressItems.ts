@@ -17,7 +17,10 @@ export function useSyncInvoiceXpressItems() {
         body: { organization_id: organization!.id },
       });
 
-      if (response.error) throw new Error(response.error.message);
+      if (response.error) {
+        const realMessage = response.data?.error || response.error.message || 'Erro ao sincronizar itens';
+        throw new Error(realMessage);
+      }
       return response.data as { created: number; updated: number; total: number };
     },
     onSuccess: (data) => {

@@ -6,11 +6,13 @@ import { useSalesCommissions } from "@/hooks/useSalesCommissions";
 import { useStripeCommissions } from "@/hooks/useStripeCommissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { Percent, TrendingUp, Receipt, RefreshCw } from "lucide-react";
+import { useTeamFilter } from "@/hooks/useTeamFilter";
 
 export function CommissionsWidget() {
   const { data: entries, isLoading } = useSalesCommissions();
   const { data: stripeData, isLoading: stripeLoading } = useStripeCommissions();
   const { user, roles } = useAuth();
+  const { canFilterByTeam, isTeamLeader, teamMemberIds } = useTeamFilter();
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
 
   if (isLoading || stripeLoading) {
@@ -26,16 +28,22 @@ export function CommissionsWidget() {
     );
   }
 
-  const myEntries = isAdmin ? (entries || []) : (entries || []).filter(e => e.userId === user?.id);
+  const myEntries = isAdmin
+    ? (entries || [])
+    : (isTeamLeader && canFilterByTeam)
+      ? (entries || []).filter(e => e.userId === user?.id || teamMemberIds.includes(e.userId))
+      : (entries || []).filter(e => e.userId === user?.id);
   const totalCommissions = myEntries.reduce((sum, e) => sum + e.totalCommission, 0);
   const totalSales = myEntries.reduce((sum, e) => sum + e.totalSales, 0);
   const totalCount = myEntries.reduce((sum, e) => sum + e.salesCount, 0);
 
   // Stripe recurring commissions
   const stripeTotal = stripeData?.grandTotal || 0;
-  const stripeByUser = isAdmin 
-    ? (stripeData?.byUser || []) 
-    : (stripeData?.byUser || []).filter(u => u.userId === user?.id);
+  const stripeByUser = isAdmin
+    ? (stripeData?.byUser || [])
+    : (isTeamLeader && canFilterByTeam)
+      ? (stripeData?.byUser || []).filter(u => u.userId === user?.id || teamMemberIds.includes(u.userId))
+      : (stripeData?.byUser || []).filter(u => u.userId === user?.id);
   const myStripeTotal = stripeByUser.reduce((s, u) => s + u.totalCommission, 0);
 
   const hasDirectData = myEntries.length > 0;
@@ -98,7 +106,7 @@ export function CommissionsWidget() {
         </div>
 
         {/* Table */}
-        {isAdmin && myEntries.length > 1 && (
+        {canFilterByTeam && myEntries.length > 1 && (
           <Table>
             <TableHeader>
               <TableRow>

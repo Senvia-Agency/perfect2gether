@@ -27,7 +27,7 @@ export interface CommercialReport {
 export function useLeadReporting(period: ReportPeriod) {
   const { data: leads = [] } = useLeads();
   const { data: stages = [] } = usePipelineStages();
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
 
   return useMemo(() => {
     const interval = getPeriodInterval(period);

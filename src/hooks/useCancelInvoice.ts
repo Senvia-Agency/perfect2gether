@@ -30,8 +30,10 @@ export function useCancelInvoice() {
         },
       });
 
-      if (response.error) throw response.error;
-      if (response.data?.error) throw new Error(response.data.error);
+      if (response.error) {
+        const realMessage = response.data?.error || response.error.message || 'Erro ao anular documento';
+        throw new Error(realMessage);
+      }
       return response.data;
     },
     onSuccess: () => {

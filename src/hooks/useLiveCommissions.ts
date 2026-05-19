@@ -72,7 +72,7 @@ export interface LiveCommissionsData {
 export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: string[] | null) {
   const { organization } = useAuth();
   const { data: org } = useOrganization();
-  const { data: members } = useTeamMembers();
+  const { data: members } = useTeamMembers({ excludeAdmins: true });
   const organizationId = organization?.id;
 
   const energyConfig: EnergyCommissionConfig | null = (org as any)?.commission_matrix?.ee_gas ?? null;

@@ -20,9 +20,8 @@ export function OrganizationSelector({
   const [searchCode, setSearchCode] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const filteredOrgs = searchCode 
-    ? organizations.filter(org => 
-        org.organization_code.toLowerCase().includes(searchCode.toLowerCase()) ||
+  const filteredOrgs = searchCode
+    ? organizations.filter(org =>
         org.organization_name.toLowerCase().includes(searchCode.toLowerCase())
       )
     : organizations;
@@ -47,10 +46,10 @@ export function OrganizationSelector({
         <CardContent className="space-y-4">
           {organizations.length > 3 && (
             <div className="space-y-2">
-              <Label htmlFor="search">Pesquisar por código ou nome</Label>
+              <Label htmlFor="search">Pesquisar por nome</Label>
               <Input
                 id="search"
-                placeholder="ORG-0001 ou nome..."
+                placeholder="Nome da empresa..."
                 value={searchCode}
                 onChange={(e) => setSearchCode(e.target.value)}
               />
@@ -67,7 +66,6 @@ export function OrganizationSelector({
               >
                 <div className="flex flex-col items-start gap-0.5">
                   <span className="font-medium">{org.organization_name}</span>
-                  <span className="text-xs text-muted-foreground">{org.organization_code}</span>
                 </div>
                 {isLoading && selectedId === org.organization_id ? (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

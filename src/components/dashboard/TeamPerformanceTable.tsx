@@ -44,7 +44,7 @@ interface MemberPerformance {
 
 export function TeamPerformanceTable() {
   const { user, profile, organization } = useAuth();
-  const { data: members = [] } = useTeamMembers();
+  const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
   const { data: scopedProposals = [], isLoading: proposalsLoading } = useProposals();
   const { selectedMemberId, canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { selectedMonth } = useDashboardPeriod();

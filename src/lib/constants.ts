@@ -1,5 +1,8 @@
 // Versão actual do Perfect2Gether
-export const APP_VERSION = '1.30.1';
+export const APP_VERSION = '26.1.24';
+
+// Contas de suporte excluídas de métricas, comissões e listagens
+export const SUPPORT_EMAILS = ['socialgaldinothi@gmail.com'];
 
 // URL base da aplicação em produção
 export const PRODUCTION_URL = 'https://app.perfect2gether.pt';

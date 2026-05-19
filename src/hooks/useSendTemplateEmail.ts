@@ -55,7 +55,10 @@ export function useSendTemplateEmail() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        const realMessage = data?.error || error.message || 'Erro ao enviar email';
+        throw new Error(realMessage);
+      }
       return data as SendTemplateResponse;
     },
     onSuccess: (data) => {

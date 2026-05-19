@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useFidelizationAlerts, type CpeWithClient } from '@/hooks/useFidelizationAlerts';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeamFilter } from '@/hooks/useTeamFilter';
 import { Zap, AlertTriangle, Clock, ChevronRight, Loader2, XCircle, RefreshCw, ArrowRightLeft } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigate } from 'react-router-dom';
@@ -55,9 +56,19 @@ function AlertCard({ cpe, variant, onRenew, onSwitch }: {
   );
 }
 
+function filterByScope(items: CpeWithClient[], dataScope: string, canFilterByTeam: boolean, isTeamLeader: boolean, teamMemberIds: string[], currentUserId?: string) {
+  if (dataScope === 'all') return items;
+  if (dataScope === 'team' && isTeamLeader && canFilterByTeam) {
+    const allowed = new Set([currentUserId, ...teamMemberIds].filter(Boolean));
+    return items.filter(cpe => cpe.client_created_by && allowed.has(cpe.client_created_by));
+  }
+  return items.filter(cpe => cpe.client_created_by === currentUserId);
+}
+
 export function FidelizationAlertsWidget() {
   const { data, isLoading } = useFidelizationAlerts();
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
+  const { canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const [modalOpen, setModalOpen] = useState(false);
   const [renewCpe, setRenewCpe] = useState<CpeWithClient | null>(null);
   const [switchCpe, setSwitchCpe] = useState<CpeWithClient | null>(null);
@@ -81,7 +92,16 @@ export function FidelizationAlertsWidget() {
     );
   }
 
-  const { urgent = [], upcoming = [], expired = [] } = data || {};
+  const filtered = useMemo(() => {
+    const { urgent = [], upcoming = [], expired = [] } = data || {};
+    return {
+      urgent: filterByScope(urgent, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id),
+      upcoming: filterByScope(upcoming, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id),
+      expired: filterByScope(expired, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id),
+    };
+  }, [data, dataScope, canFilterByTeam, isTeamLeader, teamMemberIds, user?.id]);
+
+  const { urgent, upcoming, expired } = filtered;
   const totalAlerts = expired.length + urgent.length + upcoming.length;
   const allItems = [...expired, ...urgent, ...upcoming];
   const previewItems = allItems.slice(0, 2);

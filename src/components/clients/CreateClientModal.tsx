@@ -99,8 +99,8 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
 
   const isValid = useMemo(() => {
     if (settings.name.visible && settings.name.required && !name.trim()) return false;
-    if (settings.email.visible && settings.email.required && !email.trim()) return false;
-    if (settings.phone.visible && settings.phone.required && !phone.trim()) return false;
+    if (!email.trim()) return false;
+    if (!phone.trim()) return false;
     if (settings.company.visible && settings.company.required && !company.trim()) return false;
     if (settings.nif.visible && settings.nif.required && !nif.trim()) return false;
     if (settings.company_nif?.visible && settings.company_nif?.required && !companyNif.trim()) return false;
@@ -211,7 +211,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
                       {settings.email.visible && (
                         <div className="space-y-2">
                           <Label htmlFor="email">
-                            {settings.email.label} {settings.email.required && '*'}
+                            {settings.email.label} *
                           </Label>
                           <Input
                             id="email"
@@ -219,7 +219,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="email@exemplo.pt"
-                            required={settings.email.required}
+                            required
                           />
                         </div>
                       )}
@@ -227,7 +227,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
                       {settings.phone.visible && (
                         <div className="space-y-2">
                           <Label htmlFor="phone">
-                            {settings.phone.label} {settings.phone.required && '*'}
+                            {settings.phone.label} *
                           </Label>
                           <PhoneInput
                             value={phone}
@@ -336,12 +336,12 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="conselho">Conselho *</Label>
+                        <Label htmlFor="conselho">Concelho *</Label>
                         <Input
                           id="conselho"
                           value={conselho}
                           onChange={(e) => setConselho(e.target.value)}
-                          placeholder="Conselho"
+                          placeholder="Concelho"
                           required
                         />
                       </div>

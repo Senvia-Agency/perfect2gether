@@ -58,42 +58,20 @@ export function useSubscription() {
     queryKey: ['subscription-plan', planId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .rpc('get_subscription_plan' as any, { _plan_id: planId });
+        .from('subscription_plans')
+        .select('*')
+        .eq('id', planId)
+        .maybeSingle();
 
-      // Fallback: direct SQL via rest if rpc not available
-      if (error || !data) {
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/subscription_plans?id=eq.${planId}&select=*`,
-          {
-            headers: {
-              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            },
-          }
-        );
-        const rows = await res.json();
-        if (!Array.isArray(rows) || rows.length === 0) return DEFAULT_PLAN;
-        const row = rows[0];
-        return {
-          id: row.id,
-          name: row.name,
-          max_users: row.max_users,
-          max_forms: row.max_forms,
-          price_monthly: Number(row.price_monthly),
-          features: row.features as PlanFeatures,
-        } as SubscriptionPlan;
-      }
-
-      const row = Array.isArray(data) ? data[0] : data;
-      if (!row) return DEFAULT_PLAN;
+      if (error || !data) return DEFAULT_PLAN;
 
       return {
-        id: row.id,
-        name: row.name,
-        max_users: row.max_users,
-        max_forms: row.max_forms,
-        price_monthly: Number(row.price_monthly),
-        features: row.features as PlanFeatures,
+        id: data.id,
+        name: data.name,
+        max_users: data.max_users,
+        max_forms: data.max_forms,
+        price_monthly: Number(data.price_monthly),
+        features: data.features as PlanFeatures,
       } as SubscriptionPlan;
     },
     enabled: !!organization,

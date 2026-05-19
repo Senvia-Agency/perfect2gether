@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardPeriod } from "@/stores/useDashboardPeriod";
 import { startOfMonth, endOfMonth, format } from "date-fns";
+import { SUPPORT_EMAILS } from "@/lib/constants";
 
 export interface CommissionSaleDetail {
   saleId: string;
@@ -57,7 +58,7 @@ export function useCommissionsDetail() {
 
       const { data: members, error: membersError } = await supabase
         .from("organization_members")
-        .select("user_id, commission_rate")
+        .select("user_id, commission_rate, role")
         .eq("organization_id", orgId)
         .eq("is_active", true);
 
@@ -65,18 +66,26 @@ export function useCommissionsDetail() {
 
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, email")
         .eq("organization_id", orgId);
 
       if (profilesError) throw profilesError;
 
+      // Excluir contas de suporte e admins
+      const adminUserIds = new Set(
+        (members || []).filter(m => m.role === 'admin').map(m => m.user_id)
+      );
+      const supportUserIds = new Set(
+        (profiles || []).filter(p => p.email && SUPPORT_EMAILS.includes(p.email)).map(p => p.id)
+      );
+      const excludedUserIds = new Set([...supportUserIds, ...adminUserIds]);
       const profileMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
       const memberRateMap = new Map(members?.map(m => [m.user_id, Number(m.commission_rate || 0)]) || []);
 
       const grouped = new Map<string, CommissionSaleDetail[]>();
 
       for (const sale of sales || []) {
-        if (!sale.created_by) continue;
+        if (!sale.created_by || excludedUserIds.has(sale.created_by)) continue;
         const rate = globalRate && globalRate > 0 ? globalRate : (memberRateMap.get(sale.created_by) || 0);
         const commissionValue = Number(sale.total_value || 0) * (rate / 100);
 

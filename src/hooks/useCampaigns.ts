@@ -81,7 +81,10 @@ export function useSyncCampaignSends() {
         body: { campaignId, organizationId: organization.id },
       });
 
-      if (error) throw error;
+      if (error) {
+        const realMessage = data?.error || error.message || 'Erro ao sincronizar campanha';
+        throw new Error(realMessage);
+      }
       return data;
     },
     onSuccess: (data) => {

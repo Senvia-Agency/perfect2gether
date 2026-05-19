@@ -52,7 +52,9 @@ Deno.serve(async (req) => {
     }
 
     // Create admin client for privileged operations
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
 
     // Check if current user is admin
     const { data: currentUserRoles, error: rolesError } = await supabaseAdmin

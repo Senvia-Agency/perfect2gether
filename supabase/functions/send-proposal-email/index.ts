@@ -156,7 +156,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       throw new Error("Missing Supabase configuration");
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
 
     const data: ProposalEmailRequest = await req.json();
 

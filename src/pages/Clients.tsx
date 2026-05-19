@@ -41,7 +41,7 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState<CrmClient | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
-  const [filters, setFilters] = usePersistedState<ClientFiltersState>("clients-filters-v1", defaultFilters);
+  const [filters, setFilters] = usePersistedState<ClientFiltersState>("clients-filters-v2", defaultFilters);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -85,7 +85,7 @@ export default function Clients() {
         return false;
       }
 
-      if (filters.source !== 'all' && client.source !== filters.source) {
+      if (filters.assignedTo !== 'all' && client.assigned_to !== filters.assignedTo) {
         return false;
       }
 
@@ -247,7 +247,7 @@ export default function Clients() {
     <>
       <SEO 
         title={`${labels.plural} | Perfect2Gether`}
-        description={`GestÃ£o de ${labels.plural.toLowerCase()} CRM`}
+        description={`Gestão de ${labels.plural.toLowerCase()} CRM`}
       />
       
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -256,7 +256,7 @@ export default function Clients() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">{labels.plural}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              GestÃ£o de {labels.plural.toLowerCase()} e relacionamento comercial
+              Gestão de {labels.plural.toLowerCase()} e relacionamento comercial
             </p>
           </div>
           <div className="flex gap-2">
@@ -348,11 +348,12 @@ export default function Clients() {
                     <Euro className="h-5 w-5 text-success" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">ComissÃ£o Total</p>
+                    <p className="text-sm text-muted-foreground">Comissão Total</p>
                     <p className="text-2xl font-bold">{formatCurrency(stats.totalComissao)}</p>
                     {showEnergy && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {stats.totalMwh.toFixed(1)} MWh Â· {stats.totalKwp.toFixed(1)} kWp
+                        {stats.totalMwh.toFixed(1)} MWh
+                        {!isPerfect2Gether && ` · ${stats.totalKwp.toFixed(1)} kWp`}
                       </p>
                     )}
                   </div>
@@ -388,11 +389,12 @@ export default function Clients() {
             />
           </div>
           
-          <ClientFilters 
+          <ClientFilters
             filters={filters}
             onFiltersChange={setFilters}
             onClearFilters={handleClearFilters}
             isTelecom={showEnergy}
+            teamMembers={teamMembers ?? []}
           />
         </div>
 

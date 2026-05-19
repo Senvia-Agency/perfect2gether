@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateOrganization } from '@/hooks/useOrganization';
-import { SecuritySettings } from '@/components/settings/SecuritySettings';
-import { useUpdateProfile, useChangePassword } from '@/hooks/useProfile';
+import { useUpdateProfile } from '@/hooks/useProfile';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -19,9 +18,6 @@ import { FormsManager } from '@/components/settings/FormsManager';
 import { GeneralContent } from '@/components/settings/GeneralContent';
 import { IntegrationsContent } from '@/components/settings/IntegrationsContent';
 import { FieldsManagerTabs } from '@/components/settings/FieldsManagerTabs';
-import { FidelizationAlertsSettings } from '@/components/settings/FidelizationAlertsSettings';
-import { CalendarAlertsSettings } from '@/components/settings/CalendarAlertsSettings';
-import { NotificationEmailSettings } from '@/components/settings/NotificationEmailSettings';
 import { ExpenseCategoriesTab } from '@/components/settings/ExpenseCategoriesTab';
 import { FiscalSettingsTab } from '@/components/settings/FiscalSettingsTab';
 import { SalesSettingsTab } from '@/components/settings/SalesSettingsTab';
@@ -45,7 +41,6 @@ export default function Settings() {
   const { toast } = useToast();
   const updateOrganization = useUpdateOrganization();
   const updateProfile = useUpdateProfile();
-  const changePassword = useChangePassword();
   const { canManageTeam, canManageIntegrations, isAdmin } = usePermissions();
   const pushNotifications = usePushNotifications();
 
@@ -95,12 +90,6 @@ export default function Settings() {
   const [profilePhone, setProfilePhone] = useState('');
   const [emailSignature, setEmailSignature] = useState('');
   const [profileBrevoSenderEmail, setProfileBrevoSenderEmail] = useState('');
-
-  // Password change state
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-
 
   // Initialize editable fields
   useEffect(() => {
@@ -231,24 +220,6 @@ export default function Settings() {
     updateProfile.mutate({ full_name: fullName.trim(), email: profileEmail, phone: profilePhone, email_signature: emailSignature, brevo_sender_email: profileBrevoSenderEmail });
   };
 
-  const handleChangePassword = () => {
-    if (!newPassword || !confirmPassword) {
-      toast({ title: 'Campos em falta', description: 'Preencha ambos os campos de password.', variant: 'destructive' });
-      return;
-    }
-    if (newPassword.length < 6) {
-      toast({ title: 'Password muito curta', description: 'A password deve ter pelo menos 6 caracteres.', variant: 'destructive' });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ title: 'Passwords não coincidem', description: 'As passwords introduzidas não são iguais.', variant: 'destructive' });
-      return;
-    }
-    changePassword.mutate({ newPassword }, {
-      onSuccess: () => { setNewPassword(''); setConfirmPassword(''); setShowPassword(false); }
-    });
-  };
-
   // Shared props
   const generalContentProps = {
     organization, profile, isAdmin, orgName, setOrgName, fullName, setFullName,
@@ -286,15 +257,7 @@ export default function Settings() {
       case "org-fields": return <FieldsManagerTabs />;
       case "org-sales": return <SalesSettingsTab />;
       case "org-matrix": return <CommissionMatrixTab />;
-      case "security": return (
-        <SecuritySettings
-          newPassword={newPassword} setNewPassword={setNewPassword}
-          confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword}
-          showPassword={showPassword} setShowPassword={setShowPassword}
-          handleChangePassword={handleChangePassword}
-          changePasswordIsPending={changePassword.isPending}
-        />
-      );
+      case "org-push": return <PushNotificationsCard organizationId={organization?.id} pushNotifications={pushNotifications} />;
       case "team-access": return <TeamTab />;
       case "team-profiles": return <ProfilesTab />;
       case "team-teams": return <TeamsSection />;
@@ -310,10 +273,6 @@ export default function Settings() {
           isPending={updateOrganization.isPending}
         />
       );
-      case "notif-push": return <PushNotificationsCard organizationId={organization?.id} pushNotifications={pushNotifications} />;
-      case "notif-calendar": return <CalendarAlertsSettings />;
-      case "notif-email": return <NotificationEmailSettings />;
-      case "notif-alerts": return <FidelizationAlertsSettings />;
       case "integrations": return <IntegrationsContent {...integrationsContentProps} />;
       case "support-tickets": return <SupportTicketsTab />;
       default: return null;
@@ -323,11 +282,10 @@ export default function Settings() {
   // Get the direct sub-section for groups with no sub-nav
   const getDirectSub = (group: SettingsSection): SettingsSubSection => {
     switch (group) {
-      case "security": return "security";
       case "products": return "products";
       case "integrations": return "integrations";
       case "support": return "support-tickets";
-      default: return "security"; // fallback
+      default: return "products"; // fallback
     }
   };
 
@@ -377,6 +335,7 @@ export default function Settings() {
               onSelectSection={handleGroupSelect}
               canManageTeam={canManageTeam}
               canManageIntegrations={canManageIntegrations}
+              isAdmin={isAdmin}
               isTelecom={organization?.niche === 'telecom'}
             />
           </>

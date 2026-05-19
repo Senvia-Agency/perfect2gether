@@ -1,5 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules } from "@/hooks/useModules";
+import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ interface ClientDetailsModalProps {
 export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: ClientDetailsModalProps) {
   const { organization } = useAuth();
   const isTelecom = organization?.niche === 'telecom';
+  const isP2G = isPerfect2GetherOrg(organization?.id);
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
   
@@ -173,10 +175,12 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
                     <p className="text-lg font-semibold">{(client.total_mwh || 0).toFixed(2)}</p>
                     <p className="text-xs text-muted-foreground">MWh</p>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-3 text-center">
-                    <p className="text-lg font-semibold">{(client.total_kwp || 0).toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">kWp</p>
-                  </div>
+                  {!isP2G && (
+                    <div className="rounded-lg bg-muted/50 p-3 text-center">
+                      <p className="text-lg font-semibold">{(client.total_kwp || 0).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">kWp</p>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="rounded-lg bg-muted/50 p-3 text-center">

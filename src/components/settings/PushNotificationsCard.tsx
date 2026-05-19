@@ -56,7 +56,7 @@ export const PushNotificationsCard = ({ organizationId, pushNotifications }: Pus
                   onClick={async () => {
                     if (!organizationId) return;
                     try {
-                      const { error } = await supabase.functions.invoke('send-push-notification', {
+                      const { data, error } = await supabase.functions.invoke('send-push-notification', {
                         body: {
                           organization_id: organizationId,
                           title: '🔔 Teste de Notificação',
@@ -65,7 +65,10 @@ export const PushNotificationsCard = ({ organizationId, pushNotifications }: Pus
                           tag: 'test-notification',
                         },
                       });
-                      if (error) throw error;
+                      if (error) {
+                        const realMessage = data?.error || error.message || 'Erro ao enviar notificação';
+                        throw new Error(realMessage);
+                      }
                       toast({ title: 'Teste enviado!', description: 'Aguarda a notificação no dispositivo.' });
                     } catch (err) {
                       toast({ title: 'Erro', description: 'Não foi possível enviar o teste.', variant: 'destructive' });

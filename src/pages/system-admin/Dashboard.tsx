@@ -63,7 +63,10 @@ export default function SystemAdminDashboard() {
     queryKey: ["super-admin-stripe-stats"],
     queryFn: async (): Promise<StripeStatsResponse> => {
       const { data, error } = await supabase.functions.invoke("admin-stripe-stats");
-      if (error) throw error;
+      if (error) {
+        const realMessage = data?.error || error.message || 'Erro ao obter estatísticas Stripe';
+        throw new Error(realMessage);
+      }
       return data as StripeStatsResponse;
     },
     staleTime: 5 * 60 * 1000, // Cache 5 min

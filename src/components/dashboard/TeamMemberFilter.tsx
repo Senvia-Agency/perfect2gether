@@ -10,7 +10,7 @@ interface TeamMemberFilterProps {
 
 export function TeamMemberFilter({ className }: TeamMemberFilterProps) {
   const { canFilterByTeam, selectedMemberId, setSelectedMemberId, isTeamLeader, teamMemberIds, currentUserId } = useTeamFilter();
-  const { data: allMembers = [] } = useTeamMembers();
+  const { data: allMembers = [] } = useTeamMembers({ excludeAdmins: true });
 
   // For leaders: show only their team members + themselves
   // For admins: show all members

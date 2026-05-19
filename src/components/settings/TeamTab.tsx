@@ -19,7 +19,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Users, UserPlus, Copy, X, Check, Clock, Loader2, RefreshCw, Eye, EyeOff, MoreHorizontal, Key, UserCog, Ban, CheckCircle, Mail, Pencil, Phone, Trash2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Users, UserPlus, Copy, X, Check, Clock, Loader2, RefreshCw, Eye, EyeOff, MoreHorizontal, Key, UserCog, Ban, CheckCircle, Mail, Pencil, Phone, Trash2, Bell } from 'lucide-react';
 
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -59,12 +60,18 @@ export function TeamTab() {
 
   // Modal state - Add member
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [accessSystem, setAccessSystem] = useState<'p2g' | 'total_link'>('p2g');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('salesperson');
   const [showPassword, setShowPassword] = useState(false);
+  const [newNotificationEmail, setNewNotificationEmail] = useState('');
+  const [newNotifPrefs, setNewNotifPrefs] = useState({ calendar: true, email: true, fidelization: true });
+
+  // Filter profiles by selected system
+  const filteredProfiles = profiles.filter(p => (p.systems || ['p2g']).includes(accessSystem));
   
   // Success state
   const [createdMember, setCreatedMember] = useState<{ email: string; password: string; fullName: string } | null>(null);
@@ -85,6 +92,7 @@ export function TeamTab() {
   // Change role modal state
   const [changeRoleOpen, setChangeRoleOpen] = useState(false);
   const [newRole, setNewRole] = useState('salesperson');
+  const [editSystem, setEditSystem] = useState<'p2g' | 'total_link'>('p2g');
 
   // Edit profile modal state
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -92,6 +100,8 @@ export function TeamTab() {
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editCommissionRate, setEditCommissionRate] = useState('');
+  const [editNotificationEmail, setEditNotificationEmail] = useState('');
+  const [editNotifPrefs, setEditNotifPrefs] = useState({ calendar: true, email: true, fidelization: true });
 
   // Send access email modal state
   const [sendAccessOpen, setSendAccessOpen] = useState(false);
@@ -122,7 +132,18 @@ export function TeamTab() {
     createTeamMember.mutate(
       { email, password, fullName, role: resolvedRole as 'admin' | 'viewer' | 'salesperson', profileId: selectedProfile?.id },
       {
-        onSuccess: () => {
+        onSuccess: async (data) => {
+          // Save notification preferences on the new member record
+          if (organization?.id && data?.user_id) {
+            await supabase
+              .from('organization_members')
+              .update({
+                notification_email: newNotificationEmail.trim() || null,
+                notification_preferences: newNotifPrefs,
+              } as any)
+              .eq('user_id', data.user_id)
+              .eq('organization_id', organization.id);
+          }
           setCreatedMember({ email, password, fullName });
         },
       }
@@ -150,6 +171,7 @@ export function TeamTab() {
 
   const handleCloseDialog = () => {
     setIsAddOpen(false);
+    setAccessSystem('p2g');
     setFullName('');
     setEmail('');
     setPassword('');
@@ -160,6 +182,8 @@ export function TeamTab() {
     setCopiedField(null);
     setSendingEmail(false);
     setEmailSent(false);
+    setNewNotificationEmail('');
+    setNewNotifPrefs({ calendar: true, email: true, fidelization: true });
   };
 
   const handleSendAccessEmail = async () => {
@@ -173,7 +197,6 @@ export function TeamTab() {
           recipientEmail: createdMember.email,
           recipientName: createdMember.fullName,
           loginUrl,
-          companyCode: organization.slug,
           password: createdMember.password,
         },
       });
@@ -207,13 +230,18 @@ export function TeamTab() {
     setChangePasswordOpen(true);
   };
 
+  const editSystemProfiles = profiles.filter(p => (p.systems || ['p2g']).includes(editSystem));
+
   const openChangeRoleModal = (member: TeamMember) => {
     setSelectedMember(member);
     // Pre-select current profile by profile_id or fallback to role
     const currentProfileId = member.profile_id;
-    const matchedProfile = currentProfileId 
+    const matchedProfile = currentProfileId
       ? profiles.find(p => p.id === currentProfileId)
       : profiles.find(p => p.base_role === member.role);
+    // Detect current system from profile
+    const memberSystems = matchedProfile?.systems || ['p2g'];
+    setEditSystem(memberSystems.includes('total_link') && !memberSystems.includes('p2g') ? 'total_link' : 'p2g');
     setNewRole(matchedProfile?.id || member.role);
     setChangeRoleOpen(true);
   };
@@ -292,17 +320,31 @@ export function TeamTab() {
     setEditFullName(member.full_name || '');
     setEditEmail(member.email || '');
     setEditPhone(member.phone || '');
-    // Load commission rate from organization_members
-    if (showIndividualCommission && organization?.id) {
+    setEditCommissionRate('');
+    setEditNotificationEmail('');
+    setEditNotifPrefs({ calendar: true, email: true, fidelization: true });
+
+    if (organization?.id) {
       const { data } = await supabase
         .from('organization_members')
-        .select('commission_rate')
+        .select('commission_rate, notification_email, notification_preferences')
         .eq('user_id', member.user_id)
         .eq('organization_id', organization.id)
         .single();
-      setEditCommissionRate(data?.commission_rate ? String(data.commission_rate) : '');
-    } else {
-      setEditCommissionRate('');
+      if (data) {
+        if (showIndividualCommission) {
+          setEditCommissionRate(data.commission_rate ? String(data.commission_rate) : '');
+        }
+        setEditNotificationEmail((data as any).notification_email || '');
+        const prefs = (data as any).notification_preferences;
+        if (prefs) {
+          setEditNotifPrefs({
+            calendar: prefs.calendar ?? true,
+            email: prefs.email ?? true,
+            fidelization: prefs.fidelization ?? true,
+          });
+        }
+      }
     }
     setEditProfileOpen(true);
   };
@@ -313,15 +355,23 @@ export function TeamTab() {
       toast({ title: 'O nome é obrigatório', variant: 'destructive' });
       return;
     }
-    // Save commission rate if individual mode
-    if (showIndividualCommission && organization?.id) {
-      const rate = editCommissionRate ? parseFloat(editCommissionRate) : null;
+    // Save member-level fields (commission, notifications)
+    if (organization?.id) {
+      const memberUpdate: Record<string, unknown> = {
+        notification_email: editNotificationEmail.trim() || null,
+        notification_preferences: editNotifPrefs,
+      };
+      if (showIndividualCommission) {
+        memberUpdate.commission_rate = editCommissionRate ? parseFloat(editCommissionRate) : null;
+      }
       await supabase
         .from('organization_members')
-        .update({ commission_rate: rate } as any)
+        .update(memberUpdate as any)
         .eq('user_id', selectedMember.user_id)
         .eq('organization_id', organization.id);
-      queryClient.invalidateQueries({ queryKey: ['sales-commissions'] });
+      if (showIndividualCommission) {
+        queryClient.invalidateQueries({ queryKey: ['sales-commissions'] });
+      }
     }
     manageTeamMember.mutate(
       { action: 'update_profile', user_id: selectedMember.user_id, full_name: editFullName.trim(), email: editEmail.trim(), phone: editPhone.trim() },
@@ -350,7 +400,6 @@ export function TeamTab() {
           recipientEmail: selectedMember.email,
           recipientName: selectedMember.full_name,
           loginUrl,
-          companyCode: organization.slug,
         },
       });
       if (error) throw error;
@@ -406,6 +455,27 @@ export function TeamTab() {
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
+                      <Label>Sistema de Acesso</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setAccessSystem('p2g'); setRole('salesperson'); }}
+                          className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-3 text-sm transition-colors ${accessSystem === 'p2g' ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'}`}
+                        >
+                          <span className="font-medium">Perfect2Gether</span>
+                          <span className="text-xs text-muted-foreground">CRM & Gestão</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setAccessSystem('total_link'); setRole('viewer'); }}
+                          className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-3 text-sm transition-colors ${accessSystem === 'total_link' ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'}`}
+                        >
+                          <span className="font-medium">Total Link</span>
+                          <span className="text-xs text-muted-foreground">Portal</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="full-name">Nome Completo</Label>
                       <Input
                         id="full-name"
@@ -457,47 +527,65 @@ export function TeamTab() {
                     </div>
                     <div className="space-y-3">
                       <Label>Perfil</Label>
-                      {profiles.length > 0 ? (
-                        <Select value={role} onValueChange={(v) => setRole(v)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecionar perfil..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {profiles.map(p => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.name}
-                                <span className="text-muted-foreground text-xs ml-2">
-                                  ({ROLE_LABELS[p.base_role] || p.base_role})
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <RadioGroup value={role} onValueChange={(v) => setRole(v as 'admin' | 'viewer' | 'salesperson')}>
-                          <div className="flex items-start space-x-3 rounded-lg border p-3">
-                            <RadioGroupItem value="salesperson" id="role-salesperson" className="mt-1" />
-                            <div className="flex-1">
-                              <Label htmlFor="role-salesperson" className="font-medium cursor-pointer">Comercial</Label>
-                              <p className="text-sm text-muted-foreground">Vê apenas os leads atribuídos.</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start space-x-3 rounded-lg border p-3">
-                            <RadioGroupItem value="viewer" id="role-viewer" className="mt-1" />
-                            <div className="flex-1">
-                              <Label htmlFor="role-viewer" className="font-medium cursor-pointer">Visualizador</Label>
-                              <p className="text-sm text-muted-foreground">Vê todos os leads. Não pode eliminar.</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start space-x-3 rounded-lg border p-3">
-                            <RadioGroupItem value="admin" id="role-admin" className="mt-1" />
-                            <div className="flex-1">
-                              <Label htmlFor="role-admin" className="font-medium cursor-pointer">Administrador</Label>
-                              <p className="text-sm text-muted-foreground">Acesso total.</p>
-                            </div>
-                          </div>
-                        </RadioGroup>
-                      )}
+                      <Select value={role} onValueChange={(v) => setRole(v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecionar perfil..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredProfiles.map(p => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name}
+                              <span className="text-muted-foreground text-xs ml-2">
+                                ({ROLE_LABELS[p.base_role] || p.base_role})
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Notification preferences */}
+                    <div className="space-y-3 pt-2 border-t">
+                      <Label className="flex items-center gap-2 text-sm font-semibold">
+                        <Bell className="h-4 w-4" />
+                        Notificações
+                      </Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-notif-email">Email para notificações</Label>
+                        <Input
+                          id="new-notif-email"
+                          type="email"
+                          placeholder="Usar email de contacto se vazio"
+                          value={newNotificationEmail}
+                          onChange={(e) => setNewNotificationEmail(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="new-notif-calendar" className="text-sm font-normal">Lembretes de Calendário</Label>
+                          <Switch
+                            id="new-notif-calendar"
+                            checked={newNotifPrefs.calendar}
+                            onCheckedChange={(v) => setNewNotifPrefs(p => ({ ...p, calendar: v }))}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="new-notif-email-toggle" className="text-sm font-normal">Alertas por Email</Label>
+                          <Switch
+                            id="new-notif-email-toggle"
+                            checked={newNotifPrefs.email}
+                            onCheckedChange={(v) => setNewNotifPrefs(p => ({ ...p, email: v }))}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="new-notif-fidelization" className="text-sm font-normal">Alertas de Fidelização (CPE/CUI)</Label>
+                          <Switch
+                            id="new-notif-fidelization"
+                            checked={newNotifPrefs.fidelization}
+                            onCheckedChange={(v) => setNewNotifPrefs(p => ({ ...p, fidelization: v }))}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <DialogFooter>
@@ -506,7 +594,7 @@ export function TeamTab() {
                     </Button>
                     <Button
                       onClick={handleCreateMember}
-                      disabled={!fullName.trim() || !email.trim() || !password || !confirmPassword || createTeamMember.isPending}
+                      disabled={!fullName.trim() || !email.trim() || !password || !confirmPassword || !filteredProfiles.some(p => p.id === role) || createTeamMember.isPending}
                     >
                       {createTeamMember.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Criar Acesso
@@ -535,19 +623,6 @@ export function TeamTab() {
                           onClick={() => copyToClipboard(loginUrl, 'Link')}
                         >
                           {copiedField === 'Link' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-muted-foreground">Código da Empresa</Label>
-                      <div className="flex gap-2">
-                        <Input value={organization?.slug || ''} readOnly className="font-mono text-sm" />
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          onClick={() => copyToClipboard(organization?.slug || '', 'Código')}
-                        >
-                          {copiedField === 'Código' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         </Button>
                       </div>
                     </div>
@@ -815,7 +890,7 @@ export function TeamTab() {
               Enviar Email de Acesso
             </DialogTitle>
             <DialogDescription>
-              Enviar os dados de acesso (link, código da empresa e email) para <strong>{selectedMember?.full_name}</strong>? A palavra-passe atual não será alterada.
+              Enviar os dados de acesso (link e email) para <strong>{selectedMember?.full_name}</strong>? A palavra-passe atual não será alterada.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -893,6 +968,53 @@ export function TeamTab() {
                 </p>
               </div>
             )}
+
+            {/* Notification preferences */}
+            <div className="space-y-3 pt-2 border-t">
+              <Label className="flex items-center gap-2 text-sm font-semibold">
+                <Bell className="h-4 w-4" />
+                Notificações
+              </Label>
+              <div className="space-y-2">
+                <Label htmlFor="edit-notif-email">Email para notificações</Label>
+                <Input
+                  id="edit-notif-email"
+                  type="email"
+                  placeholder="Usar email de contacto se vazio"
+                  value={editNotificationEmail}
+                  onChange={(e) => setEditNotificationEmail(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Email onde este colaborador recebe alertas. Se vazio, usa o email de contacto.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notif-calendar" className="text-sm font-normal">Lembretes de Calendário</Label>
+                  <Switch
+                    id="notif-calendar"
+                    checked={editNotifPrefs.calendar}
+                    onCheckedChange={(v) => setEditNotifPrefs(p => ({ ...p, calendar: v }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notif-email" className="text-sm font-normal">Alertas por Email</Label>
+                  <Switch
+                    id="notif-email"
+                    checked={editNotifPrefs.email}
+                    onCheckedChange={(v) => setEditNotifPrefs(p => ({ ...p, email: v }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notif-fidelization" className="text-sm font-normal">Alertas de Fidelização (CPE/CUI)</Label>
+                  <Switch
+                    id="notif-fidelization"
+                    checked={editNotifPrefs.fidelization}
+                    onCheckedChange={(v) => setEditNotifPrefs(p => ({ ...p, fidelization: v }))}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditProfileOpen(false)}>
@@ -928,17 +1050,39 @@ export function TeamTab() {
                 {selectedMember?.profile_name || (selectedMember ? ROLE_LABELS[selectedMember.role] : '')}
               </Badge>
             </div>
-            {profiles.length > 0 ? (
+            <div className="space-y-2 mb-4">
+              <Label>Sistema</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setEditSystem('p2g'); setNewRole('salesperson'); }}
+                  className={`flex flex-col items-center gap-1 rounded-lg border-2 p-2.5 text-sm transition-colors ${editSystem === 'p2g' ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'}`}
+                >
+                  <span className="font-medium">Perfect2Gether</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditSystem('total_link'); setNewRole('viewer'); }}
+                  className={`flex flex-col items-center gap-1 rounded-lg border-2 p-2.5 text-sm transition-colors ${editSystem === 'total_link' ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'}`}
+                >
+                  <span className="font-medium">Total Link</span>
+                </button>
+              </div>
+            </div>
+            {editSystemProfiles.length > 0 ? (
               <div className="space-y-2">
                 <Label>Novo Perfil</Label>
                 <Select value={newRole} onValueChange={(v) => setNewRole(v)}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecionar perfil..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {profiles.map(p => (
+                    {editSystemProfiles.map(p => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
+                        <span className="text-muted-foreground text-xs ml-2">
+                          ({ROLE_LABELS[p.base_role] || p.base_role})
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

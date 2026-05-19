@@ -21,9 +21,12 @@ import {
   DATA_SCOPE_LABELS,
   DATA_SCOPE_DESCRIPTIONS,
   ProfileDashboardWidget,
+  SystemKey,
+  SYSTEM_LABELS,
+  SYSTEM_DESCRIPTIONS,
 } from '@/hooks/useOrganizationProfiles';
 import { useAuth } from '@/contexts/AuthContext';
-import { WIDGET_DEFINITIONS, WidgetType, filterWidgetsByModules, getAllAvailableWidgets } from '@/lib/dashboard-templates';
+import { WIDGET_DEFINITIONS, WidgetType, getAllAvailableWidgets } from '@/lib/dashboard-templates';
 import { Shield, Plus, Pencil, Trash2, Loader2, Eye, LayoutDashboard, ArrowLeft } from 'lucide-react';
 
 const BASE_ROLE_LABELS: Record<string, string> = {
@@ -41,6 +44,7 @@ export function ProfilesTab() {
   const [name, setName] = useState('');
   const [baseRole, setBaseRole] = useState<string>('salesperson');
   const [dataScope, setDataScope] = useState<DataScope>('own');
+  const [systems, setSystems] = useState<SystemKey[]>(['p2g']);
   const [permissions, setPermissions] = useState<GranularPermissions>(buildDefaultPermissions('salesperson'));
   const [useCustomDashboard, setUseCustomDashboard] = useState(false);
   const [dashboardWidgets, setDashboardWidgets] = useState<ProfileDashboardWidget[]>([]);
@@ -54,11 +58,30 @@ export function ProfilesTab() {
     return true;
   });
 
+  // Modules visible per selected systems
+  const P2G_MODULES = Object.keys(MODULE_SCHEMA).filter(k => k !== 'portal_total_link');
+  const TOTAL_LINK_MODULES = ['portal_total_link'];
+  const visibleModules = [
+    ...(systems.includes('p2g') ? P2G_MODULES : []),
+    ...(systems.includes('total_link') ? TOTAL_LINK_MODULES : []),
+  ];
+
+  const toggleSystem = (key: SystemKey) => {
+    setSystems(prev => {
+      if (prev.includes(key)) {
+        if (prev.length === 1) return prev; // Must have at least one
+        return prev.filter(s => s !== key);
+      }
+      return [...prev, key];
+    });
+  };
+
   const openCreate = () => {
     setEditingProfile(null);
     setName('');
     setBaseRole('salesperson');
     setDataScope('own');
+    setSystems(['p2g']);
     setPermissions(buildDefaultPermissions('salesperson'));
     setUseCustomDashboard(false);
     setDashboardWidgets([]);
@@ -70,6 +93,7 @@ export function ProfilesTab() {
     setName(profile.name);
     setBaseRole(profile.base_role);
     setDataScope(profile.data_scope || 'own');
+    setSystems(profile.systems || ['p2g']);
     setPermissions(profile.module_permissions);
     setUseCustomDashboard(!!profile.dashboard_widgets);
     setDashboardWidgets(profile.dashboard_widgets || []);
@@ -158,11 +182,11 @@ export function ProfilesTab() {
     if (!name.trim()) return;
     const dw = useCustomDashboard ? dashboardWidgets : null;
     if (editingProfile) {
-      updateProfile.mutate({ id: editingProfile.id, name: name.trim(), base_role: baseRole, module_permissions: permissions, data_scope: dataScope, dashboard_widgets: dw }, {
+      updateProfile.mutate({ id: editingProfile.id, name: name.trim(), base_role: baseRole, module_permissions: permissions, data_scope: dataScope, systems, dashboard_widgets: dw }, {
         onSuccess: () => setIsOpen(false),
       });
     } else {
-      createProfile.mutate({ name: name.trim(), base_role: baseRole, module_permissions: permissions, data_scope: dataScope, dashboard_widgets: dw }, {
+      createProfile.mutate({ name: name.trim(), base_role: baseRole, module_permissions: permissions, data_scope: dataScope, systems, dashboard_widgets: dw }, {
         onSuccess: () => setIsOpen(false),
       });
     }
@@ -229,6 +253,26 @@ export function ProfilesTab() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label>Sistemas</Label>
+                  <div className="space-y-2">
+                    {(['p2g', 'total_link'] as SystemKey[]).map(key => (
+                      <label key={key} className="flex items-center gap-2 cursor-pointer rounded-lg border p-3">
+                        <Checkbox
+                          checked={systems.includes(key)}
+                          onCheckedChange={() => toggleSystem(key)}
+                          disabled={systems.length === 1 && systems.includes(key)}
+                        />
+                        <div>
+                          <span className="text-sm font-medium">{SYSTEM_LABELS[key]}</span>
+                          <span className="text-xs text-muted-foreground ml-2">{SYSTEM_DESCRIPTIONS[key]}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Selecione a que sistemas este perfil dá acesso.</p>
+                </div>
+
+                <div className="space-y-2">
                   <Label>Visibilidade de Dados</Label>
                   <Select value={dataScope} onValueChange={(v) => setDataScope(v as DataScope)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -251,7 +295,7 @@ export function ProfilesTab() {
               </CardHeader>
               <CardContent>
                 <Accordion type="multiple" className="border rounded-lg">
-                  {Object.entries(MODULE_SCHEMA).map(([moduleKey, schema]) => {
+                  {Object.entries(MODULE_SCHEMA).filter(([moduleKey]) => visibleModules.includes(moduleKey)).map(([moduleKey, schema]) => {
                     const allEnabled = isModuleAllEnabled(moduleKey);
                     const partial = isModulePartial(moduleKey);
 
@@ -365,60 +409,95 @@ export function ProfilesTab() {
   }
 
   // ── List view ──
+  const p2gProfiles = profiles.filter(p => (p.systems || ['p2g']).includes('p2g'));
+  const totalLinkProfiles = profiles.filter(p => (p.systems || ['p2g']).includes('total_link'));
+
+  const renderProfileCard = (profile: OrganizationProfile) => (
+    <div key={profile.id} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-medium">{profile.name}</p>
+          {profile.is_default && <Badge variant="outline" className="text-xs">Padrão</Badge>}
+          {(profile.systems?.length ?? 0) === 2 && (
+            <Badge variant="secondary" className="text-xs">P2G + Total Link</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Base: {BASE_ROLE_LABELS[profile.base_role] || profile.base_role}</span>
+          <span>·</span>
+          <span className="flex items-center gap-1">
+            <Eye className="h-3 w-3" />
+            {DATA_SCOPE_LABELS[(profile.data_scope || 'own') as DataScope]}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1 mt-1">
+          {getActiveModules(profile.module_permissions).map(label => (
+            <Badge key={label} variant="secondary" className="text-xs">{label}</Badge>
+          ))}
+        </div>
+      </div>
+      <div className="flex gap-1 shrink-0 ml-2">
+        <Button variant="ghost" size="icon" onClick={() => openEdit(profile)}>
+          <Pencil className="h-4 w-4" />
+        </Button>
+        {!profile.is_default && (
+          <Button variant="ghost" size="icon" onClick={() => handleDelete(profile)} disabled={deleteProfile.isPending}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Perfis de Acesso
-            </CardTitle>
-            <CardDescription>Defina perfis com permissões granulares por módulo e sub-área.</CardDescription>
-          </div>
-          <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Criar Perfil
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {profiles.map(profile => (
-              <div key={profile.id} className="flex items-center justify-between p-4 rounded-lg border bg-card">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{profile.name}</p>
-                    {profile.is_default && <Badge variant="outline" className="text-xs">Padrão</Badge>}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>Base: {BASE_ROLE_LABELS[profile.base_role] || profile.base_role}</span>
-                    <span>·</span>
-                    <span className="flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      {DATA_SCOPE_LABELS[(profile.data_scope || 'own') as DataScope]}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {getActiveModules(profile.module_permissions).map(label => (
-                      <Badge key={label} variant="secondary" className="text-xs">{label}</Badge>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex gap-1 shrink-0 ml-2">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(profile)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  {!profile.is_default && (
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(profile)} disabled={deleteProfile.isPending}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Perfis de Acesso
+          </h3>
+          <p className="text-sm text-muted-foreground">Defina perfis com permissões granulares por módulo e sub-área.</p>
+        </div>
+        <Button onClick={openCreate}>
+          <Plus className="mr-2 h-4 w-4" />
+          Criar Perfil
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Perfis Perfect2Gether</CardTitle>
+            <CardDescription>Perfis com acesso ao CRM & Gestão Comercial</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {p2gProfiles.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Nenhum perfil P2G criado</p>
+              ) : (
+                p2gProfiles.map(renderProfileCard)
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Perfis Total Link</CardTitle>
+            <CardDescription>Perfis com acesso ao Portal Total Link</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {totalLinkProfiles.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Nenhum perfil Total Link criado</p>
+              ) : (
+                totalLinkProfiles.map(renderProfileCard)
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

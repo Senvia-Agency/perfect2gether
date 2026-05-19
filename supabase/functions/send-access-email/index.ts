@@ -11,7 +11,6 @@ interface SendAccessEmailRequest {
   recipientEmail: string;
   recipientName: string;
   loginUrl: string;
-  companyCode: string;
   password?: string;
 }
 
@@ -46,9 +45,9 @@ serve(async (req) => {
       );
     }
 
-    const { organizationId, recipientEmail, recipientName, loginUrl, companyCode, password }: SendAccessEmailRequest = await req.json();
+    const { organizationId, recipientEmail, recipientName, loginUrl, password }: SendAccessEmailRequest = await req.json();
 
-    if (!organizationId || !recipientEmail || !recipientName || !loginUrl || !companyCode) {
+    if (!organizationId || !recipientEmail || !recipientName || !loginUrl) {
       return new Response(
         JSON.stringify({ error: 'Campos obrigatórios em falta' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -56,7 +55,9 @@ serve(async (req) => {
     }
 
     // Get org Brevo config
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
     const { data: org, error: orgError } = await supabaseAdmin
       .from('organizations')
       .select('brevo_api_key, brevo_sender_email, name')
@@ -121,13 +122,6 @@ serve(async (req) => {
                         <td style="padding:6px 0;">
                           <span style="color:#71717a;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Link de Acesso</span><br>
                           <a href="${loginUrl}" style="color:#2563eb;font-size:14px;font-family:monospace;word-break:break-all;">${loginUrl}</a>
-                        </td>
-                      </tr>
-                      <tr><td style="padding:8px 0;border-bottom:1px solid #e4e4e7;"></td></tr>
-                      <tr>
-                        <td style="padding:10px 0 6px;">
-                          <span style="color:#71717a;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Código da Empresa</span><br>
-                          <span style="color:#18181b;font-size:16px;font-weight:600;font-family:monospace;">${companyCode}</span>
                         </td>
                       </tr>
                       <tr><td style="padding:8px 0;border-bottom:1px solid #e4e4e7;"></td></tr>
