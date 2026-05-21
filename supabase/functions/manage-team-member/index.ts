@@ -368,9 +368,42 @@ Deno.serve(async (req) => {
       }
 
       case 'update_profile': {
+        const trimmedEmail = email !== undefined ? email.trim().toLowerCase() : undefined;
+
+        // If the email is changing, update Supabase Auth FIRST.
+        // `profiles.email` is only a mirror for the UI — `auth.users` is what
+        // the login actually authenticates against. Updating only `profiles`
+        // leaves the account unable to log in with the new email.
+        if (trimmedEmail) {
+          const { data: targetUser, error: getTargetError } = await supabaseAdmin.auth.admin.getUserById(user_id);
+          if (getTargetError || !targetUser?.user) {
+            console.error('Get target user error:', getTargetError);
+            return new Response(
+              JSON.stringify({ error: 'Utilizador não encontrado' }),
+              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          if ((targetUser.user.email || '').toLowerCase() !== trimmedEmail) {
+            const { error: authEmailError } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
+              email: trimmedEmail,
+              email_confirm: true,
+            });
+
+            if (authEmailError) {
+              console.error('Auth email update error:', authEmailError);
+              const alreadyUsed = (authEmailError.message || '').toLowerCase().includes('already');
+              return new Response(
+                JSON.stringify({ error: alreadyUsed ? 'Este email já está a ser usado por outro utilizador' : 'Erro ao alterar o email de acesso' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+          }
+        }
+
         const updateData: Record<string, string> = {};
         if (full_name !== undefined) updateData.full_name = full_name.trim();
-        if (email !== undefined) updateData.email = email.trim();
+        if (trimmedEmail !== undefined) updateData.email = trimmedEmail;
         if (phone !== undefined) updateData.phone = phone.trim();
 
         if (Object.keys(updateData).length === 0) {
@@ -398,7 +431,10 @@ Deno.serve(async (req) => {
       }
 
       case 'delete_member': {
-        // Remove from organization_members
+        // Reassign this member's leads to other active members first
+        await redistributeLeads(user_id, sharedOrgId);
+
+        // Remove from this organization
         const { error: deleteMemberError } = await supabaseAdmin
           .from('organization_members')
           .delete()
@@ -413,28 +449,56 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Remove user roles (except super_admin)
-        await supabaseAdmin
-          .from('user_roles')
-          .delete()
+        // If the user still belongs to other organizations, stop here —
+        // only remove them from this one and keep the account alive.
+        const { data: remainingMemberships } = await supabaseAdmin
+          .from('organization_members')
+          .select('id')
           .eq('user_id', user_id)
-          .neq('role', 'super_admin');
+          .limit(1);
 
-        // Clear organization_id from profile
-        await supabaseAdmin
-          .from('profiles')
-          .update({ organization_id: null })
-          .eq('id', user_id);
+        if (remainingMemberships && remainingMemberships.length > 0) {
+          console.log(`Member ${user_id} removed from org ${sharedOrgId} (still in other orgs)`);
+          break;
+        }
 
-        // Ban the user so they can't log in
-        await supabaseAdmin.auth.admin.updateUserById(user_id, {
-          ban_duration: '876600h',
-        });
+        // No memberships left — fully delete the account so the email is freed
+        // and the person can be created again from scratch. We do NOT ban: a
+        // banned account keeps the email locked and can never be recreated.
 
-        // Redistribute leads from deleted member
-        await redistributeLeads(user_id, sharedOrgId);
+        // Null out audit-trail references (NO ACTION foreign keys) that would
+        // otherwise block deleting the auth user / profile.
+        const auditRefs: Array<[string, string]> = [
+          ['client_lists', 'created_by'],
+          ['email_sends', 'sent_by'],
+          ['lead_attachments', 'uploaded_by'],
+          ['email_automations', 'created_by'],
+          ['rh_absences', 'approved_by'],
+          ['inventory_movements', 'created_by'],
+          ['email_templates', 'created_by'],
+          ['sale_activation_history', 'changed_by'],
+        ];
+        for (const [table, col] of auditRefs) {
+          const { error: refErr } = await supabaseAdmin
+            .from(table)
+            .update({ [col]: null })
+            .eq(col, user_id);
+          if (refErr) console.error(`Failed clearing ${table}.${col}:`, refErr);
+        }
 
-        console.log(`Member ${user_id} deleted from org ${sharedOrgId}`);
+        // Hard-delete the auth user. Cascades remove profiles, user_roles,
+        // identities, sessions, dashboard_widgets, etc. and free the email.
+        const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(user_id);
+
+        if (deleteAuthError) {
+          console.error('Delete auth user error:', deleteAuthError);
+          return new Response(
+            JSON.stringify({ error: 'Erro ao eliminar a conta do utilizador' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`Member ${user_id} fully deleted — email freed for reuse`);
         break;
       }
 
