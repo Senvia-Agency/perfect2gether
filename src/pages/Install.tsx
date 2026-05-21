@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Smartphone, Check, Share, MoreVertical, PlusSquare } from "lucide-react";
-import p2gLogo from "@/assets/p2g-logo.png";
 import { Link } from "react-router-dom";
+
+const p2gLogo = "/Logo-P2G.png";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 export default function Install() {

@@ -5,7 +5,8 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ShieldCheck } from 'lucide-react';
-import p2gLogo from '@/assets/p2g-logo.png';
+
+const p2gLogo = '/Logo-P2G.png';
 
 interface ChallengeMFAProps {
   onSuccess: () => void;
