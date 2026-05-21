@@ -63,20 +63,22 @@ export function ChallengeMFA({ onSuccess, onCancel }: ChallengeMFAProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+      <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,hsl(var(--secondary)/0.05)_0%,transparent_50%)]" />
+      <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
           <img src={p2gLogo} alt="Perfect2Gether" className="h-12 w-48 object-contain mx-auto" />
         </div>
 
-        <Card className="border-slate-800 bg-slate-900/50 backdrop-blur">
+        <Card className="border-border bg-card/80 backdrop-blur shadow-xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <ShieldCheck className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle className="text-white">Verificação de Dois Fatores</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-foreground">Verificação de Dois Fatores</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Abra a sua app de autenticação e insira o código de 6 dígitos.
             </CardDescription>
           </CardHeader>
@@ -112,7 +114,7 @@ export function ChallengeMFA({ onSuccess, onCancel }: ChallengeMFAProps) {
               </Button>
 
               <div className="text-center">
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Não consegue aceder?{' '}
                   <button
                     type="button"
