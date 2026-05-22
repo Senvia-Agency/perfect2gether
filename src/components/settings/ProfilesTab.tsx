@@ -28,12 +28,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { WIDGET_DEFINITIONS, WidgetType, getAllAvailableWidgets } from '@/lib/dashboard-templates';
 import { Shield, Plus, Pencil, Trash2, Loader2, Eye, LayoutDashboard, ArrowLeft } from 'lucide-react';
-
-const BASE_ROLE_LABELS: Record<string, string> = {
-  admin: 'Administrador',
-  viewer: 'Visualizador',
-  salesperson: 'Comercial',
-};
+import { getRoleLabel } from '@/lib/roles';
 
 export function ProfilesTab() {
   const { profiles, isLoading, createProfile, updateProfile, deleteProfile } = useOrganizationProfiles();
@@ -423,7 +418,7 @@ export function ProfilesTab() {
           )}
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Base: {BASE_ROLE_LABELS[profile.base_role] || profile.base_role}</span>
+          <span>Base: {getRoleLabel({ role: profile.base_role })}</span>
           <span>·</span>
           <span className="flex items-center gap-1">
             <Eye className="h-3 w-3" />

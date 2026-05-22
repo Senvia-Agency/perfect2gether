@@ -31,20 +31,15 @@ export function useNifValidation({
     queryFn: async () => {
       if (!debouncedNif || !organizationId) return null;
 
-      let query = supabase
-        .from("crm_clients")
-        .select("id, name, code")
-        .eq("organization_id", organizationId)
-        .or(`nif.eq.${debouncedNif},company_nif.eq.${debouncedNif}`)
-        .limit(1);
-
-      if (excludeClientId) {
-        query = query.neq("id", excludeClientId);
-      }
-
-      const { data, error } = await query;
+      // RPC security-definer: verifica o NIF em TODA a organização. Uma query
+      // direta a crm_clients seria limitada pelo RLS aos clientes do próprio
+      // utilizador, deixando passar duplicados de colegas.
+      const { data, error } = await (supabase as any).rpc("check_nif_exists", {
+        p_nif: debouncedNif,
+        p_exclude_client_id: excludeClientId ?? null,
+      });
       if (error) throw error;
-      return data?.[0] || null;
+      return (data as Array<{ id: string; name: string; code: string }> | null)?.[0] || null;
     },
     enabled: !!debouncedNif && debouncedNif.length >= 5 && !!organizationId,
   });

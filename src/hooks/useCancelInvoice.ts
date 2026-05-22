@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { toast } from "sonner";
 
 interface CancelInvoiceParams {
@@ -19,22 +20,14 @@ export function useCancelInvoice() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
 
-      const response = await supabase.functions.invoke("cancel-invoice", {
-        body: {
-          payment_id: paymentId || null,
-          sale_id: saleId || null,
-          organization_id: organizationId,
-          reason,
-          invoicexpress_id: invoicexpressId,
-          document_type: documentType,
-        },
+      return await invokeFunction("cancel-invoice", {
+        payment_id: paymentId || null,
+        sale_id: saleId || null,
+        organization_id: organizationId,
+        reason,
+        invoicexpress_id: invoicexpressId,
+        document_type: documentType,
       });
-
-      if (response.error) {
-        const realMessage = response.data?.error || response.error.message || 'Erro ao anular documento';
-        throw new Error(realMessage);
-      }
-      return response.data;
     },
     onSuccess: () => {
       toast.success("Documento anulado com sucesso");

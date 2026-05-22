@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { TeamMember } from '@/hooks/useTeam';
@@ -99,20 +100,7 @@ export function useManageTeamMember() {
 
   return useMutation({
     mutationFn: async (params: ManageTeamMemberParams) => {
-      const { data, error } = await supabase.functions.invoke('manage-team-member', {
-        body: params,
-      });
-
-      if (error) {
-        const realMessage = data?.error || error.message || 'Erro ao gerir colaborador';
-        throw new Error(realMessage);
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      return data;
+      return await invokeFunction('manage-team-member', params);
     },
     onMutate: async (variables) => {
       // Cancelar queries em progresso

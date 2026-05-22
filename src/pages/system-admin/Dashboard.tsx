@@ -4,6 +4,7 @@ import { Users, Building, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { AdminMetricsCards } from "@/components/system-admin/AdminMetricsCards";
 import { OrganizationsTable } from "@/components/system-admin/OrganizationsTable";
 import type { OrgStripeData } from "@/components/system-admin/OrganizationsTable";
@@ -62,12 +63,7 @@ export default function SystemAdminDashboard() {
   const { data: stripeStats, isLoading: stripeLoading } = useQuery({
     queryKey: ["super-admin-stripe-stats"],
     queryFn: async (): Promise<StripeStatsResponse> => {
-      const { data, error } = await supabase.functions.invoke("admin-stripe-stats");
-      if (error) {
-        const realMessage = data?.error || error.message || 'Erro ao obter estatísticas Stripe';
-        throw new Error(realMessage);
-      }
-      return data as StripeStatsResponse;
+      return await invokeFunction<StripeStatsResponse>("admin-stripe-stats");
     },
     staleTime: 5 * 60 * 1000, // Cache 5 min
     retry: 1,

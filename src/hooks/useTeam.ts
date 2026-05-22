@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { SUPPORT_EMAILS } from '@/lib/constants';
@@ -46,13 +47,8 @@ export function useTeamMembers(options?: { excludeAdmins?: boolean; includeSuppo
     queryKey: ['team-members', organization?.id],
     queryFn: async (): Promise<TeamMember[]> => {
       if (!organization?.id) return [];
-
-      const { data, error } = await supabase.functions.invoke('get-team-members', {
-        body: { organization_id: organization.id }
-      });
-
-      if (error) throw error;
-      return (data || []) as TeamMember[];
+      const data = await invokeFunction<TeamMember[]>('get-team-members', { organization_id: organization.id });
+      return data || [];
     },
     enabled: !!organization?.id,
     retry: false,
@@ -218,27 +214,13 @@ export function useCreateTeamMember() {
 
   return useMutation({
     mutationFn: async ({ email, password, fullName, role, profileId }: CreateTeamMemberParams) => {
-      const { data, error } = await supabase.functions.invoke('create-team-member', {
-        body: {
-          email: email.toLowerCase().trim(),
-          password,
-          full_name: fullName.trim(),
-          role,
-          profile_id: profileId || null,
-        }
+      return await invokeFunction('create-team-member', {
+        email: email.toLowerCase().trim(),
+        password,
+        full_name: fullName.trim(),
+        role,
+        profile_id: profileId || null,
       });
-
-      if (error) {
-        // When the Edge Function returns non-2xx, the real error is in data
-        const realMessage = data?.error || error.message || 'Erro ao criar colaborador';
-        throw new Error(realMessage);
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] });

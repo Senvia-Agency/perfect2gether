@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { APP_VERSION } from "@/lib/constants";
-import type { AppRole } from "@/types";
+import { getRoleLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/hooks/usePermissions";
 
@@ -21,13 +21,6 @@ const navItems = [
   { to: "/leads", icon: Users, label: "Leads" },
   { to: "/settings", icon: Settings, label: "Definições" },
 ];
-
-const getRoleLabel = (roles: AppRole[]): string => {
-  if (roles.includes('super_admin')) return 'Super Admin';
-  if (roles.includes('admin')) return 'Administrador';
-  if (roles.includes('viewer')) return 'Visualizador';
-  return 'Colaborador';
-};
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -39,7 +32,7 @@ interface MobileMenuProps {
 export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizationName = "A Minha Empresa" }: MobileMenuProps) {
   const navigate = useNavigate();
   const { signOut, roles, isSuperAdmin, organization } = useAuth();
-  const { canViewModule, systems } = usePermissions();
+  const { canViewModule, systems, profileName } = usePermissions();
   const isTotalLinkOnly = systems.length === 1 && systems[0] === 'total_link';
 
   const handleLogout = async () => {
@@ -73,7 +66,7 @@ export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizat
             <p className="truncate font-medium text-foreground">
               {userName}
             </p>
-            <p className="text-sm text-muted-foreground">{getRoleLabel(roles)}</p>
+            <p className="text-sm text-muted-foreground">{getRoleLabel({ roles, profileName })}</p>
             <p className="text-xs text-muted-foreground/70 truncate mt-0.5">
               {organizationName}
             </p>

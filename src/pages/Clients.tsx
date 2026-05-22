@@ -29,6 +29,7 @@ import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from "date-f
 import { read, utils } from "xlsx";
 import { importClients } from "@/lib/clients/import";
 import { useTeamMembers } from "@/hooks/useTeam";
+import { useTeamFilter } from "@/hooks/useTeamFilter";
 import { useQueryClient } from "@tanstack/react-query";
 import { hasPerfect2GetherAccess } from "@/lib/perfect2gether";
 
@@ -57,6 +58,7 @@ export default function Clients() {
   const showEnergy = isTelecom && modules.energy;
   const [isImporting, setIsImporting] = useState(false);
   const { data: teamMembers } = useTeamMembers();
+  const { canFilterByTeam } = useTeamFilter();
   const queryClient = useQueryClient();
   const isPerfect2Gether = hasPerfect2GetherAccess({
     organizationId: organization?.id,
@@ -85,7 +87,9 @@ export default function Clients() {
         return false;
       }
 
-      if (filters.assignedTo !== 'all' && client.assigned_to !== filters.assignedTo) {
+      // O filtro por colaborador só se aplica a quem pode ver dados de outros.
+      // Para um comercial os dados já vêm restritos do useClients — ignorar valor persistido obsoleto.
+      if (canFilterByTeam && filters.assignedTo !== 'all' && client.assigned_to !== filters.assignedTo) {
         return false;
       }
 
@@ -109,7 +113,7 @@ export default function Clients() {
 
       return true;
     });
-  }, [clients, search, filters, clientTypesMap]);
+  }, [clients, search, filters, clientTypesMap, canFilterByTeam]);
 
   const handleEdit = (client: CrmClient) => {
     setSelectedClient(client);

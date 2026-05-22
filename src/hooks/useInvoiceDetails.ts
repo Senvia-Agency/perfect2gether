@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { toast } from "sonner";
 
 interface InvoiceDetailsParams {
@@ -86,17 +86,11 @@ export function useInvoiceDetails({ documentId, documentType, organizationId }: 
   return useQuery({
     queryKey: ["invoice-details", documentId, documentType],
     queryFn: async () => {
-      const res = await supabase.functions.invoke("get-invoice-details", {
-        body: {
-          document_id: documentId,
-          document_type: documentType,
-          organization_id: organizationId,
-        },
+      return await invokeFunction<InvoiceDetailsData>("get-invoice-details", {
+        document_id: documentId,
+        document_type: documentType,
+        organization_id: organizationId,
       });
-
-      if (res.error) throw new Error(res.error.message || "Erro ao obter detalhes");
-      if (res.data?.error) throw new Error(res.data.error);
-      return res.data as InvoiceDetailsData;
     },
     enabled: enabled && !!documentId && !!organizationId,
   });
@@ -107,20 +101,14 @@ export function useSyncInvoice() {
 
   return useMutation({
     mutationFn: async ({ documentId, documentType, organizationId, saleId, paymentId }: SyncInvoiceParams) => {
-      const res = await supabase.functions.invoke("get-invoice-details", {
-        body: {
-          document_id: documentId,
-          document_type: documentType,
-          organization_id: organizationId,
-          sync: true,
-          sale_id: saleId,
-          payment_id: paymentId,
-        },
+      return await invokeFunction<InvoiceDetailsData>("get-invoice-details", {
+        document_id: documentId,
+        document_type: documentType,
+        organization_id: organizationId,
+        sync: true,
+        sale_id: saleId,
+        payment_id: paymentId,
       });
-
-      if (res.error) throw new Error(res.error.message || "Erro ao sincronizar");
-      if (res.data?.error) throw new Error(res.data.error);
-      return res.data as InvoiceDetailsData;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["invoice-details", variables.documentId] });

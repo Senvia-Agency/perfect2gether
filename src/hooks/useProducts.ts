@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/types/proposals';
@@ -92,18 +93,15 @@ export function useUpdateProduct() {
       const ixId = data.invoicexpress_id;
       if (ixId && organization?.id) {
         try {
-          const response = await supabase.functions.invoke('update-invoicexpress-item', {
-            body: {
-              organization_id: organization.id,
-              invoicexpress_id: ixId,
-              name: data.name,
-              description: data.description,
-              unit_price: data.price,
-              tax_value: data.tax_value,
-            },
+          const result = await invokeFunction<{ warning?: string }>('update-invoicexpress-item', {
+            organization_id: organization.id,
+            invoicexpress_id: ixId,
+            name: data.name,
+            description: data.description,
+            unit_price: data.price,
+            tax_value: data.tax_value,
           });
-          if (response.error) throw new Error(response.error.message);
-          return { synced: true, warning: response.data?.warning };
+          return { synced: true, warning: result?.warning };
         } catch (syncErr) {
           console.warn('InvoiceXpress sync failed:', syncErr);
           return { synced: false };

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -101,15 +102,10 @@ export function useSyncCreditNotes() {
 
   return useMutation({
     mutationFn: async () => {
-      const res = await supabase.functions.invoke('sync-credit-notes', {
-        body: { organization_id: organization!.id },
-      });
-
-      if (res.error) {
-        const realMessage = res.data?.error || res.error.message || 'Erro ao sincronizar notas de crédito';
-        throw new Error(realMessage);
-      }
-      return res.data as { total: number; synced: number; not_matched: number };
+      return await invokeFunction<{ total: number; synced: number; not_matched: number }>(
+        'sync-credit-notes',
+        { organization_id: organization!.id },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['credit-notes'] });

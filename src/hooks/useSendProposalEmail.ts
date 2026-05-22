@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { toast } from 'sonner';
 
 interface ProductItem {
@@ -25,20 +25,7 @@ export interface SendProposalEmailData {
 export function useSendProposalEmail() {
   return useMutation({
     mutationFn: async (data: SendProposalEmailData) => {
-      const { data: result, error } = await supabase.functions.invoke(
-        'send-proposal-email',
-        { body: data }
-      );
-      
-      if (error) {
-        throw new Error(error.message || 'Erro ao enviar email');
-      }
-      
-      if (result?.error) {
-        throw new Error(result.error);
-      }
-      
-      return result;
+      return await invokeFunction('send-proposal-email', data);
     },
     onSuccess: () => {
       toast.success('Email enviado com sucesso!', {

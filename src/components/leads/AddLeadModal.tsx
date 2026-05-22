@@ -44,7 +44,8 @@ import { LeadFieldsSettings, DEFAULT_LEAD_FIELDS_SETTINGS } from "@/types/field-
 import { useModules } from "@/hooks/useModules";
 import { useCreateCpe } from "@/hooks/useCpes";
 import type { LeadTemperature, LeadTipologia } from "@/types";
-import { ROLE_LABELS as RoleLabels, TIPOLOGIA_LABELS, TIPOLOGIA_STYLES } from "@/types";
+import { TIPOLOGIA_LABELS, TIPOLOGIA_STYLES } from "@/types";
+import { getRoleLabel } from "@/lib/roles";
 
 const SOURCES = [
   "Entrada Manual",
@@ -630,7 +631,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
                                     .filter(m => !m.is_banned && (m.role === 'salesperson' || m.role === 'admin' || m.role === 'viewer'))
                                     .map((member) => (
                                       <SelectItem key={member.user_id} value={member.user_id}>
-                                        {member.full_name} ({RoleLabels[member.role] || member.role})
+                                        {member.full_name} ({getRoleLabel({ role: member.role, profileName: member.profile_name })})
                                       </SelectItem>
                                     ))}
                                 </SelectContent>

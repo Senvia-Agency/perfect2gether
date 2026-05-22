@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useClientLabels } from "@/hooks/useClientLabels";
 import type { ClientStatus } from "@/types/clients";
 import type { TeamMember } from "@/hooks/useTeam";
+import { useTeamScopedMembers } from "@/hooks/useTeamFilter";
 
 export interface ClientFiltersState {
   status: ClientStatus | 'all';
@@ -47,6 +48,8 @@ export const defaultFilters: ClientFiltersState = {
 
 export function ClientFilters({ filters, onFiltersChange, onClearFilters, isTelecom, teamMembers = [] }: ClientFiltersProps) {
   const labels = useClientLabels();
+  // Filtro por colaborador: só para admin / líder de equipa; líder vê só a sua equipa.
+  const { members: scopedMembers, canFilterByTeam, allOptionLabel } = useTeamScopedMembers(teamMembers);
 
   const hasActiveFilters =
     filters.status !== 'all' ||
@@ -72,7 +75,7 @@ export function ClientFilters({ filters, onFiltersChange, onClearFilters, isTele
     });
   }
 
-  if (filters.assignedTo !== 'all') {
+  if (canFilterByTeam && filters.assignedTo !== 'all') {
     const member = teamMembers.find(m => m.user_id === filters.assignedTo);
     activeFilterTags.push({
       label: `Colaborador: ${member?.full_name ?? filters.assignedTo}`,
@@ -152,23 +155,25 @@ export function ClientFilters({ filters, onFiltersChange, onClearFilters, isTele
           </SelectContent>
         </Select>
 
-        {/* Collaborator Filter */}
-        <Select
-          value={filters.assignedTo}
-          onValueChange={(value) => onFiltersChange({ ...filters, assignedTo: value })}
-        >
-          <SelectTrigger className="w-[210px] h-9">
-            <SelectValue placeholder="Colaborador" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os colaboradores</SelectItem>
-            {teamMembers.map((member) => (
-              <SelectItem key={member.user_id} value={member.user_id}>
-                {member.full_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Collaborator Filter — apenas para admin / líder de equipa */}
+        {canFilterByTeam && (
+          <Select
+            value={filters.assignedTo}
+            onValueChange={(value) => onFiltersChange({ ...filters, assignedTo: value })}
+          >
+            <SelectTrigger className="w-[210px] h-9">
+              <SelectValue placeholder="Colaborador" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{allOptionLabel}</SelectItem>
+              {scopedMembers.map((member) => (
+                <SelectItem key={member.user_id} value={member.user_id}>
+                  {member.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {/* Proposal Type Filter (Telecom only) */}
         {isTelecom && (

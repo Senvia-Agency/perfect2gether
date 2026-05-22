@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useProspects, useProspectSalespeople } from "@/hooks/useProspects";
 import { useModules } from "@/hooks/useModules";
+import { useTeamScopedMembers } from "@/hooks/useTeamFilter";
 import { mapProspectsForExport, exportToCsv, exportToExcel } from "@/lib/export";
 import { getProspectCom, getProspectSegment } from "@/lib/prospects/segment";
 import { normalizeString } from "@/lib/utils";
@@ -64,6 +65,8 @@ export default function Prospects() {
   const { modules } = useModules();
   const { data: prospects = [], isLoading } = useProspects();
   const { data: salespeople = [], isLoading: salespeopleLoading } = useProspectSalespeople();
+  // Filtro por comercial: só admin / líder de equipa; líder vê apenas a sua equipa.
+  const { members: scopedSalespeople, canFilterByTeam, allOptionLabel } = useTeamScopedMembers(salespeople);
   const [searchQuery, setSearchQuery] = useState("");
   const [salespersonFilter, setSalespersonFilter] = useState("all");
   const [comFilter, setComFilter] = useState("all");
@@ -254,20 +257,22 @@ export default function Prospects() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center">
-                <Select value={salespersonFilter} onValueChange={setSalespersonFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filtrar por comercial" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os comerciais</SelectItem>
-                    <SelectItem value="unassigned">Não atribuídos</SelectItem>
-                    {salespeople.map((salesperson) => (
-                      <SelectItem key={salesperson.user_id} value={salesperson.user_id}>
-                        {salesperson.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {canFilterByTeam && (
+                  <Select value={salespersonFilter} onValueChange={setSalespersonFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filtrar por comercial" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{allOptionLabel}</SelectItem>
+                      <SelectItem value="unassigned">Não atribuídos</SelectItem>
+                      {scopedSalespeople.map((salesperson) => (
+                        <SelectItem key={salesperson.user_id} value={salesperson.user_id}>
+                          {salesperson.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
                 {isP2G && (
                 <Select value={comFilter} onValueChange={setComFilter}>

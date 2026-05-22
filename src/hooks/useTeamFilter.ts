@@ -97,3 +97,24 @@ export function useTeamFilter() {
     dataScope,
   };
 }
+
+/**
+ * Restringe uma lista de membros ao escopo do utilizador e devolve o rótulo
+ * da opção "todos". FONTE ÚNICA para qualquer filtro de colaborador na app:
+ *  - líder de equipa   -> apenas a sua equipa  ("Minha equipa")
+ *  - admin / restantes -> lista completa       ("Todos os colaboradores")
+ */
+export function useTeamScopedMembers<T extends { user_id: string }>(allMembers: T[]) {
+  const { canFilterByTeam, isTeamLeader, teamMemberIds, currentUserId } = useTeamFilter();
+  const members = useMemo(() => {
+    if (!isTeamLeader) return allMembers;
+    const allowed = new Set([currentUserId, ...teamMemberIds].filter(Boolean) as string[]);
+    return allMembers.filter(m => allowed.has(m.user_id));
+  }, [allMembers, isTeamLeader, teamMemberIds, currentUserId]);
+  return {
+    members,
+    canFilterByTeam,
+    isTeamLeader,
+    allOptionLabel: isTeamLeader ? 'Minha equipa' : 'Todos os colaboradores',
+  };
+}

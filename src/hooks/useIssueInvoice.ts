@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { toast } from "sonner";
 
 interface IssueInvoiceParams {
@@ -16,24 +17,11 @@ export function useIssueInvoice() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("Sessão expirada");
 
-      const res = await supabase.functions.invoke("issue-invoice", {
-        body: { 
-          sale_id: saleId, 
-          organization_id: organizationId,
-          observations: observations || undefined,
-        },
+      return await invokeFunction<{ invoice_reference: string }>("issue-invoice", {
+        sale_id: saleId,
+        organization_id: organizationId,
+        observations: observations || undefined,
       });
-
-      if (res.error) {
-        throw new Error(res.error.message || "Erro ao emitir fatura");
-      }
-
-      const data = res.data;
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      return data;
     },
     onSuccess: (data) => {
       toast.success(`Fatura emitida: ${data.invoice_reference}`);

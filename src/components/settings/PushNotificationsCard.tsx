@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff, Loader2 } from "lucide-react";
-import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useToast } from "@/hooks/use-toast";
 
 interface PushNotificationsCardProps {
@@ -56,22 +56,17 @@ export const PushNotificationsCard = ({ organizationId, pushNotifications }: Pus
                   onClick={async () => {
                     if (!organizationId) return;
                     try {
-                      const { data, error } = await supabase.functions.invoke('send-push-notification', {
-                        body: {
-                          organization_id: organizationId,
-                          title: '🔔 Teste de Notificação',
-                          body: 'Se vês isto, as notificações estão a funcionar!',
-                          url: '/settings',
-                          tag: 'test-notification',
-                        },
+                      await invokeFunction('send-push-notification', {
+                        organization_id: organizationId,
+                        title: '🔔 Teste de Notificação',
+                        body: 'Se vês isto, as notificações estão a funcionar!',
+                        url: '/settings',
+                        tag: 'test-notification',
                       });
-                      if (error) {
-                        const realMessage = data?.error || error.message || 'Erro ao enviar notificação';
-                        throw new Error(realMessage);
-                      }
                       toast({ title: 'Teste enviado!', description: 'Aguarda a notificação no dispositivo.' });
-                    } catch (err) {
-                      toast({ title: 'Erro', description: 'Não foi possível enviar o teste.', variant: 'destructive' });
+                    } catch (err: unknown) {
+                      const msg = err instanceof Error ? err.message : 'Não foi possível enviar o teste.';
+                      toast({ title: 'Erro', description: msg, variant: 'destructive' });
                     }
                   }}
                 >

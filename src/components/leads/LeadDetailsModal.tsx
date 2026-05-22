@@ -1,4 +1,5 @@
-import { Lead, STATUS_LABELS, LeadStatus, LeadTemperature, LeadTipologia, TEMPERATURE_LABELS, TEMPERATURE_STYLES, TIPOLOGIA_LABELS, TIPOLOGIA_STYLES, FormSettings, CustomField, ROLE_LABELS } from "@/types";
+import { Lead, STATUS_LABELS, LeadStatus, LeadTemperature, LeadTipologia, TEMPERATURE_LABELS, TEMPERATURE_STYLES, TIPOLOGIA_LABELS, TIPOLOGIA_STYLES, FormSettings, CustomField } from "@/types";
+import { getRoleLabel } from "@/lib/roles";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import { LeadAttachments } from "@/components/leads/LeadAttachments";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
@@ -447,7 +448,7 @@ export function LeadDetailsModal({
                             .filter(m => !m.is_banned && (m.role === 'salesperson' || m.role === 'admin' || m.role === 'viewer'))
                             .map((member) => (
                               <SelectItem key={member.user_id} value={member.user_id}>
-                                {member.full_name} ({ROLE_LABELS[member.role] || member.role})
+                                {member.full_name} ({getRoleLabel({ role: member.role, profileName: member.profile_name })})
                               </SelectItem>
                             ))}
                         </SelectContent>

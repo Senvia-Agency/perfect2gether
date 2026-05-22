@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -98,13 +99,10 @@ export function useSyncInvoices() {
 
   return useMutation({
     mutationFn: async () => {
-      const res = await supabase.functions.invoke('sync-invoices', {
-        body: { organization_id: organization!.id },
-      });
-
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
-      return res.data as { total: number; matched: number; not_matched: number };
+      return await invokeFunction<{ total: number; matched: number; not_matched: number }>(
+        'sync-invoices',
+        { organization_id: organization!.id },
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });

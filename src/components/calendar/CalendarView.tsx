@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { useTeamMembers } from '@/hooks/useTeam';
-import { useTeamFilter } from '@/hooks/useTeamFilter';
+import { useTeamFilter, useTeamScopedMembers } from '@/hooks/useTeamFilter';
 import { CalendarHeader, type ViewType } from './CalendarHeader';
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
@@ -22,8 +22,9 @@ export function CalendarView() {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedDayForList, setSelectedDayForList] = useState<Date>(new Date());
 
-  const { canFilterByTeam, selectedMemberId, setSelectedMemberId } = useTeamFilter();
+  const { selectedMemberId, setSelectedMemberId } = useTeamFilter();
   const { data: teamMembers = [] } = useTeamMembers();
+  const { members: scopedMembers, canFilterByTeam, allOptionLabel } = useTeamScopedMembers(teamMembers);
 
   // Calculate date range based on view
   const dateRange = useMemo(() => {
@@ -139,8 +140,9 @@ export function CalendarView() {
         onCreateEvent={handleCreateEvent}
         filterUserId={selectedMemberId || 'all'}
         onFilterChange={(id) => setSelectedMemberId(id === 'all' ? null : id)}
-        teamMembers={teamMembers.map((m) => ({ id: m.user_id, full_name: m.full_name }))}
+        teamMembers={scopedMembers.map((m) => ({ id: m.user_id, full_name: m.full_name }))}
         isAdmin={canFilterByTeam}
+        allOptionLabel={allOptionLabel}
       />
 
       {view === 'month' && (

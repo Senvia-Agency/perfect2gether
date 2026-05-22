@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Users, Plus, Pencil, Trash2, Crown, Loader2, UserPlus } from 'lucide-react';
+import { getRoleLabel } from '@/lib/roles';
 
 export function TeamsSection() {
   const { data: teams = [], isLoading: loadingTeams } = useTeams();
@@ -160,7 +161,7 @@ export function TeamsSection() {
                     <SelectItem key={m.user_id} value={m.user_id}>
                       {m.full_name}
                       <span className="text-muted-foreground text-xs ml-2">
-                        ({m.profile_name || m.role})
+                        ({getRoleLabel({ role: m.role, profileName: m.profile_name })})
                       </span>
                     </SelectItem>
                   ))
@@ -193,7 +194,7 @@ export function TeamsSection() {
                     />
                     <span className="text-sm font-medium">{m.full_name}</span>
                     <Badge variant="secondary" className="ml-auto text-xs">
-                      {m.role}
+                      {getRoleLabel({ role: m.role, profileName: m.profile_name })}
                     </Badge>
                   </label>
                 ))}

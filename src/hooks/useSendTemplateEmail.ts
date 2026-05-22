@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -42,24 +42,16 @@ export function useSendTemplateEmail() {
     mutationFn: async ({ templateId, recipients, campaignId, settings, settingsData, subject, htmlContent }: SendTemplateRequest): Promise<SendTemplateResponse> => {
       if (!organization?.id) throw new Error('Sem organização');
 
-      const { data, error } = await supabase.functions.invoke('send-template-email', {
-        body: {
-          organizationId: organization.id,
-          templateId: templateId || undefined,
-          recipients,
-          campaignId,
-          settings,
-          settingsData,
-          subject,
-          htmlContent,
-        },
+      return await invokeFunction<SendTemplateResponse>('send-template-email', {
+        organizationId: organization.id,
+        templateId: templateId || undefined,
+        recipients,
+        campaignId,
+        settings,
+        settingsData,
+        subject,
+        htmlContent,
       });
-
-      if (error) {
-        const realMessage = data?.error || error.message || 'Erro ao enviar email';
-        throw new Error(realMessage);
-      }
-      return data as SendTemplateResponse;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['email-sends'] });

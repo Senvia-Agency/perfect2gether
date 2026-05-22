@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -13,15 +14,10 @@ export function useSyncInvoiceXpressItems() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Não autenticado');
 
-      const response = await supabase.functions.invoke('sync-invoicexpress-items', {
-        body: { organization_id: organization!.id },
-      });
-
-      if (response.error) {
-        const realMessage = response.data?.error || response.error.message || 'Erro ao sincronizar itens';
-        throw new Error(realMessage);
-      }
-      return response.data as { created: number; updated: number; total: number };
+      return await invokeFunction<{ created: number; updated: number; total: number }>(
+        'sync-invoicexpress-items',
+        { organization_id: organization!.id },
+      );
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });

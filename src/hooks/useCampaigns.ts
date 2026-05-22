@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { EmailCampaign, CampaignStatus } from '@/types/marketing';
@@ -76,16 +77,7 @@ export function useSyncCampaignSends() {
   const mutation = useMutation({
     mutationFn: async (campaignId: string) => {
       if (!organization?.id) throw new Error('Sem organização');
-
-      const { data, error } = await supabase.functions.invoke('sync-campaign-sends', {
-        body: { campaignId, organizationId: organization.id },
-      });
-
-      if (error) {
-        const realMessage = data?.error || error.message || 'Erro ao sincronizar campanha';
-        throw new Error(realMessage);
-      }
-      return data;
+      return await invokeFunction<{ inserted: number; updated: number }>('sync-campaign-sends', { campaignId, organizationId: organization.id });
     },
     onSuccess: (data) => {
       setLastSyncResult({ inserted: data.inserted, updated: data.updated });

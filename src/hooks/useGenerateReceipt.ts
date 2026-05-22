@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { toast } from "sonner";
 
 interface GenerateReceiptParams {
@@ -16,24 +17,11 @@ export function useGenerateReceipt() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("Sessão expirada");
 
-      const res = await supabase.functions.invoke("generate-receipt", {
-        body: { 
-          sale_id: saleId, 
-          payment_id: paymentId,
-          organization_id: organizationId,
-        },
+      return await invokeFunction<{ invoice_reference: string }>("generate-receipt", {
+        sale_id: saleId,
+        payment_id: paymentId,
+        organization_id: organizationId,
       });
-
-      if (res.error) {
-        throw new Error(res.error.message || "Erro ao gerar recibo");
-      }
-
-      const data = res.data;
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      return data;
     },
     onSuccess: (data) => {
       toast.success(`Recibo gerado: ${data.invoice_reference}`);

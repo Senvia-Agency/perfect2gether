@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { useTeamMembers, usePendingInvites, useCancelInvite, useResendInvite, useCreateTeamMember, PendingInvite, TeamMember } from '@/hooks/useTeam';
 import { useManageTeamMember } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,13 +25,7 @@ import { Users, UserPlus, Copy, X, Check, Clock, Loader2, RefreshCw, Eye, EyeOff
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { getBaseUrl } from '@/lib/constants';
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Administrador',
-  viewer: 'Visualizador',
-  salesperson: 'Comercial',
-  super_admin: 'Super Admin',
-};
+import { getRoleLabel } from '@/lib/roles';
 
 const ROLE_VARIANTS: Record<string, 'default' | 'secondary' | 'outline'> = {
   admin: 'default',
@@ -202,18 +196,13 @@ export function TeamTab() {
     
     setSendingEmail(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-access-email', {
-        body: {
-          organizationId: organization.id,
-          recipientEmail: createdMember.email,
-          recipientName: createdMember.fullName,
-          loginUrl,
-          password: createdMember.password,
-        },
+      await invokeFunction('send-access-email', {
+        organizationId: organization.id,
+        recipientEmail: createdMember.email,
+        recipientName: createdMember.fullName,
+        loginUrl,
+        password: createdMember.password,
       });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
       setEmailSent(true);
       toast({ title: 'Email enviado!', description: `Credenciais enviadas para ${createdMember.email}.` });
@@ -385,7 +374,13 @@ export function TeamTab() {
       }
     }
     manageTeamMember.mutate(
-      { action: 'update_profile', user_id: selectedMember.user_id, full_name: editFullName.trim(), email: editEmail.trim(), phone: editPhone.trim() },
+      {
+        action: 'update_profile',
+        user_id: selectedMember.user_id,
+        full_name: editFullName.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim(),
+      },
       {
         onSuccess: () => {
           setEditProfileOpen(false);
@@ -414,17 +409,13 @@ export function TeamTab() {
       });
 
       // Then send the email with the new password
-      const { data, error } = await supabase.functions.invoke('send-access-email', {
-        body: {
-          organizationId: organization.id,
-          recipientEmail: selectedMember.email,
-          recipientName: selectedMember.full_name,
-          loginUrl,
-          password: memberNewPassword,
-        },
+      await invokeFunction('send-access-email', {
+        organizationId: organization.id,
+        recipientEmail: selectedMember.email,
+        recipientName: selectedMember.full_name,
+        loginUrl,
+        password: memberNewPassword,
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
       toast({ title: 'Email enviado!', description: `Dados de acesso enviados para ${selectedMember.email}.` });
       setSendAccessOpen(false);
@@ -447,18 +438,13 @@ export function TeamTab() {
       return;
     }
     try {
-      const { data, error } = await supabase.functions.invoke('send-recovery-email', {
-        body: {
-          organizationId: organization?.id,
-          recipientEmail: member.email,
-          recipientName: member.full_name,
-          recipientUserId: member.user_id,
-          redirectTo: `${getBaseUrl()}/reset-password`,
-        },
+      await invokeFunction('send-recovery-email', {
+        organizationId: organization?.id,
+        recipientEmail: member.email,
+        recipientName: member.full_name,
+        recipientUserId: member.user_id,
+        redirectTo: `${getBaseUrl()}/reset-password`,
       });
-      // On non-2xx, real error message is in data.error; error is generic FunctionsHttpError
-      const errorMsg = data?.error || error?.message;
-      if (errorMsg) throw new Error(errorMsg);
       toast({ title: 'Email enviado!', description: `Email de recuperação enviado para ${member.email}.` });
     } catch (err: any) {
       toast({ title: 'Erro ao enviar email', description: err.message || 'Tente novamente.', variant: 'destructive' });
@@ -476,14 +462,10 @@ export function TeamTab() {
 
     // Start enrollment immediately — no password needed
     try {
-      const { data, error } = await supabase.functions.invoke('manage-team-member', {
-        body: {
-          action: 'enroll_mfa',
-          user_id: member.user_id,
-        },
+      const data = await invokeFunction<{ qr_code: string; factor_id: string }>('manage-team-member', {
+        action: 'enroll_mfa',
+        user_id: member.user_id,
       });
-      const errorMsg = data?.error || error?.message;
-      if (errorMsg) throw new Error(errorMsg);
       setMfaQrCode(data.qr_code);
       setMfaFactorId(data.factor_id);
       setMfaStep('qr');
@@ -497,16 +479,12 @@ export function TeamTab() {
     if (!selectedMember || !mfaFactorId || !mfaVerifyCode) return;
     setMfaLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('manage-team-member', {
-        body: {
-          action: 'verify_mfa',
-          user_id: selectedMember.user_id,
-          factor_id: mfaFactorId,
-          code: mfaVerifyCode,
-        },
+      await invokeFunction('manage-team-member', {
+        action: 'verify_mfa',
+        user_id: selectedMember.user_id,
+        factor_id: mfaFactorId,
+        code: mfaVerifyCode,
       });
-      const errorMsg = data?.error || error?.message;
-      if (errorMsg) throw new Error(errorMsg);
       toast({ title: '2FA ativado', description: `A autenticação de dois fatores foi ativada para ${selectedMember.full_name}.` });
       setMfaModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
@@ -653,7 +631,7 @@ export function TeamTab() {
                             <SelectItem key={p.id} value={p.id}>
                               {p.name}
                               <span className="text-muted-foreground text-xs ml-2">
-                                ({ROLE_LABELS[p.base_role] || p.base_role})
+                                ({getRoleLabel({ role: p.base_role })})
                               </span>
                             </SelectItem>
                           ))}
@@ -852,7 +830,7 @@ export function TeamTab() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={ROLE_VARIANTS[member.role] || 'secondary'}>
-                        {member.profile_name || ROLE_LABELS[member.role] || member.role}
+                        {getRoleLabel({ role: member.role, profileName: member.profile_name })}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -1214,7 +1192,7 @@ export function TeamTab() {
             <div className="space-y-2 mb-4">
               <Label className="text-muted-foreground">Perfil Atual</Label>
               <Badge variant={selectedMember ? ROLE_VARIANTS[selectedMember.role] : 'secondary'}>
-                {selectedMember?.profile_name || (selectedMember ? ROLE_LABELS[selectedMember.role] : '')}
+                {selectedMember ? getRoleLabel({ role: selectedMember.role, profileName: selectedMember.profile_name }) : ''}
               </Badge>
             </div>
             <div className="space-y-2 mb-4">
@@ -1248,7 +1226,7 @@ export function TeamTab() {
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
                         <span className="text-muted-foreground text-xs ml-2">
-                          ({ROLE_LABELS[p.base_role] || p.base_role})
+                          ({getRoleLabel({ role: p.base_role })})
                         </span>
                       </SelectItem>
                     ))}
@@ -1324,7 +1302,7 @@ export function TeamTab() {
                       <TableCell className="font-medium">{invite.email}</TableCell>
                       <TableCell>
                         <Badge variant={ROLE_VARIANTS[invite.role] || 'secondary'}>
-                          {ROLE_LABELS[invite.role] || invite.role}
+                          {getRoleLabel({ role: invite.role })}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">

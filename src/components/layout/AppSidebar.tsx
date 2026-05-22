@@ -7,7 +7,7 @@ import { useModules, EnabledModules } from "@/hooks/useModules";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useSubscription } from "@/hooks/useSubscription";
 import { APP_VERSION } from "@/lib/constants";
-import type { AppRole } from "@/types";
+import { getRoleLabel } from "@/lib/roles";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { UpgradeModal } from "@/components/shared/UpgradeModal";
 
@@ -35,13 +35,6 @@ const allNavItems: NavItem[] = [
   { to: "/gestao", icon: BarChart3, label: "Gestão", permissionKey: 'gestao' },
 ];
 
-const getRoleLabel = (roles: AppRole[]): string => {
-  if (roles.includes('super_admin')) return 'Super Admin';
-  if (roles.includes('admin')) return 'Administrador';
-  if (roles.includes('viewer')) return 'Visualizador';
-  return 'Colaborador';
-};
-
 interface AppSidebarProps {
   userName?: string;
   organizationName?: string;
@@ -54,7 +47,7 @@ export function AppSidebar({
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, roles, isSuperAdmin, organization } = useAuth();
-  const { isAdmin, canViewModule, systems } = usePermissions();
+  const { isAdmin, canViewModule, systems, profileName } = usePermissions();
   const { modules } = useModules();
   const { isModuleLocked, getRequiredPlan } = useSubscription();
 
@@ -174,7 +167,7 @@ export function AppSidebar({
                 <p className="truncate text-sm font-medium text-sidebar-foreground">
                   {userName}
                 </p>
-                <p className="text-xs text-sidebar-muted">{getRoleLabel(roles)}</p>
+                <p className="text-xs text-sidebar-muted">{getRoleLabel({ roles, profileName })}</p>
               </div>
               <button onClick={handleLogout} className="rounded-lg p-2 text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground" title="Terminar sessão">
                 <LogOut className="h-4 w-4" />

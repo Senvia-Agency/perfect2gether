@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules } from "@/hooks/useModules";
+import { useTeamFilter } from "@/hooks/useTeamFilter";
 import {
   buildProspectPayload,
   createEmptyImportResult,
@@ -13,46 +15,30 @@ import {
 import { toast } from "sonner";
 import type { DistributeProspectsPayload, Prospect, ProspectImportResult, ProspectSalesperson } from "@/types/prospects";
 
-const getFunctionInvokeErrorMessage = (error: unknown, fallback: string) => {
-  const maybeError = error as { message?: string; context?: unknown };
-  const context = maybeError?.context;
-
-  if (typeof context === "string" && context.trim()) {
-    try {
-      const parsed = JSON.parse(context) as { error?: string; message?: string };
-      if (typeof parsed?.error === "string" && parsed.error.trim()) return parsed.error;
-      if (typeof parsed?.message === "string" && parsed.message.trim()) return parsed.message;
-    } catch {
-      return context;
-    }
-  }
-
-  if (context && typeof context === "object") {
-    const parsed = context as { error?: string; message?: string };
-    if (typeof parsed?.error === "string" && parsed.error.trim()) return parsed.error;
-    if (typeof parsed?.message === "string" && parsed.message.trim()) return parsed.message;
-  }
-
-  return maybeError?.message || fallback;
-};
-
 export function useProspects() {
   const { organization } = useAuth();
   const { modules } = useModules();
+  const { effectiveUserIds } = useTeamFilter();
 
   return useQuery({
-    queryKey: ["prospects", organization?.id],
+    queryKey: ["prospects", organization?.id, effectiveUserIds],
     queryFn: async () => {
       if (!organization?.id) return [] as Prospect[];
 
       const client = supabase as any;
-      const { data, error } = await client
+      let query = client
         .from("prospects")
         .select("*")
         .eq("organization_id", organization.id)
         .order("imported_at", { ascending: false })
         .limit(5000);
 
+      // Comercial vê só os seus; líder de equipa, os da equipa; admin, todos.
+      if (effectiveUserIds) {
+        query = query.in("assigned_to", effectiveUserIds);
+      }
+
+      const { data, error } = await query;
       if (error) throw new Error(mapProspectsError(error));
       return (data || []) as Prospect[];
     },
@@ -269,17 +255,7 @@ export function useGenerateProspects() {
 
       // Step 1: Start the Apify run
       onProgress?.("starting");
-      const { data: startData, error: startError } = await supabase.functions.invoke("generate-prospects", {
-        body: bodyParams,
-      });
-
-      if (startError) {
-        throw new Error(getFunctionInvokeErrorMessage(startError, "Erro ao iniciar geração"));
-      }
-      if (startData?.error) {
-        throw new Error(typeof startData.error === "string" ? startData.error : "Erro ao iniciar geração");
-      }
-
+      const startData = await invokeFunction<{ jobId: string }>("generate-prospects", bodyParams);
       const jobId = startData?.jobId;
       if (!jobId) throw new Error("Sem ID de job retornado");
 
@@ -296,16 +272,10 @@ export function useGenerateProspects() {
 
         await new Promise((r) => setTimeout(r, pollInterval));
 
-        const { data: checkData, error: checkError } = await supabase.functions.invoke("check-prospect-job", {
-          body: { jobId },
-        });
-
-        if (checkError) {
-          throw new Error(getFunctionInvokeErrorMessage(checkError, "Erro ao verificar job"));
-        }
-        if (checkData?.error) {
-          throw new Error(typeof checkData.error === "string" ? checkData.error : "Erro ao verificar job");
-        }
+        const checkData = await invokeFunction<{ status: string; result?: { inserted: number; updated: number; skipped: number; total: number }; error?: string }>(
+          "check-prospect-job",
+          { jobId },
+        );
 
         if (checkData?.status === "running") {
           onProgress?.("running");

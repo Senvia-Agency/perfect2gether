@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, UserPlus, AlertCircle, CheckCircle2, Building, LogOut } from 'lucide-react';
+import { getRoleLabel } from '@/lib/roles';
 
 const p2gLogo = "/Logo-P2G.png";
 
@@ -19,11 +20,6 @@ interface InviteData {
   organization_name?: string;
   token: string;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Administrador',
-  viewer: 'Visualizador',
-};
 
 export default function InviteRegister() {
   const { token } = useParams<{ token: string }>();
@@ -312,7 +308,7 @@ export default function InviteRegister() {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Perfil:</span>
                 <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                  {invite?.role ? ROLE_LABELS[invite.role] : invite?.role}
+                  {invite?.role ? getRoleLabel({ role: invite.role }) : ''}
                 </Badge>
               </div>
             </div>

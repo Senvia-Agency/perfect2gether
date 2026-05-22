@@ -34,16 +34,18 @@ export function usePermissions() {
 
       const { data: profile } = await supabase
         .from('organization_profiles')
-        .select('module_permissions, data_scope, systems, dashboard_widgets')
+        .select('name, module_permissions, data_scope, systems, dashboard_widgets')
         .eq('id', member.profile_id)
         .single();
-      
+
       if (!profile) return null;
+      const p = profile as any;
       return {
-        permissions: profile.module_permissions ? convertLegacyToGranular(profile.module_permissions) : null,
-        dataScope: (profile as any).data_scope as string | null,
-        systems: ((profile as any).systems as SystemKey[]) || ['p2g'],
-        dashboardWidgets: (profile as any).dashboard_widgets as Array<{ type: string; is_visible: boolean }> | null,
+        permissions: p.module_permissions ? convertLegacyToGranular(p.module_permissions) : null,
+        dataScope: p.data_scope as string | null,
+        systems: (p.systems as SystemKey[]) || ['p2g'],
+        dashboardWidgets: p.dashboard_widgets as Array<{ type: string; is_visible: boolean }> | null,
+        profileName: p.name as string | null,
       };
     },
     enabled: !!user?.id && !!organization?.id && !isSuperAdmin,
@@ -94,6 +96,7 @@ export function usePermissions() {
     isViewer,
     isSuperAdmin,
     dataScope,
+    profileName: profileData?.profileName ?? null,
     systems: profileData?.systems || ['p2g'],
     hasSystem: (system: SystemKey) => {
       if (isSuperAdmin) return true;

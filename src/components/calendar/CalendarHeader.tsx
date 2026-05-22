@@ -18,6 +18,7 @@ interface CalendarHeaderProps {
   onFilterChange?: (userId: string) => void;
   teamMembers?: Array<{ id: string; full_name: string }>;
   isAdmin?: boolean;
+  allOptionLabel?: string;
 }
 
 export function CalendarHeader({
@@ -32,6 +33,7 @@ export function CalendarHeader({
   onFilterChange,
   teamMembers,
   isAdmin,
+  allOptionLabel,
 }: CalendarHeaderProps) {
   const getTitle = () => {
     switch (view) {
@@ -56,10 +58,10 @@ export function CalendarHeader({
         {isAdmin && teamMembers && teamMembers.length > 0 && onFilterChange && (
           <Select value={filterUserId || 'all'} onValueChange={onFilterChange}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Todos" />
+              <SelectValue placeholder={allOptionLabel ?? 'Todos'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="all">{allOptionLabel ?? 'Todos'}</SelectItem>
               {teamMembers.map((member) => (
                 <SelectItem key={member.id} value={member.id}>
                   {member.full_name}

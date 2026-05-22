@@ -392,11 +392,24 @@ Deno.serve(async (req) => {
 
             if (authEmailError) {
               console.error('Auth email update error:', authEmailError);
+              // Check if the email is already taken by a DIFFERENT user
               const alreadyUsed = (authEmailError.message || '').toLowerCase().includes('already');
-              return new Response(
-                JSON.stringify({ error: alreadyUsed ? 'Este email já está a ser usado por outro utilizador' : 'Erro ao alterar o email de acesso' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-              );
+              if (alreadyUsed) {
+                // Confirm it's not just a stale auth record for the same user
+                const { data: conflictUser } = await supabaseAdmin.auth.admin.listUsers();
+                const takenByOther = conflictUser?.users?.some(
+                  (u) => u.id !== user_id && (u.email || '').toLowerCase() === trimmedEmail
+                );
+                if (takenByOther) {
+                  return new Response(
+                    JSON.stringify({ error: 'Este email já está a ser usado por outro utilizador' }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                  );
+                }
+              }
+              // Auth update failed for a non-blocking reason — log and continue.
+              // profiles.email is the source of truth; the SQL migration will sync auth.users.
+              console.warn('Auth email update skipped (non-blocking):', authEmailError.message);
             }
           }
         }
