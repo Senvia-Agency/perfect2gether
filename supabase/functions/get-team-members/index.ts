@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
     if (profileIds.length > 0) {
       const { data: opData } = await adminClient
         .from('organization_profiles')
-        .select('id, name')
+        .select('id, name, data_scope')
         .in('id', profileIds)
       orgProfiles = opData || []
     }
@@ -209,6 +209,7 @@ Deno.serve(async (req) => {
           has_mfa: hasMfa,
           profile_id: member.profile_id || null,
           profile_name: orgProfile?.name || null,
+          profile_data_scope: orgProfile?.data_scope || null,
         }
       })
     )
@@ -242,6 +243,7 @@ Deno.serve(async (req) => {
             is_banned: false,
             profile_id: null,
             profile_name: null,
+            profile_data_scope: null,
           })
         }
       }

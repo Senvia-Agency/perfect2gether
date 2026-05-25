@@ -26,6 +26,7 @@ export interface TeamMember {
   has_mfa: boolean;
   profile_id?: string | null;
   profile_name?: string | null;
+  profile_data_scope?: 'own' | 'team' | 'all' | null;
 }
 
 export interface PendingInvite {
@@ -61,9 +62,14 @@ export function useTeamMembers(options?: { excludeAdmins?: boolean; includeSuppo
     : query.data?.filter(m => !m.email || !SUPPORT_EMAILS.includes(m.email));
 
   if (options?.excludeAdmins) {
+    // Filtra "não produtores": admins (base_role) + observadores cujo perfil
+    // tem data_scope='all' (ex.: Diretor Comercial). Estes não devem aparecer
+    // em rankings, filtros de comerciais, metas e comissões.
     return {
       ...query,
-      data: filtered?.filter(m => !ADMIN_ROLES.includes(m.role)),
+      data: filtered?.filter(
+        m => !ADMIN_ROLES.includes(m.role) && m.profile_data_scope !== 'all',
+      ),
     };
   }
 

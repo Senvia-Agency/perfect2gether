@@ -100,16 +100,27 @@ export function useTeamFilter() {
 
 /**
  * Restringe uma lista de membros ao escopo do utilizador e devolve o rótulo
- * da opção "todos". FONTE ÚNICA para qualquer filtro de colaborador na app:
+ * da opção "todos". FONTE ÚNICA para qualquer filtro de colaborador na app
+ * (Dashboard, Clientes, Agenda):
+ *  - apenas produtores: exclui admins, super_admins e observadores cujo
+ *    perfil tem data_scope='all' (ex.: Diretor Comercial), pois nenhum
+ *    destes "produz" leads/clientes/vendas;
  *  - líder de equipa   -> apenas a sua equipa  ("Minha equipa")
  *  - admin / restantes -> lista completa       ("Todos os colaboradores")
  */
-export function useTeamScopedMembers<T extends { user_id: string }>(allMembers: T[]) {
+type ScopableMember = { user_id: string; role?: string | null; profile_data_scope?: string | null };
+
+export function useTeamScopedMembers<T extends ScopableMember>(allMembers: T[]) {
   const { canFilterByTeam, isTeamLeader, teamMemberIds, currentUserId } = useTeamFilter();
   const members = useMemo(() => {
-    if (!isTeamLeader) return allMembers;
+    const producers = allMembers.filter(m =>
+      m.role !== 'admin' &&
+      m.role !== 'super_admin' &&
+      m.profile_data_scope !== 'all'
+    );
+    if (!isTeamLeader) return producers;
     const allowed = new Set([currentUserId, ...teamMemberIds].filter(Boolean) as string[]);
-    return allMembers.filter(m => allowed.has(m.user_id));
+    return producers.filter(m => allowed.has(m.user_id));
   }, [allMembers, isTeamLeader, teamMemberIds, currentUserId]);
   return {
     members,
