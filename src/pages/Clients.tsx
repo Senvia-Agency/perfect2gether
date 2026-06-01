@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Users, Crown, UserMinus, Euro, Shield, Loader2 } from "lucide-react";
-import { useClients, useClientStats, useDeleteClient } from "@/hooks/useClients";
+import { useClients, useDeleteClient } from "@/hooks/useClients";
+import { TeamMemberFilter } from "@/components/dashboard/TeamMemberFilter";
 import { useClientLabels } from "@/hooks/useClientLabels";
 import { ClientsTable } from "@/components/clients/ClientsTable";
 import { CreateClientModal } from "@/components/clients/CreateClientModal";
@@ -29,7 +30,6 @@ import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from "date-f
 import { read, utils } from "xlsx";
 import { importClients } from "@/lib/clients/import";
 import { useTeamMembers } from "@/hooks/useTeam";
-import { useTeamFilter } from "@/hooks/useTeamFilter";
 import { useQueryClient } from "@tanstack/react-query";
 import { hasPerfect2GetherAccess } from "@/lib/perfect2gether";
 
@@ -42,7 +42,7 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState<CrmClient | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
-  const [filters, setFilters] = usePersistedState<ClientFiltersState>("clients-filters-v2", defaultFilters);
+  const [filters, setFilters] = usePersistedState<ClientFiltersState>("clients-filters-v3", defaultFilters);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -50,7 +50,6 @@ export default function Clients() {
   const [proposalClientId, setProposalClientId] = useState<string | null>(null);
 
   const { data: clients, isLoading } = useClients();
-  const { stats } = useClientStats();
   const deleteClient = useDeleteClient();
   const labels = useClientLabels();
   const { clientTypesMap, isTelecom } = useClientProposalTypes();
@@ -58,7 +57,6 @@ export default function Clients() {
   const showEnergy = isTelecom && modules.energy;
   const [isImporting, setIsImporting] = useState(false);
   const { data: teamMembers } = useTeamMembers();
-  const { canFilterByTeam } = useTeamFilter();
   const queryClient = useQueryClient();
   const isPerfect2Gether = hasPerfect2GetherAccess({
     organizationId: organization?.id,
@@ -87,12 +85,6 @@ export default function Clients() {
         return false;
       }
 
-      // O filtro por colaborador só se aplica a quem pode ver dados de outros.
-      // Para um comercial os dados já vêm restritos do useClients — ignorar valor persistido obsoleto.
-      if (canFilterByTeam && filters.assignedTo !== 'all' && client.assigned_to !== filters.assignedTo) {
-        return false;
-      }
-
       if (filters.dateFrom || filters.dateTo) {
         const clientDate = parseISO(client.created_at);
         const from = filters.dateFrom ? startOfDay(filters.dateFrom) : new Date(0);
@@ -113,7 +105,20 @@ export default function Clients() {
 
       return true;
     });
-  }, [clients, search, filters, clientTypesMap, canFilterByTeam]);
+  }, [clients, search, filters, clientTypesMap]);
+
+  // KPIs do topo refletem os filtros aplicados (colaborador global + locais),
+  // alinhado com o padrão de Sales/Proposals.
+  const stats = useMemo(() => ({
+    total: filteredClients.length,
+    active: filteredClients.filter(c => c.status === 'active').length,
+    vip: filteredClients.filter(c => c.status === 'vip').length,
+    inactive: filteredClients.filter(c => c.status === 'inactive').length,
+    totalValue: filteredClients.reduce((sum, c) => sum + (c.total_value || 0), 0),
+    totalComissao: filteredClients.reduce((sum, c) => sum + (c.total_comissao || 0), 0),
+    totalMwh: filteredClients.reduce((sum, c) => sum + (c.total_mwh || 0), 0),
+    totalKwp: filteredClients.reduce((sum, c) => sum + (c.total_kwp || 0), 0),
+  }), [filteredClients]);
 
   const handleEdit = (client: CrmClient) => {
     setSelectedClient(client);
@@ -383,22 +388,24 @@ export default function Clients() {
 
         {/* Search & Filters */}
         <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={`Pesquisar por nome, email, telefone, empresa ou NIF...`}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={`Pesquisar por nome, email, telefone, empresa ou NIF...`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <TeamMemberFilter className="w-full sm:w-[210px]" />
           </div>
-          
+
           <ClientFilters
             filters={filters}
             onFiltersChange={setFilters}
             onClearFilters={handleClearFilters}
             isTelecom={showEnergy}
-            teamMembers={teamMembers ?? []}
           />
         </div>
 
