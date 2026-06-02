@@ -1,26 +1,12 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Settings, 
-  LogOut,
-  Shield,
-  X,
-  Building2,
-  Search
-} from "lucide-react";
+import { LogOut, X, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useNavItems, NavItem } from "@/hooks/useNavItems";
 import { APP_VERSION } from "@/lib/constants";
 import { getRoleLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
-import { usePermissions } from "@/hooks/usePermissions";
-
-const navItems = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Painel" },
-  { to: "/leads", icon: Users, label: "Leads" },
-  { to: "/settings", icon: Settings, label: "Definições" },
-];
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -31,9 +17,11 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizationName = "A Minha Empresa" }: MobileMenuProps) {
   const navigate = useNavigate();
-  const { signOut, roles, isSuperAdmin, organization } = useAuth();
-  const { canViewModule, systems, profileName } = usePermissions();
-  const isTotalLinkOnly = systems.length === 1 && systems[0] === 'total_link';
+  const { signOut, roles } = useAuth();
+  const { profileName } = usePermissions();
+  const { items } = useNavItems();
+  // "Definições" fica de fora do menu hambúrguer (continua na barra inferior).
+  const navItems = items.filter((item) => item.to !== "/settings");
 
   const handleLogout = async () => {
     await signOut();
@@ -41,14 +29,21 @@ export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizat
     onClose();
   };
 
-  const handleNavClick = () => {
+  const handleNavClick = (e: React.MouseEvent, item: NavItem) => {
+    // Módulo bloqueado pelo plano: não navega (mantém o menu aberto, com cadeado).
+    if (item.locked) {
+      e.preventDefault();
+      return;
+    }
     onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-40 bg-background animate-in slide-in-from-left duration-200">
+    // z-[70]: o menu cobre o cabeçalho (z-60) e a barra inferior (z-50) — caso
+    // contrário a barra inferior tapava o botão "Terminar Sessão".
+    <div className="fixed inset-0 z-[70] bg-background animate-in slide-in-from-left duration-200">
       {/* Close button area - respects safe area */}
       <div className="flex items-center justify-end px-4" style={{ paddingTop: 'calc(clamp(20px, env(safe-area-inset-top, 0px), 50px) + 0.5rem)', minHeight: '3.5rem' }}>
         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -74,67 +69,38 @@ export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizat
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-6 space-y-2">
+        <nav className="flex-1 overflow-y-auto py-6 space-y-2">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
-              to={item.to}
-              onClick={handleNavClick}
+              to={item.locked ? "#" : item.to}
+              onClick={(e) => handleNavClick(e, item)}
               className={({ isActive }) => cn(
                 "flex items-center gap-4 rounded-xl px-4 py-3.5 text-base font-medium transition-colors",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                item.locked
+                  ? "text-muted-foreground/50"
+                  : isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <item.icon className="h-5 w-5" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.locked && <Lock className="h-4 w-4 text-muted-foreground/60" />}
             </NavLink>
           ))}
-          
-          {(isTotalLinkOnly || canViewModule('portal_total_link')) && (
-            <NavLink
-              to="/portal-total-link"
-              onClick={handleNavClick}
-              className={({ isActive }) => cn(
-                "flex items-center gap-4 rounded-xl px-4 py-3.5 text-base font-medium transition-colors",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Building2 className="h-5 w-5" />
-              Portal Total Link
-            </NavLink>
-          )}
-
-          {isSuperAdmin && (
-            <NavLink
-              to="/system-admin"
-              onClick={handleNavClick}
-              className={({ isActive }) => cn(
-                "flex items-center gap-4 rounded-xl px-4 py-3.5 text-base font-medium transition-colors",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Shield className="h-5 w-5" />
-              System Admin
-            </NavLink>
-          )}
         </nav>
 
         {/* Logout & Version */}
         <div className="py-6 border-t border-border space-y-4">
-          <button 
+          <button
             onClick={handleLogout}
             className="flex items-center gap-4 w-full rounded-xl px-4 py-3.5 text-base font-medium text-destructive hover:bg-destructive/10 transition-colors"
           >
             <LogOut className="h-5 w-5" />
             Terminar Sessão
           </button>
-          
+
           <p className="text-center text-xs text-muted-foreground/50">
             Perfect2Gether v{APP_VERSION}
           </p>
