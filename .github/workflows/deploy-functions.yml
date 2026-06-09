@@ -1,0 +1,30 @@
+name: Deploy Edge Functions
+
+# Faz deploy automático das Supabase Edge Functions sempre que algo em
+# supabase/functions (ou o config.toml) muda no master — igual a Vercel faz
+# com o frontend. Assim "fix no Git" passa a significar "fix em produção".
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'supabase/functions/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: zycrksvkdpondqpplqce
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy todas as edge functions
+        run: supabase functions deploy --project-ref "$PROJECT_REF" --use-api
