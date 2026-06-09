@@ -1,4 +1,4 @@
-project_id = "zppcobirzgpfcrnxznwe"
+project_id = "zycrksvkdpondqpplqce"
 
 [functions.create-team-member]
 verify_jwt = false
