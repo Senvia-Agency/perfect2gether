@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, UserPlus, AlertCircle, CheckCircle2, Building, LogOut } from 'lucide-react';
 import { getRoleLabel } from '@/lib/roles';
 
-const p2gLogo = "/Logo-P2G.png";
+const p2gLogo = "/logo-p2gether.png";
 
 interface InviteData {
   id: string;

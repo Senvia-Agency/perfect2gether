@@ -4,7 +4,10 @@ import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileMenu } from "./MobileMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
-// import { OttoFAB } from "@/components/otto/OttoFAB";
+import { OttoFAB } from "@/components/otto/OttoFAB";
+
+const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+  (window.navigator as any).standalone === true;
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -37,6 +40,7 @@ export function AppLayout({ children, userName, organizationName }: AppLayoutPro
           </div>
         </main>
         <MobileBottomNav />
+        {!isPWA && <OttoFAB />}
       </div>
     );
   }
@@ -50,6 +54,7 @@ export function AppLayout({ children, userName, organizationName }: AppLayoutPro
           {children}
         </div>
       </main>
+      <OttoFAB />
     </div>
   );
 }

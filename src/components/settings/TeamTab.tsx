@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { invokeFunction } from '@/lib/invokeFunction';
 import { useTeamMembers, usePendingInvites, useCancelInvite, useResendInvite, useCreateTeamMember, PendingInvite, TeamMember } from '@/hooks/useTeam';
 import { useManageTeamMember } from '@/hooks/useProfile';
@@ -865,15 +866,15 @@ export function TeamTab() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditProfileModal(member)}>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => openEditProfileModal(member)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Editar Dados
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openChangePasswordModal(member)}>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => openChangePasswordModal(member)}>
                             <Key className="mr-2 h-4 w-4" />
                             Redefinir Palavra-passe
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openSendAccessModal(member)}>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => openSendAccessModal(member)}>
                             <Mail className="mr-2 h-4 w-4" />
                             Enviar Email de Acesso
                           </DropdownMenuItem>
@@ -883,24 +884,24 @@ export function TeamTab() {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           {member.has_mfa ? (
-                            <DropdownMenuItem onClick={() => openUnenrollConfirm(member)}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => openUnenrollConfirm(member)}>
                               <ShieldOff className="mr-2 h-4 w-4" />
                               Desativar 2FA
                             </DropdownMenuItem>
                           ) : (
-                            <DropdownMenuItem onClick={() => openMfaEnrollModal(member)}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => openMfaEnrollModal(member)}>
                               <ShieldCheck className="mr-2 h-4 w-4" />
                               Ativar 2FA
                             </DropdownMenuItem>
                           )}
                           {!isCurrentUser(member) && member.role !== 'super_admin' && (
                             <>
-                              <DropdownMenuItem onClick={() => openChangeRoleModal(member)}>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => openChangeRoleModal(member)}>
                                 <UserCog className="mr-2 h-4 w-4" />
                                 Alterar Perfil
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleToggleStatus(member)}
                                 className={member.is_banned ? '' : 'text-destructive focus:text-destructive'}
                                 disabled={manageTeamMember.isPending}
@@ -917,7 +918,8 @@ export function TeamTab() {
                                   </>
                                 )}
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}
                                 onClick={() => handleDeleteMember(member)}
                                 className="text-destructive focus:text-destructive"
                                 disabled={manageTeamMember.isPending}

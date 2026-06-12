@@ -10,7 +10,7 @@ import { Loader2, ShieldCheck } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 
-const p2gLogo = "/Logo-P2G.png";
+const p2gLogo = "/logo-p2gether.png";
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),

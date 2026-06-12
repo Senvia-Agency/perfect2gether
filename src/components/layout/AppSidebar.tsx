@@ -54,7 +54,7 @@ export function AppSidebar({
             <img
               alt={organization?.name || "Perfect2Gether"}
               className="h-10 w-40 object-contain"
-              src="/Logo-P2G.png"
+              src="/logo-p2gether.png"
             />
           </div>
 

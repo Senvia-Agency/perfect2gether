@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ShieldCheck } from 'lucide-react';
 
-const p2gLogo = '/Logo-P2G.png';
+const p2gLogo = '/logo-p2gether.png';
 
 interface ChallengeMFAProps {
   onSuccess: () => void;

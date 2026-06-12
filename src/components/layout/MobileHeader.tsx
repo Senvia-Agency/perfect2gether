@@ -23,7 +23,7 @@ export function MobileHeader({
         <img 
           alt={organization?.name || "Perfect2Gether"}
           className="h-8 w-28 object-contain" 
-          src="/Logo-P2G.png" 
+          src="/logo-p2gether.png" 
         />
         <div className="w-10" />
       </div>

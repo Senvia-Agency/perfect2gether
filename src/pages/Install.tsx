@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Download, Smartphone, Check, Share, MoreVertical, PlusSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const p2gLogo = "/Logo-P2G.png";
+const p2gLogo = "/logo-p2gether.png";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 export default function Install() {

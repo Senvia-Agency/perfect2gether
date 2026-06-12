@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
       filename: 'sw.ts',
       registerType: "autoUpdate",
       injectRegister: 'auto',
-      includeAssets: ["Favicon-P2G.png"],
+      includeAssets: ["logo-p2gether.png"],
       manifest: {
         name: "Perfect2Gether",
         short_name: "P2G",
@@ -30,17 +30,17 @@ export default defineConfig(({ mode }) => ({
         start_url: "/dashboard",
         icons: [
           {
-            src: "/Favicon-P2G.png",
+            src: "/logo-p2gether.png",
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "/Favicon-P2G.png",
+            src: "/logo-p2gether.png",
             sizes: "512x512",
             type: "image/png",
           },
           {
-            src: "/Favicon-P2G.png",
+            src: "/logo-p2gether.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",

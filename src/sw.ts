@@ -38,8 +38,8 @@ self.addEventListener('push', (event) => {
 
   const options: NotificationOptions = {
     body: data.body || 'Nova atualização disponível',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/logo-p2gether.png',
+    badge: '/logo-p2gether.png',
     tag: data.tag || 'p2g-notification',
     data: { url: data.url || '/leads' },
     requireInteraction: true,
