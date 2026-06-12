@@ -18,6 +18,9 @@ import { FormsManager } from '@/components/settings/FormsManager';
 import { GeneralContent } from '@/components/settings/GeneralContent';
 import { IntegrationsContent } from '@/components/settings/IntegrationsContent';
 import { FieldsManagerTabs } from '@/components/settings/FieldsManagerTabs';
+import { FidelizationAlertsSettings } from '@/components/settings/FidelizationAlertsSettings';
+import { CalendarAlertsSettings } from '@/components/settings/CalendarAlertsSettings';
+import { NotificationEmailSettings } from '@/components/settings/NotificationEmailSettings';
 import { ExpenseCategoriesTab } from '@/components/settings/ExpenseCategoriesTab';
 import { FiscalSettingsTab } from '@/components/settings/FiscalSettingsTab';
 import { SalesSettingsTab } from '@/components/settings/SalesSettingsTab';
@@ -257,7 +260,6 @@ export default function Settings() {
       case "org-fields": return <FieldsManagerTabs />;
       case "org-sales": return <SalesSettingsTab />;
       case "org-matrix": return <CommissionMatrixTab />;
-      case "org-push": return <PushNotificationsCard organizationId={organization?.id} pushNotifications={pushNotifications} />;
       case "team-access": return <TeamTab />;
       case "team-profiles": return <ProfilesTab />;
       case "team-teams": return <TeamsSection />;
@@ -273,6 +275,10 @@ export default function Settings() {
           isPending={updateOrganization.isPending}
         />
       );
+      case "notif-push": return <PushNotificationsCard organizationId={organization?.id} pushNotifications={pushNotifications} />;
+      case "notif-calendar": return <CalendarAlertsSettings />;
+      case "notif-email": return <NotificationEmailSettings />;
+      case "notif-alerts": return <FidelizationAlertsSettings />;
       case "integrations": return <IntegrationsContent {...integrationsContentProps} />;
       case "support-tickets": return <SupportTicketsTab />;
       default: return null;

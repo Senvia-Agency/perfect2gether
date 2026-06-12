@@ -1,13 +1,14 @@
-import { Building, UsersRound, Package, Link2, Receipt, GitBranch, LayoutGrid, FileText, List, KeyRound, UserCog, Network, Calculator, ShoppingCart, LifeBuoy, BellRing } from "lucide-react";
+import { Building, UsersRound, Package, Link2, Bell, Receipt, GitBranch, LayoutGrid, FileText, List, KeyRound, UserCog, Network, BellRing, AlertTriangle, Calculator, ShoppingCart, LifeBuoy, Calendar, Mail } from "lucide-react";
 import { SettingsCard } from "./SettingsCard";
 
-export type SettingsSection = "general" | "team" | "products" | "finance" | "integrations" | "support";
+export type SettingsSection = "general" | "team" | "products" | "finance" | "notifications" | "integrations" | "support";
 
 export type SettingsSubSection =
-  | "org-general" | "org-pipeline" | "org-modules" | "org-forms" | "org-fields" | "org-sales" | "org-matrix" | "org-push"
+  | "org-general" | "org-pipeline" | "org-modules" | "org-forms" | "org-fields" | "org-sales" | "org-matrix"
   | "team-access" | "team-profiles" | "team-teams"
   | "products"
   | "finance-expenses" | "finance-fiscal"
+  | "notif-push" | "notif-alerts" | "notif-calendar" | "notif-email"
   | "integrations"
   | "support-tickets";
 
@@ -35,6 +36,7 @@ const sections: SectionItem[] = [
   { id: "team", label: "Equipa e Acessos", icon: UsersRound, description: "Colaboradores, perfis e equipas", requiresTeam: true },
   { id: "products", label: "Produtos", icon: Package, description: "Catálogo de produtos", requiresIntegrations: true },
   { id: "finance", label: "Financeiro", icon: Receipt, description: "Despesas e configuração fiscal", requiresIntegrations: true },
+  { id: "notifications", label: "Notificações", icon: Bell, description: "Push e alertas automáticos" },
   { id: "integrations", label: "Integrações", icon: Link2, description: "WhatsApp, email e faturação", requiresIntegrations: true },
   { id: "support", label: "Suporte", icon: LifeBuoy, description: "Tickets e pedidos de ajuda" },
 ];
@@ -86,7 +88,6 @@ export const subSectionsMap: Record<SettingsSection, SubSectionItem[]> = {
     { id: "org-fields", label: "Campos", icon: List, description: "Campos por módulo (Leads, Clientes, etc.)" },
     { id: "org-sales", label: "Vendas", icon: ShoppingCart, description: "Regras de vendas" },
     { id: "org-matrix", label: "Matriz Comissões", icon: Calculator, description: "Cálculo automático de comissões" },
-    { id: "org-push", label: "Notificações Push", icon: BellRing, description: "Ativar alertas no seu dispositivo" },
   ],
   team: [
     { id: "team-access", label: "Acessos", icon: KeyRound, description: "Convites e permissões" },
@@ -97,6 +98,12 @@ export const subSectionsMap: Record<SettingsSection, SubSectionItem[]> = {
   finance: [
     { id: "finance-expenses", label: "Tipos de Despesas", icon: Receipt, description: "Categorias de despesas" },
     { id: "finance-fiscal", label: "Fiscal", icon: Calculator, description: "IVA e configuração fiscal" },
+  ],
+  notifications: [
+    { id: "notif-push", label: "Push", icon: BellRing, description: "Notificações no telemóvel" },
+    { id: "notif-calendar", label: "Calendário", icon: Calendar, description: "Lembretes de eventos e reuniões" },
+    { id: "notif-email", label: "Email", icon: Mail, description: "Alertas por email para todas as notificações" },
+    { id: "notif-alerts", label: "Fidelização", icon: AlertTriangle, description: "Alertas de contratos CPE/CUI" },
   ],
   integrations: [],
   support: [],
@@ -139,6 +146,7 @@ export const sectionTitles: Record<SettingsSection, string> = {
   team: "Equipa e Acessos",
   products: "Produtos",
   finance: "Financeiro",
+  notifications: "Notificações",
   integrations: "Integrações",
   support: "Suporte",
 };
