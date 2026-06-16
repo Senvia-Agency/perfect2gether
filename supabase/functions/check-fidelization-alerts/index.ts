@@ -155,7 +155,7 @@ async function resolveRecipientEmail(
   if (alert.assigned_to) {
     const { data: member } = await supabase
       .from('organization_members')
-      .select('notification_email, notification_preferences, profiles(email)')
+      .select('notification_email, notification_preferences')
       .eq('organization_id', alert.organization_id)
       .eq('user_id', alert.assigned_to)
       .eq('is_active', true)
@@ -165,11 +165,16 @@ async function resolveRecipientEmail(
       const prefs = member.notification_preferences as any;
       const fidEnabled = prefs?.fidelization !== false;
       if (fidEnabled) {
-        const profileEmail = Array.isArray(member.profiles)
-          ? (member.profiles[0] as any)?.email
-          : (member.profiles as any)?.email;
-        const email = member.notification_email || profileEmail || null;
-        if (email) return email;
+        // Use notification_email if set; otherwise fetch the profile email
+        if (member.notification_email) return member.notification_email;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', alert.assigned_to)
+          .single();
+
+        if (profile?.email) return profile.email;
       }
     }
   }
