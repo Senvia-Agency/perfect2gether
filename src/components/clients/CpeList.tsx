@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useCpes, useDeleteCpe } from '@/hooks/useCpes';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { CPE_STATUS_LABELS, CPE_STATUS_STYLES, NIVEL_TENSAO_LABELS, NIVEL_TENSAO_STYLES, type Cpe, type NivelTensao } from '@/types/cpes';
 import { CreateCpeModal } from './CreateCpeModal';
 import { EditCpeModal } from './EditCpeModal';
@@ -32,6 +33,10 @@ export function CpeList({ clientId }: CpeListProps) {
   const { data: cpes, isLoading } = useCpes(clientId);
   const deleteCpe = useDeleteCpe();
   const { organization } = useAuth();
+  const { can } = usePermissions();
+  const canAddCpe = can('clients', 'cpes', 'add');
+  const canEditCpe = can('clients', 'cpes', 'edit');
+  const canDeleteCpe = can('clients', 'cpes', 'delete');
   
   const [createOpen, setCreateOpen] = useState(false);
   const [editingCpe, setEditingCpe] = useState<Cpe | null>(null);
@@ -82,10 +87,12 @@ export function CpeList({ clientId }: CpeListProps) {
           <SectionIcon className="h-4 w-4" />
           {sectionTitle}
         </h3>
-        <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          Adicionar
-        </Button>
+        {canAddCpe && (
+          <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Adicionar
+          </Button>
+        )}
       </div>
 
       {cpes?.length === 0 ? (
@@ -204,24 +211,30 @@ export function CpeList({ clientId }: CpeListProps) {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-8 w-8"
-                        onClick={() => setEditingCpe(cpe)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteId(cpe.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {(canEditCpe || canDeleteCpe) && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {canEditCpe && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => setEditingCpe(cpe)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDeleteCpe && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteId(cpe.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

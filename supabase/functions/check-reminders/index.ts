@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
 
         const notificationPayload = {
           organization_id: event.organization_id,
+          user_ids: [event.user_id],
           title: `⏰ Lembrete: ${event.title}`,
           body: `Reunião com ${leadName} às ${eventTime}`,
           url: '/calendar'

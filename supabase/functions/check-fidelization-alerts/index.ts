@@ -19,6 +19,7 @@ interface CpeAlert {
   organization_id: string;
   days_until_expiry: number;
   alert_type: '30d' | '7d';
+  assigned_to: string | null;
 }
 
 interface OrganizationSettings {
@@ -146,6 +147,36 @@ async function sendBrevoEmail(
   }
 }
 
+async function resolveRecipientEmail(
+  supabase: ReturnType<typeof createClient>,
+  alert: CpeAlert,
+  org: OrganizationSettings
+): Promise<string | null> {
+  if (alert.assigned_to) {
+    const { data: member } = await supabase
+      .from('organization_members')
+      .select('notification_email, notification_preferences, profiles(email)')
+      .eq('organization_id', alert.organization_id)
+      .eq('user_id', alert.assigned_to)
+      .eq('is_active', true)
+      .single();
+
+    if (member) {
+      const prefs = member.notification_preferences as any;
+      const fidEnabled = prefs?.fidelization !== false;
+      if (fidEnabled) {
+        const profileEmail = Array.isArray(member.profiles)
+          ? (member.profiles[0] as any)?.email
+          : (member.profiles as any)?.email;
+        const email = member.notification_email || profileEmail || null;
+        if (email) return email;
+      }
+    }
+  }
+  // Fallback to org-level fidelization email
+  return org.fidelization_email ?? null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -180,27 +211,30 @@ serve(async (req) => {
 
     for (const org of organizations as OrganizationSettings[]) {
       const alertDays = org.fidelization_alert_days || [30, 7];
-      const [firstAlert, secondAlert] = alertDays;
+      // Ensure firstAlert (wider window) > secondAlert (urgent window) — guard against swapped values
+      const largeWindow = Math.max(alertDays[0], alertDays[1]);
+      const smallWindow = Math.min(alertDays[0], alertDays[1]);
 
       // Get CPEs expiring within alert windows that haven't been alerted
       const today = new Date();
       const firstAlertDate = new Date();
-      firstAlertDate.setDate(today.getDate() + firstAlert);
+      firstAlertDate.setDate(today.getDate() + largeWindow);
       const secondAlertDate = new Date();
-      secondAlertDate.setDate(today.getDate() + secondAlert);
+      secondAlertDate.setDate(today.getDate() + smallWindow);
 
-      // Query for 30-day alerts
+      // Query for wide-window alerts (e.g. 30d): CPEs between secondAlertDate and firstAlertDate
+      // Lower bound = secondAlertDate to avoid overlap with the urgent (7d) window
       const { data: cpesFor30d, error: cpes30Error } = await supabase
         .from('cpes')
         .select(`
           id, equipment_type, serial_number, comercializador, fidelizacao_end, client_id,
-          crm_clients!inner(name, company, email)
+          crm_clients!inner(name, company, email, assigned_to)
         `)
         .eq('organization_id', org.id)
         .eq('status', 'active')
         .eq('alert_30d_sent', false)
         .not('fidelizacao_end', 'is', null)
-        .gte('fidelizacao_end', today.toISOString().split('T')[0])
+        .gt('fidelizacao_end', secondAlertDate.toISOString().split('T')[0])
         .lte('fidelizacao_end', firstAlertDate.toISOString().split('T')[0]);
 
       if (cpes30Error) {
@@ -208,12 +242,12 @@ serve(async (req) => {
         continue;
       }
 
-      // Query for 7-day alerts
+      // Query for urgent alerts (e.g. 7d): CPEs expiring within the next smallWindow days
       const { data: cpesFor7d, error: cpes7Error } = await supabase
         .from('cpes')
         .select(`
           id, equipment_type, serial_number, comercializador, fidelizacao_end, client_id,
-          crm_clients!inner(name, company, email)
+          crm_clients!inner(name, company, email, assigned_to)
         `)
         .eq('organization_id', org.id)
         .eq('status', 'active')
@@ -245,40 +279,41 @@ serve(async (req) => {
           organization_id: org.id,
           days_until_expiry: daysUntilExpiry,
           alert_type: '30d',
+          assigned_to: (cpe as any).crm_clients.assigned_to ?? null,
         };
 
-        // Send email if enabled
-        if (org.fidelization_email_enabled && org.fidelization_email && org.brevo_api_key && org.brevo_sender_email) {
-          const emailSent = await sendBrevoEmail(
-            org.brevo_api_key,
-            org.brevo_sender_email,
-            org.fidelization_email,
-            alert,
-            org.name
-          );
-          if (emailSent) results.emails_sent++;
+        // Send email to assigned comercial (or fallback to org.fidelization_email)
+        if (org.fidelization_email_enabled && org.brevo_api_key && org.brevo_sender_email) {
+          const recipientEmail = await resolveRecipientEmail(supabase, alert, org);
+          if (recipientEmail) {
+            const emailSent = await sendBrevoEmail(org.brevo_api_key, org.brevo_sender_email, recipientEmail, alert, org.name);
+            if (emailSent) results.emails_sent++;
+          }
         }
 
         // Create calendar event if enabled
         if (org.fidelization_create_event) {
           const eventDate = new Date(cpe.fidelizacao_end);
           eventDate.setDate(eventDate.getDate() - 7); // Event 7 days before expiry
-          
+
           const [hours, minutes] = (org.fidelization_event_time || '10:00').split(':');
           const preferredHour = parseInt(hours);
           const preferredMinute = parseInt(minutes);
 
-          // Get first admin user for the organization
-          const { data: members } = await supabase
-            .from('organization_members')
-            .select('user_id')
-            .eq('organization_id', org.id)
-            .eq('role', 'admin')
-            .eq('is_active', true)
-            .limit(1);
+          // Use the assigned comercial; fallback to first active admin
+          let userId: string | null = alert.assigned_to || null;
+          if (!userId) {
+            const { data: adminMembers } = await supabase
+              .from('organization_members')
+              .select('user_id')
+              .eq('organization_id', org.id)
+              .eq('role', 'admin')
+              .eq('is_active', true)
+              .limit(1);
+            userId = adminMembers?.[0]?.user_id ?? null;
+          }
 
-          if (members && members.length > 0) {
-            const userId = members[0].user_id;
+          if (userId) {
             
             // Get all events for this day to check conflicts
             const dayStart = new Date(eventDate);
@@ -370,18 +405,16 @@ serve(async (req) => {
           organization_id: org.id,
           days_until_expiry: daysUntilExpiry,
           alert_type: '7d',
+          assigned_to: (cpe as any).crm_clients.assigned_to ?? null,
         };
 
-        // Send email if enabled
-        if (org.fidelization_email_enabled && org.fidelization_email && org.brevo_api_key && org.brevo_sender_email) {
-          const emailSent = await sendBrevoEmail(
-            org.brevo_api_key,
-            org.brevo_sender_email,
-            org.fidelization_email,
-            alert,
-            org.name
-          );
-          if (emailSent) results.emails_sent++;
+        // Send email to assigned comercial (or fallback to org.fidelization_email)
+        if (org.fidelization_email_enabled && org.brevo_api_key && org.brevo_sender_email) {
+          const recipientEmail = await resolveRecipientEmail(supabase, alert, org);
+          if (recipientEmail) {
+            const emailSent = await sendBrevoEmail(org.brevo_api_key, org.brevo_sender_email, recipientEmail, alert, org.name);
+            if (emailSent) results.emails_sent++;
+          }
         }
 
         // Mark alert as sent

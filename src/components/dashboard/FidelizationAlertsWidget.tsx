@@ -60,9 +60,9 @@ function filterByScope(items: CpeWithClient[], dataScope: string, canFilterByTea
   if (dataScope === 'all') return items;
   if (dataScope === 'team' && isTeamLeader && canFilterByTeam) {
     const allowed = new Set([currentUserId, ...teamMemberIds].filter(Boolean));
-    return items.filter(cpe => cpe.client_created_by && allowed.has(cpe.client_created_by));
+    return items.filter(cpe => cpe.client_assigned_to && allowed.has(cpe.client_assigned_to));
   }
-  return items.filter(cpe => cpe.client_created_by === currentUserId);
+  return items.filter(cpe => cpe.client_assigned_to === currentUserId);
 }
 
 export function FidelizationAlertsWidget() {
