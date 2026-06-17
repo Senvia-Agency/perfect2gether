@@ -160,20 +160,35 @@ serve(async (req) => {
 
     if (existingProfile) {
       if (existingProfile.organization_id === organizationId) {
-        return new Response(
-          JSON.stringify({ error: 'Este utilizador já pertence à sua organização' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (existingProfile.organization_id) {
+        // Check if they're actually active in organization_members — they may have been deactivated
+        const { data: activeMember } = await supabaseAdmin
+          .from('organization_members')
+          .select('is_active')
+          .eq('user_id', existingProfile.id)
+          .eq('organization_id', organizationId)
+          .maybeSingle();
+
+        if (activeMember?.is_active) {
+          return new Response(
+            JSON.stringify({ error: 'Este utilizador já pertence à sua organização' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        // User belongs to org but is inactive (or has no member record) — reactivate
+        userId = existingProfile.id;
+        console.log(`Reactivating user ${userId} in organization ${organizationId}`);
+        // Remove ban and apply the new password entered in the form
+        await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: 'none', password });
+      } else if (existingProfile.organization_id) {
         return new Response(
           JSON.stringify({ error: 'Este email já está associado a outra organização' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      } else {
+        // User exists but has no organization — add to this org
+        userId = existingProfile.id;
+        console.log(`Adding existing user ${userId} to organization ${organizationId}`);
       }
-      // User exists but has no organization — add to this org
-      userId = existingProfile.id;
-      console.log(`Adding existing user ${userId} to organization ${organizationId}`);
     } else {
       // Try to create new auth user
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
