@@ -121,13 +121,12 @@ export function useManageTeamMember() {
         });
       }
 
-      if (variables.action === 'delete_member') {
-        queryClient.setQueryData<TeamMember[]>(['team-members', organization?.id], (old) => {
-          if (!old) return old;
-          return old.filter(member => member.user_id !== variables.user_id);
-        });
-      }
-      
+      // NOTA: o delete_member NÃO é otimista de propósito. É uma ação
+      // destrutiva — se removêssemos o membro da lista antes da confirmação
+      // do servidor e a chamada falhasse (ex.: token expirado → "Utilizador
+      // não autenticado"), ficava a ilusão de que foi apagado quando não foi.
+      // O membro só sai da lista no onSuccess (via invalidateQueries).
+
       if (variables.action === 'change_role' && variables.new_role) {
         queryClient.setQueryData<TeamMember[]>(['team-members', organization?.id], (old) => {
           if (!old) return old;

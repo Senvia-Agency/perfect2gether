@@ -11,12 +11,34 @@ import { supabase } from '@/integrations/supabase/client';
  *
  * This helper extracts that real message so callers get the Portuguese
  * error string the Edge Function actually returned.
+ *
+ * It also guards against stale access tokens (see ensureFreshSession below):
+ * supabase-js only refreshes the access token on an internal timer, which can
+ * miss a beat in the PWA when the app is backgrounded. The next invoke would
+ * then send an expired JWT and the function's `getUser()` rejects it with
+ * "Utilizador não autenticado" — even though the user never logged out. We
+ * refresh proactively before calling, and retry once on a 401.
  */
+
+// Refresh the token if it expires within this window (access tokens last ~1h).
+const TOKEN_REFRESH_THRESHOLD_MS = 60_000;
+
 export async function invokeFunction<T = unknown>(
   name: string,
   body?: unknown
 ): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
+  let headers = await freshAuthHeaders();
+  let { data, error } = await supabase.functions.invoke(name, { body, headers });
+
+  // Stale-token safety net: if the function rejected the caller's token,
+  // force a refresh and retry once before surfacing the error.
+  if (error && isAuthError(error)) {
+    const { error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError) {
+      headers = await freshAuthHeaders();
+      ({ data, error } = await supabase.functions.invoke(name, { body, headers }));
+    }
+  }
 
   if (error) {
     const realMessage = await extractErrorMessage(error, data);
@@ -29,6 +51,32 @@ export async function invokeFunction<T = unknown>(
   }
 
   return data as T;
+}
+
+/**
+ * Returns an Authorization header with a guaranteed-fresh access token.
+ *
+ * Reads the current session and, if the access token is expired or about to
+ * expire, refreshes it via the (still valid) refresh token before we make the
+ * request. Returns undefined when there is no session — the caller then falls
+ * back to supabase-js's default headers (anon key).
+ */
+async function freshAuthHeaders(): Promise<Record<string, string> | undefined> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return undefined;
+
+  const expiresInMs = (session.expires_at ?? 0) * 1000 - Date.now();
+  if (expiresInMs < TOKEN_REFRESH_THRESHOLD_MS) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    const token = refreshed.session?.access_token;
+    if (token) return { Authorization: `Bearer ${token}` };
+  }
+
+  return { Authorization: `Bearer ${session.access_token}` };
+}
+
+function isAuthError(error: unknown): boolean {
+  return (error as { context?: { status?: number } })?.context?.status === 401;
 }
 
 async function extractErrorMessage(error: unknown, data: unknown): Promise<string> {
