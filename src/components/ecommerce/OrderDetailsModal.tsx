@@ -27,6 +27,7 @@ import {
   FULFILLMENT_STATUS_LABELS,
 } from "@/types/ecommerce";
 import { useUpdateOrderStatus } from "@/hooks/ecommerce";
+import { usePermissions } from "@/hooks/usePermissions";
 import { formatCurrency } from "@/lib/format";
 
 interface OrderDetailsModalProps {
@@ -37,6 +38,8 @@ interface OrderDetailsModalProps {
 
 export function OrderDetailsModal({ order, open, onOpenChange }: OrderDetailsModalProps) {
   const updateStatus = useUpdateOrderStatus();
+  const { can } = usePermissions();
+  const canEditOrder = can('ecommerce', 'orders', 'edit');
 
   const handleStatusChange = (status: OrderStatus) => {
     updateStatus.mutate({ orderId: order.id, status });
@@ -67,59 +70,77 @@ export function OrderDetailsModal({ order, open, onOpenChange }: OrderDetailsMod
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="text-sm font-medium text-muted-foreground">Estado</label>
-              <Select
-                value={order.status}
-                onValueChange={(value) => handleStatusChange(value as OrderStatus)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {canEditOrder ? (
+                <Select
+                  value={order.status}
+                  onValueChange={(value) => handleStatusChange(value as OrderStatus)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="mt-1 text-sm font-medium">
+                  {ORDER_STATUS_LABELS[order.status as OrderStatus]}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="text-sm font-medium text-muted-foreground">Pagamento</label>
-              <Select
-                value={order.payment_status}
-                onValueChange={(value) => handlePaymentChange(value as PaymentStatus)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {canEditOrder ? (
+                <Select
+                  value={order.payment_status}
+                  onValueChange={(value) => handlePaymentChange(value as PaymentStatus)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="mt-1 text-sm font-medium">
+                  {PAYMENT_STATUS_LABELS[order.payment_status as PaymentStatus]}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="text-sm font-medium text-muted-foreground">Expedição</label>
-              <Select
-                value={order.fulfillment_status}
-                onValueChange={(value) => handleFulfillmentChange(value as FulfillmentStatus)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(FULFILLMENT_STATUS_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {canEditOrder ? (
+                <Select
+                  value={order.fulfillment_status}
+                  onValueChange={(value) => handleFulfillmentChange(value as FulfillmentStatus)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(FULFILLMENT_STATUS_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="mt-1 text-sm font-medium">
+                  {FULFILLMENT_STATUS_LABELS[order.fulfillment_status as FulfillmentStatus]}
+                </p>
+              )}
             </div>
           </div>
 

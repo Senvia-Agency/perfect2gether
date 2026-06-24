@@ -26,6 +26,7 @@ import {
   SYSTEM_DESCRIPTIONS,
 } from '@/hooks/useOrganizationProfiles';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { WIDGET_DEFINITIONS, WidgetType, getAllAvailableWidgets } from '@/lib/dashboard-templates';
 import { Shield, Plus, Pencil, Trash2, Loader2, Eye, LayoutDashboard, ArrowLeft } from 'lucide-react';
 import { getRoleLabel } from '@/lib/roles';
@@ -33,6 +34,8 @@ import { getRoleLabel } from '@/lib/roles';
 export function ProfilesTab() {
   const { profiles, isLoading, createProfile, updateProfile, deleteProfile } = useOrganizationProfiles();
   const { organization } = useAuth();
+  const { can } = usePermissions();
+  const canManageProfiles = can('settings', 'profiles', 'manage');
   const [isOpen, setIsOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<OrganizationProfile | null>(null);
 
@@ -319,7 +322,7 @@ export function ProfilesTab() {
                                     {subSchema.actions.map(action => (
                                       <label key={action} className="flex items-center gap-1.5 cursor-pointer">
                                         <Checkbox checked={subPerms[action] ?? false} onCheckedChange={() => toggleAction(moduleKey, subKey, action)} />
-                                        <span className="text-sm">{ACTION_LABELS[action] || action}</span>
+                                        <span className="text-sm">{subSchema.actionLabels?.[action] || ACTION_LABELS[action] || action}</span>
                                       </label>
                                     ))}
                                   </div>
@@ -432,10 +435,12 @@ export function ProfilesTab() {
         </div>
       </div>
       <div className="flex gap-1 shrink-0 ml-2">
-        <Button variant="ghost" size="icon" onClick={() => openEdit(profile)}>
-          <Pencil className="h-4 w-4" />
-        </Button>
-        {!profile.is_default && (
+        {canManageProfiles && (
+          <Button variant="ghost" size="icon" onClick={() => openEdit(profile)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
+        {canManageProfiles && !profile.is_default && (
           <Button variant="ghost" size="icon" onClick={() => handleDelete(profile)} disabled={deleteProfile.isPending}>
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -454,10 +459,12 @@ export function ProfilesTab() {
           </h3>
           <p className="text-sm text-muted-foreground">Defina perfis com permissões granulares por módulo e sub-área.</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Criar Perfil
-        </Button>
+        {canManageProfiles && (
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Criar Perfil
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

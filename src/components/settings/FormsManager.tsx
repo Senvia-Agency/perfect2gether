@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useForms, useDeleteForm, useDuplicateForm, useUpdateForm } from '@/hooks/useForms';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useSubscription } from '@/hooks/useSubscription';
 import { Form } from '@/types';
 import { PRODUCTION_URL } from '@/lib/constants';
@@ -51,6 +52,8 @@ export function FormsManager() {
   const deleteForm = useDeleteForm();
   const duplicateForm = useDuplicateForm();
   const updateForm = useUpdateForm();
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
   const { limits, planName } = useSubscription();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -137,17 +140,19 @@ export function FormsManager() {
             Crie e gira múltiplos formulários para diferentes campanhas
           </p>
         </div>
-        <Button onClick={() => {
-          if (limits.maxForms !== null && forms && forms.length >= limits.maxForms) {
-            toast.error(`Limite de ${limits.maxForms} formulários atingido no plano ${planName}`);
-            setShowUpgradeModal(true);
-            return;
-          }
-          setShowCreateModal(true);
-        }} className="gap-2">
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Novo Formulário</span>
-        </Button>
+        {canEditGeneral && (
+          <Button onClick={() => {
+            if (limits.maxForms !== null && forms && forms.length >= limits.maxForms) {
+              toast.error(`Limite de ${limits.maxForms} formulários atingido no plano ${planName}`);
+              setShowUpgradeModal(true);
+              return;
+            }
+            setShowCreateModal(true);
+          }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Novo Formulário</span>
+          </Button>
+        )}
       </div>
 
       {/* Forms List */}
@@ -192,10 +197,12 @@ export function FormsManager() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditingForm(form)}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar
-                    </DropdownMenuItem>
+                    {canEditGeneral && (
+                      <DropdownMenuItem onClick={() => setEditingForm(form)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => handleOpenForm(form)}>
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Abrir
@@ -212,40 +219,46 @@ export function FormsManager() {
                       <Code className="h-4 w-4 mr-2" />
                       Copiar Embed (Botão)
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => duplicateForm.mutate(form.id)}>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Duplicar
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {!form.is_default && (
-                      <DropdownMenuItem onClick={() => handleSetDefault(form)}>
-                        <Star className="h-4 w-4 mr-2" />
-                        Definir como Principal
+                    {canEditGeneral && (
+                      <DropdownMenuItem onClick={() => duplicateForm.mutate(form.id)}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplicar
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem onClick={() => handleToggleActive(form)}>
-                      {form.is_active ? (
-                        <>
-                          <PowerOff className="h-4 w-4 mr-2" />
-                          Desativar
-                        </>
-                      ) : (
-                        <>
-                          <Power className="h-4 w-4 mr-2" />
-                          Ativar
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    {!form.is_default && (
+                    {canEditGeneral && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => setFormToDelete(form)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Eliminar
+                        {!form.is_default && (
+                          <DropdownMenuItem onClick={() => handleSetDefault(form)}>
+                            <Star className="h-4 w-4 mr-2" />
+                            Definir como Principal
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => handleToggleActive(form)}>
+                          {form.is_active ? (
+                            <>
+                              <PowerOff className="h-4 w-4 mr-2" />
+                              Desativar
+                            </>
+                          ) : (
+                            <>
+                              <Power className="h-4 w-4 mr-2" />
+                              Ativar
+                            </>
+                          )}
                         </DropdownMenuItem>
+                        {!form.is_default && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setFormToDelete(form)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </>
                     )}
                   </DropdownMenuContent>
@@ -286,10 +299,12 @@ export function FormsManager() {
               <p className="text-sm text-muted-foreground text-center mb-4">
                 Ainda não tem formulários criados
               </p>
-              <Button onClick={() => setShowCreateModal(true)} variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Primeiro Formulário
-              </Button>
+              {canEditGeneral && (
+                <Button onClick={() => setShowCreateModal(true)} variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeiro Formulário
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}

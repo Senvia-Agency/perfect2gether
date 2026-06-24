@@ -47,7 +47,9 @@ interface ClientsTableProps {
 
 export function ClientsTable({ clients, onEdit, onView, onDelete, selectedIds = [], onSelectionChange, isTelecom = false }: ClientsTableProps) {
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
-  const { canDeleteLeads } = usePermissions();
+  const { can } = usePermissions();
+  const canEditClient = can('clients', 'list', 'edit');
+  const canDeleteClient = can('clients', 'list', 'delete');
   const { data: teamMembers = [] } = useTeamMembers();
   const labels = useClientLabels();
 
@@ -280,10 +282,12 @@ export function ClientsTable({ clients, onEdit, onView, onDelete, selectedIds = 
                         <Eye className="h-4 w-4 mr-2" />
                         Ver Detalhes
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(client)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
+                      {canEditClient && (
+                        <DropdownMenuItem onClick={() => onEdit(client)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                      )}
                       {client.phone && (
                         <DropdownMenuItem asChild>
                           <a
@@ -296,7 +300,7 @@ export function ClientsTable({ clients, onEdit, onView, onDelete, selectedIds = 
                           </a>
                         </DropdownMenuItem>
                       )}
-                      {canDeleteLeads && (
+                      {canDeleteClient && (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -304,7 +308,7 @@ export function ClientsTable({ clients, onEdit, onView, onDelete, selectedIds = 
                             onClick={() => setDeleteClientId(client.id)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Eliminar
+                            Excluir
                           </DropdownMenuItem>
                         </>
                       )}

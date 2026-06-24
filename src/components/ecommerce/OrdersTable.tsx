@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrders, useUpdateOrderStatus } from "@/hooks/ecommerce";
+import { usePermissions } from "@/hooks/usePermissions";
 import { formatCurrency } from "@/lib/format";
 import {
   Order,
@@ -52,7 +53,9 @@ const paymentColors: Record<PaymentStatus, string> = {
 export function OrdersTable() {
   const { data: orders, isLoading } = useOrders();
   const updateStatus = useUpdateOrderStatus();
-  
+  const { can } = usePermissions();
+  const canEditOrder = can('ecommerce', 'orders', 'edit');
+
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -138,23 +141,29 @@ export function OrdersTable() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Select
-                      value={order.status}
-                      onValueChange={(value) => handleStatusChange(order.id, value as OrderStatus)}
-                    >
-                      <SelectTrigger className="h-7 w-[130px] border-0 p-0">
-                        <Badge className={statusColors[order.status as OrderStatus]} variant="outline">
-                          {ORDER_STATUS_LABELS[order.status as OrderStatus]}
-                        </Badge>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {canEditOrder ? (
+                      <Select
+                        value={order.status}
+                        onValueChange={(value) => handleStatusChange(order.id, value as OrderStatus)}
+                      >
+                        <SelectTrigger className="h-7 w-[130px] border-0 p-0">
+                          <Badge className={statusColors[order.status as OrderStatus]} variant="outline">
+                            {ORDER_STATUS_LABELS[order.status as OrderStatus]}
+                          </Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge className={statusColors[order.status as OrderStatus]} variant="outline">
+                        {ORDER_STATUS_LABELS[order.status as OrderStatus]}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge className={paymentColors[order.payment_status as PaymentStatus]}>

@@ -26,6 +26,7 @@ export default function InternalRequests() {
   );
   const { can } = usePermissions();
   const canApprove = can('finance', 'requests', 'approve');
+  const canSubmit = can('finance', 'requests', 'submit');
 
   return (
     <div className="space-y-4">
@@ -36,9 +37,11 @@ export default function InternalRequests() {
             <p className="text-sm text-muted-foreground">{pendingCount} pedido(s) pendente(s)</p>
           )}
         </div>
-        <Button size="sm" onClick={() => setShowSubmit(true)}>
-          <Plus className="mr-1.5 h-4 w-4" /> Novo Pedido
-        </Button>
+        {canSubmit && (
+          <Button size="sm" onClick={() => setShowSubmit(true)}>
+            <Plus className="mr-1.5 h-4 w-4" /> Novo Pedido
+          </Button>
+        )}
       </div>
 
       <RequestsTable

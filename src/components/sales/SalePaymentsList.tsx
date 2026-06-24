@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useSalePayments, useDeleteSalePayment, calculatePaymentSummary } from "@/hooks/useSalePayments";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useGenerateReceipt } from "@/hooks/useGenerateReceipt";
 import { useCancelInvoice } from "@/hooks/useCancelInvoice";
 import { useSaleItems } from "@/hooks/useSaleItems";
@@ -81,6 +82,11 @@ export function SalePaymentsList({
   const { data: payments = [], isLoading } = useSalePayments(saleId);
   const { data: saleItemsData = [] } = useSaleItems(saleId);
   const deletePayment = useDeleteSalePayment();
+  const { can } = usePermissions();
+  const canAddPayment = can('sales', 'payments', 'add');
+  const canEditSale = can('sales', 'sales', 'edit');
+  const canIssueInvoice = can('finance', 'invoices', 'issue');
+  const canCancelInvoice = can('finance', 'invoices', 'cancel');
 
   // Build draft items for InvoiceDraftModal
   const draftSaleItems: DraftSaleItem[] = saleItemsData.map((item: any) => ({
@@ -193,7 +199,7 @@ export function SalePaymentsList({
               </Badge>
             )}
           </div>
-          {!readonly && summary.remainingToSchedule > 0 && (
+          {!readonly && canAddPayment && summary.remainingToSchedule > 0 && (
             <Button
               variant="outline"
               size="sm"
@@ -255,15 +261,17 @@ export function SalePaymentsList({
                 <div className="flex items-center gap-1">
                   {!readonly && payment.status !== 'paid' && (
                     <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setEditingPayment(payment)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      {!preventPaymentDeletion && (
+                      {canEditSale && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setEditingPayment(payment)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {!preventPaymentDeletion && canEditSale && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -276,7 +284,7 @@ export function SalePaymentsList({
                     </>
                   )}
                   {/* Generate Receipt (RC) button - only when sale already has FT */}
-                  {hasInvoiceXpress && hasInvoice && invoicexpressType === 'FT' && !payment.invoice_reference && !readonly && (
+                  {hasInvoiceXpress && hasInvoice && invoicexpressType === 'FT' && !payment.invoice_reference && !readonly && canIssueInvoice && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -348,7 +356,7 @@ export function SalePaymentsList({
                   )}
                   {payment.invoice_reference && hasInvoiceXpress && !readonly && (
                     <>
-                      {payment.invoicexpress_id && (
+                      {payment.invoicexpress_id && canIssueInvoice && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -363,15 +371,17 @@ export function SalePaymentsList({
                           <Mail className="h-3.5 w-3.5" />
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setCancellingPayment(payment)}
-                        title="Anular recibo"
-                      >
-                        <Ban className="h-3.5 w-3.5" />
-                      </Button>
+                      {canCancelInvoice && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setCancellingPayment(payment)}
+                          title="Anular recibo"
+                        >
+                          <Ban className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -384,7 +394,7 @@ export function SalePaymentsList({
             <p className="text-sm text-muted-foreground mb-3">
               Nenhum pagamento registado
             </p>
-            {!readonly && summary.remainingToSchedule > 0 && (
+            {!readonly && canAddPayment && summary.remainingToSchedule > 0 && (
               <Button
                 variant="outline"
                 size="sm"

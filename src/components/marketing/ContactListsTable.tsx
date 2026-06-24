@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { ContactList } from "@/hooks/useContactLists";
 
 interface Props {
@@ -17,6 +18,8 @@ interface Props {
 
 export function ContactListsTable({ lists, onView, onDelete }: Props) {
   const isMobile = useIsMobile();
+  const { can } = usePermissions();
+  const canDeleteList = can('marketing', 'lists', 'delete');
 
   if (lists.length === 0) {
     return (
@@ -64,7 +67,7 @@ export function ContactListsTable({ lists, onView, onDelete }: Props) {
                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(list); }}>
                       <Eye className="h-4 w-4 mr-2" /> Ver
                     </DropdownMenuItem>
-                    {!list.is_system && (
+                    {!list.is_system && canDeleteList && (
                       <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(list.id); }}>
                         <Trash2 className="h-4 w-4 mr-2" /> Eliminar
                       </DropdownMenuItem>
@@ -111,7 +114,7 @@ export function ContactListsTable({ lists, onView, onDelete }: Props) {
                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(list); }}>
                       <Eye className="h-4 w-4 mr-2" /> Ver detalhes
                     </DropdownMenuItem>
-                    {!list.is_system && (
+                    {!list.is_system && canDeleteList && (
                       <DropdownMenuItem className="text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(list.id); }}>
                         <Trash2 className="h-4 w-4 mr-2" /> Eliminar
                       </DropdownMenuItem>

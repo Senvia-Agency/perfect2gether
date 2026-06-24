@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useOrganization, useUpdateOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { ShoppingCart, Info, Percent } from "lucide-react";
 
 interface SalesSettings {
@@ -22,6 +23,8 @@ interface SalesSettings {
 export function SalesSettingsTab() {
   const { data: org } = useOrganization();
   const updateOrganization = useUpdateOrganization();
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
 
   const currentSettings: SalesSettings = (org?.sales_settings as SalesSettings) || {};
 
@@ -219,13 +222,15 @@ export function SalesSettingsTab() {
             )}
           </div>
 
-          <Button
-            onClick={handleSave}
-            disabled={!hasChanges || updateOrganization.isPending}
-            className="w-full sm:w-auto"
-          >
-            {updateOrganization.isPending ? "A guardar..." : "Guardar"}
-          </Button>
+          {canEditGeneral && (
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || updateOrganization.isPending}
+              className="w-full sm:w-auto"
+            >
+              {updateOrganization.isPending ? "A guardar..." : "Guardar"}
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>

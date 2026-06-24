@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePersistedState } from "@/hooks/usePersistedState";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useProposals, useUpdateProposal } from '@/hooks/useProposals';
 import { useProposalsRealtime } from '@/hooks/useRealtimeSubscription';
 import { TeamMemberFilter } from '@/components/dashboard/TeamMemberFilter';
@@ -31,6 +32,8 @@ export default function Proposals() {
   // Subscribe to realtime updates
   useProposalsRealtime();
   const { profile, organization } = useAuth();
+  const { can } = usePermissions();
+  const canCreateProposal = can('proposals', 'proposals', 'create');
   const { data: proposals = [], isLoading } = useProposals();
   const isTelecom = organization?.niche === 'telecom';
   const { data: telecomMetrics } = useTelecomProposalMetrics();
@@ -89,10 +92,12 @@ export default function Proposals() {
             </h1>
             <p className="text-muted-foreground">Gestão de propostas comerciais.</p>
           </div>
-          <Button onClick={() => setCreateModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Proposta
-          </Button>
+          {canCreateProposal && (
+            <Button onClick={() => setCreateModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Proposta
+            </Button>
+          )}
         </div>
 
         {/* Summary Cards */}

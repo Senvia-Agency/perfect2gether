@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Loader2, User, Mail, Phone, Globe, Thermometer, DollarSign, MessageSquare, Save, Eye, EyeOff, AlertCircle, FileText, Building2, ClipboardList, Zap } from 'lucide-react';
 import { useLeadFieldsSettings, useUpdateLeadFieldsSettings } from '@/hooks/useLeadFieldsSettings';
+import { usePermissions } from '@/hooks/usePermissions';
 import { LeadFieldKey, LeadFieldsSettings, DEFAULT_LEAD_FIELDS_SETTINGS, LEAD_FIELD_ORDER } from '@/types/field-settings';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -26,6 +27,8 @@ const FIELD_ICONS: Record<LeadFieldKey, React.ReactNode> = {
 export function LeadFieldsEditor() {
   const { data: savedSettings, isLoading } = useLeadFieldsSettings();
   const updateSettings = useUpdateLeadFieldsSettings();
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
   const [settings, setSettings] = useState<LeadFieldsSettings>(DEFAULT_LEAD_FIELDS_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -122,12 +125,14 @@ export function LeadFieldsEditor() {
 
         <p className="text-xs text-muted-foreground">Pelo menos um campo de identificação (<strong>Nome</strong>, <strong>Nome Empresa</strong> ou <strong>NIF</strong>) é necessário para identificar cada lead.</p>
 
-        <div className="flex justify-end pt-4">
-          <Button onClick={handleSave} disabled={!hasChanges || updateSettings.isPending || !hasIdentificationField}>
-            {updateSettings.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Guardar Alterações
-          </Button>
-        </div>
+        {canEditGeneral && (
+          <div className="flex justify-end pt-4">
+            <Button onClick={handleSave} disabled={!hasChanges || updateSettings.isPending || !hasIdentificationField}>
+              {updateSettings.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Guardar Alterações
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

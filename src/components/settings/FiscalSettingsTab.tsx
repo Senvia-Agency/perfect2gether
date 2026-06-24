@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Info } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface FiscalSettingsTabProps {
   taxRate: string;
@@ -29,6 +30,8 @@ const EXEMPTION_OPTIONS = [
 ];
 
 export function FiscalSettingsTab({ taxRate, setTaxRate, taxExemptionReason, setTaxExemptionReason, onSave, isPending }: FiscalSettingsTabProps) {
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
   return (
     <div className="space-y-6">
       <Card>
@@ -83,10 +86,12 @@ export function FiscalSettingsTab({ taxRate, setTaxRate, taxExemptionReason, set
           </div>
         )}
 
-        <Button onClick={onSave} disabled={isPending || (taxRate === '0' && !taxExemptionReason)}>
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Guardar
-        </Button>
+        {canEditGeneral && (
+          <Button onClick={onSave} disabled={isPending || (taxRate === '0' && !taxExemptionReason)}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Guardar
+          </Button>
+        )}
       </CardContent>
     </Card>
     </div>

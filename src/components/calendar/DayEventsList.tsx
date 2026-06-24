@@ -4,6 +4,7 @@ import { CalendarPlus, CalendarX2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EventCard } from './EventCard';
 import type { CalendarEvent } from '@/types/calendar';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface DayEventsListProps {
   selectedDate: Date;
@@ -13,16 +14,21 @@ interface DayEventsListProps {
 }
 
 export function DayEventsList({ selectedDate, events, onEventClick, onCreateEvent }: DayEventsListProps) {
+  const { can } = usePermissions();
+  const canCreateEvent = can('calendar', 'events', 'create');
+
   return (
     <div className="mt-4 bg-card rounded-lg border p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">
           Eventos de {format(selectedDate, "d 'de' MMMM", { locale: pt })}
         </h3>
-        <Button size="sm" variant="outline" onClick={onCreateEvent} className="gap-1.5">
-          <CalendarPlus className="h-4 w-4" />
-          <span className="hidden sm:inline">Novo Evento</span>
-        </Button>
+        {canCreateEvent && (
+          <Button size="sm" variant="outline" onClick={onCreateEvent} className="gap-1.5">
+            <CalendarPlus className="h-4 w-4" />
+            <span className="hidden sm:inline">Novo Evento</span>
+          </Button>
+        )}
       </div>
 
       {events.length === 0 ? (

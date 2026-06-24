@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Pencil, Eye, Landmark } from 'lucide-react';
 import { useBankAccounts } from '@/hooks/useBankAccounts';
+import { usePermissions } from '@/hooks/usePermissions';
 import { formatCurrency, formatIban } from '@/lib/format';
 import { CreateBankAccountModal } from './CreateBankAccountModal';
 import { EditBankAccountModal } from './EditBankAccountModal';
@@ -13,6 +14,8 @@ import type { BankAccount } from '@/types/bank-accounts';
 
 export function BankAccountsTab() {
   const { data: accounts, isLoading } = useBankAccounts();
+  const { can } = usePermissions();
+  const canManageBank = can('finance', 'bank_accounts', 'manage');
   const [createOpen, setCreateOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<BankAccount | null>(null);
   const [statementAccount, setStatementAccount] = useState<BankAccount | null>(null);
@@ -21,10 +24,12 @@ export function BankAccountsTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Contas Correntes</h2>
-        <Button onClick={() => setCreateOpen(true)} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Conta
-        </Button>
+        {canManageBank && (
+          <Button onClick={() => setCreateOpen(true)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Conta
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -39,10 +44,12 @@ export function BankAccountsTab() {
             <p className="text-sm text-muted-foreground mb-4">
               Adicione a sua primeira conta bancária para começar a controlar os movimentos.
             </p>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Criar Conta
-            </Button>
+            {canManageBank && (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Conta
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -51,6 +58,7 @@ export function BankAccountsTab() {
             <BankAccountCard
               key={acc.id}
               account={acc}
+              canEdit={canManageBank}
               onEdit={() => setEditAccount(acc)}
               onStatement={() => setStatementAccount(acc)}
             />
@@ -67,7 +75,7 @@ export function BankAccountsTab() {
   );
 }
 
-function BankAccountCard({ account, onEdit, onStatement }: { account: BankAccount; onEdit: () => void; onStatement: () => void }) {
+function BankAccountCard({ account, canEdit, onEdit, onStatement }: { account: BankAccount; canEdit: boolean; onEdit: () => void; onStatement: () => void }) {
   // We compute balance from initial_balance as placeholder; the statement drawer shows real balance
   return (
     <Card className={`relative ${!account.is_active ? 'opacity-60' : ''}`}>
@@ -97,10 +105,12 @@ function BankAccountCard({ account, onEdit, onStatement }: { account: BankAccoun
             <Eye className="h-3.5 w-3.5 mr-1" />
             Extracto
           </Button>
-          <Button variant="outline" size="sm" className="flex-1" onClick={onEdit}>
-            <Pencil className="h-3.5 w-3.5 mr-1" />
-            Editar
-          </Button>
+          {canEdit && (
+            <Button variant="outline" size="sm" className="flex-1" onClick={onEdit}>
+              <Pencil className="h-3.5 w-3.5 mr-1" />
+              Editar
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -37,9 +37,21 @@ import { cn } from "@/lib/utils";
 import { PROPOSAL_STATUS_LABELS, PROPOSAL_STATUS_COLORS, type ProposalStatus, type Proposal } from "@/types/proposals";
 import { SALE_STATUS_LABELS, SALE_STATUS_COLORS, type SaleStatus } from "@/types/sales";
 import { ProposalDetailsModal } from "@/components/proposals/ProposalDetailsModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useClientLabels } from "@/hooks/useClientLabels";
 import { useClientHistory } from "@/hooks/useClientHistory";
 import { useUpdateClient } from "@/hooks/useClients";
+import { useDeleteCommunication } from "@/hooks/useClientCommunications";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useTeamMembers } from "@/hooks/useTeam";
 import { useCpes } from "@/hooks/useCpes";
 import { useAuth } from "@/contexts/AuthContext";
@@ -71,6 +83,12 @@ export function ClientDetailsDrawer({
   const labels = useClientLabels();
   const { timeline, proposals, sales, events, isLoading: loadingHistory } = useClientHistory(client?.id || null);
   const updateClient = useUpdateClient();
+  const deleteCommunication = useDeleteCommunication();
+  const { can } = usePermissions();
+  const canEditClient = can('clients', 'list', 'edit');
+  const canAddComm = can('clients', 'communications', 'add');
+  const canDeleteComm = can('clients', 'communications', 'delete');
+  const [commToDelete, setCommToDelete] = useState<string | null>(null);
   const { data: teamMembers = [] } = useTeamMembers();
   const { organization } = useAuth();
   
@@ -301,7 +319,7 @@ export function ClientDetailsDrawer({
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">Notas</CardTitle>
-                      {!isEditingNotes ? (
+                      {canEditClient && (!isEditingNotes ? (
                         <Button variant="ghost" size="sm" onClick={() => setIsEditingNotes(true)}>
                           <Edit className="h-4 w-4 mr-1" />
                           Editar
@@ -317,7 +335,7 @@ export function ClientDetailsDrawer({
                             Guardar
                           </Button>
                         </div>
-                      )}
+                      ))}
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -329,11 +347,14 @@ export function ClientDetailsDrawer({
                         className="min-h-[120px]"
                       />
                     ) : (
-                      <div 
-                        className="text-sm text-muted-foreground whitespace-pre-wrap min-h-[80px] p-3 bg-muted/30 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => setIsEditingNotes(true)}
+                      <div
+                        className={cn(
+                          "text-sm text-muted-foreground whitespace-pre-wrap min-h-[80px] p-3 bg-muted/30 rounded-lg",
+                          canEditClient && "cursor-pointer hover:bg-muted/50 transition-colors"
+                        )}
+                        onClick={canEditClient ? () => setIsEditingNotes(true) : undefined}
                       >
-                        {client.notes || "Clique para adicionar notas..."}
+                        {client.notes || (canEditClient ? "Clique para adicionar notas..." : "Sem notas")}
                       </div>
                     )}
                   </CardContent>
@@ -344,18 +365,24 @@ export function ClientDetailsDrawer({
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">Histórico</CardTitle>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleOpenCommunicationModal('note', 'outbound')}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Registar Contacto
-                      </Button>
+                      {canAddComm && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenCommunicationModal('note', 'outbound')}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Registar Contacto
+                        </Button>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <ClientTimeline events={timeline} isLoading={loadingHistory} />
+                    <ClientTimeline
+                      events={timeline}
+                      isLoading={loadingHistory}
+                      onDeleteCommunication={canDeleteComm ? setCommToDelete : undefined}
+                    />
                   </CardContent>
                 </Card>
               </div>
@@ -414,11 +441,15 @@ export function ClientDetailsDrawer({
                       <CardTitle className="text-base">Ações Rápidas</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => onEdit(client)}>
-                        <Edit className="h-4 w-4 mr-1" />
-                        Editar
-                      </Button>
-                      <Separator />
+                      {canEditClient && (
+                        <>
+                          <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => onEdit(client)}>
+                            <Edit className="h-4 w-4 mr-1" />
+                            Editar
+                          </Button>
+                          <Separator />
+                        </>
+                      )}
                       {client.phone && (
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" className="flex-1" asChild>
@@ -558,6 +589,32 @@ export function ClientDetailsDrawer({
           defaultType={defaultCommType}
           defaultDirection={defaultCommDirection}
         />
+
+        {/* Remover da ficha — confirmação */}
+        <AlertDialog open={!!commToDelete} onOpenChange={(open) => { if (!open) setCommToDelete(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remover da ficha?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta entrada do histórico será removida permanentemente. Esta ação não pode ser revertida.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (commToDelete) {
+                    deleteCommunication.mutate({ id: commToDelete, clientId: client.id });
+                    setCommToDelete(null);
+                  }
+                }}
+              >
+                Remover
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
       </DialogContent>
     </Dialog>

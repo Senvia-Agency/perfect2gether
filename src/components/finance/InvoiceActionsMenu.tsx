@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSyncInvoice } from "@/hooks/useInvoiceDetails";
 import { useCancelInvoice } from "@/hooks/useCancelInvoice";
+import { usePermissions } from "@/hooks/usePermissions";
 import { CancelInvoiceDialog } from "@/components/sales/CancelInvoiceDialog";
 import { SendInvoiceEmailModal } from "@/components/sales/SendInvoiceEmailModal";
 import { InvoiceDetailsModal } from "@/components/sales/InvoiceDetailsModal";
@@ -44,6 +45,9 @@ export function InvoiceActionsMenu({ invoice }: InvoiceActionsMenuProps) {
   
   const syncInvoice = useSyncInvoice();
   const cancelInvoice = useCancelInvoice();
+  const { can } = usePermissions();
+  const canIssueCreditNote = can('finance', 'invoices', 'issue');
+  const canCancelInvoice = can('finance', 'invoices', 'cancel');
 
   const hasInvoiceXpress = !!invoice.invoicexpressId;
   const hasLocalPdf = !!invoice.invoiceFileUrl;
@@ -121,22 +125,24 @@ export function InvoiceActionsMenu({ invoice }: InvoiceActionsMenuProps) {
             </DropdownMenuItem>
           )}
 
-          {hasInvoiceXpress && (
+          {hasInvoiceXpress && (canIssueCreditNote || canCancelInvoice) && (
             <>
               <DropdownMenuSeparator />
-              {!invoice.creditNoteId && (
+              {canIssueCreditNote && !invoice.creditNoteId && (
                 <DropdownMenuItem onClick={() => setShowCreditNote(true)}>
                   <FileText className="h-4 w-4 mr-2" />
                   Nota de Crédito
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem 
-                onClick={() => setShowCancel(true)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Ban className="h-4 w-4 mr-2" />
-                Anular Documento
-              </DropdownMenuItem>
+              {canCancelInvoice && (
+                <DropdownMenuItem
+                  onClick={() => setShowCancel(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Ban className="h-4 w-4 mr-2" />
+                  Anular Documento
+                </DropdownMenuItem>
+              )}
             </>
           )}
         </DropdownMenuContent>

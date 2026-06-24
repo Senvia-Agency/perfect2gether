@@ -25,6 +25,7 @@ import {
   PipelineStage 
 } from "@/hooks/usePipelineStages";
 import { useOrganization } from "@/hooks/useOrganization";
+import { usePermissions } from "@/hooks/usePermissions";
 import { NICHE_TEMPLATES, NicheType, NICHE_LABELS, PipelineStageTemplate, getNicheTemplate } from "@/lib/pipeline-templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,8 @@ const DEFAULT_NEW_STAGE: EditingStage = {
 export function PipelineEditor() {
   const { data: stages, isLoading } = usePipelineStages();
   const { data: organization } = useOrganization();
+  const { can } = usePermissions();
+  const canEditPipeline = can('settings', 'pipeline', 'edit');
   const createStage = useCreatePipelineStage();
   const updateStage = useUpdatePipelineStage();
   const deleteStage = useDeletePipelineStage();
@@ -389,10 +392,12 @@ export function PipelineEditor() {
                 </CardDescription>
               </div>
             </div>
-            <Button onClick={handleAddPreviewStage} size="sm" variant="outline">
-              <Plus className="h-4 w-4 mr-1" />
-              Adicionar
-            </Button>
+            {canEditPipeline && (
+              <Button onClick={handleAddPreviewStage} size="sm" variant="outline">
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-2">
             <DndContext
@@ -434,12 +439,14 @@ export function PipelineEditor() {
               <Button variant="outline" onClick={handleCancelPreview}>
                 Cancelar
               </Button>
-              <Button 
-                onClick={() => setShowApplyConfirm(true)}
-                disabled={previewStages.length === 0 || applyTemplate.isPending}
-              >
-                {applyTemplate.isPending ? "A aplicar..." : "Aplicar Template"}
-              </Button>
+              {canEditPipeline && (
+                <Button
+                  onClick={() => setShowApplyConfirm(true)}
+                  disabled={previewStages.length === 0 || applyTemplate.isPending}
+                >
+                  {applyTemplate.isPending ? "A aplicar..." : "Aplicar Template"}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -455,10 +462,12 @@ export function PipelineEditor() {
                 Arrasta para reordenar ou edita cada etapa
               </CardDescription>
             </div>
-            <Button onClick={handleAddStage} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Adicionar
-            </Button>
+            {canEditPipeline && (
+              <Button onClick={handleAddStage} size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-2">
             <DndContext

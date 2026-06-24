@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useProducts, useDeleteProduct } from '@/hooks/useProducts';
 import { useSyncInvoiceXpressItems } from '@/hooks/useSyncInvoiceXpressItems';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ServicosProductsManager } from './ServicosProductsManager';
 import { CreateProductModal } from './CreateProductModal';
 import { EditProductModal } from './EditProductModal';
@@ -26,6 +27,8 @@ export function ProductsTab() {
   const deleteProduct = useDeleteProduct();
   const syncItems = useSyncInvoiceXpressItems();
   const { organization } = useAuth();
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
   const isTelecom = (organization as any)?.niche === 'telecom';
   const hasInvoiceXpress = !!(organization as any)?.invoicexpress_api_key && !!(organization as any)?.invoicexpress_account_name;
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -66,27 +69,29 @@ export function ProductsTab() {
               Gerir o catálogo de produtos e serviços da organização.
             </CardDescription>
           </div>
-          <div className="flex gap-2">
-            {hasInvoiceXpress && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => syncItems.mutate()}
-                disabled={syncItems.isPending}
-              >
-                {syncItems.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Sincronizar
+          {canEditGeneral && (
+            <div className="flex gap-2">
+              {hasInvoiceXpress && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => syncItems.mutate()}
+                  disabled={syncItems.isPending}
+                >
+                  {syncItems.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Sincronizar
+                </Button>
+              )}
+              <Button onClick={() => setCreateModalOpen(true)} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar
               </Button>
-            )}
-            <Button onClick={() => setCreateModalOpen(true)} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar
-            </Button>
-          </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {products.length === 0 ? (
@@ -126,22 +131,24 @@ export function ProductsTab() {
                     <span className="font-semibold text-primary whitespace-nowrap">
                       {formatPrice(product.price)}
                     </span>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingProduct(product)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeletingProduct(product)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
+                    {canEditGeneral && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingProduct(product)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeletingProduct(product)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

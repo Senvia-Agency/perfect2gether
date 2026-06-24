@@ -1,22 +1,29 @@
-import { 
-  FileText, 
-  ShoppingCart, 
-  Calendar, 
+import {
+  FileText,
+  ShoppingCart,
+  Calendar,
   MessageSquare,
   Phone,
   PhoneIncoming,
   PhoneOutgoing,
   Mail,
   StickyNote,
+  Trash2,
 } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ClientHistoryEvent, HistoryEventType } from '@/hooks/useClientHistory';
+
+// Timeline events that originate from client_communications (deletable "texto da ficha").
+const COMMUNICATION_EVENT_TYPES: HistoryEventType[] = ['note', 'call', 'whatsapp', 'email'];
 
 interface ClientTimelineProps {
   events: ClientHistoryEvent[];
   isLoading?: boolean;
+  /** When provided, communication entries show a "Remover" button gated by the caller. */
+  onDeleteCommunication?: (communicationId: string) => void;
 }
 
 const EVENT_CONFIG: Record<HistoryEventType, { icon: typeof FileText; color: string; bgColor: string }> = {
@@ -110,13 +117,16 @@ function formatDuration(seconds: number): string {
   return `${mins}min ${secs}s`;
 }
 
-function TimelineItem({ event }: { event: ClientHistoryEvent }) {
+function TimelineItem({ event, onDeleteCommunication }: { event: ClientHistoryEvent; onDeleteCommunication?: (communicationId: string) => void }) {
   const config = EVENT_CONFIG[event.type];
-  
+
   // For calls, use direction-specific icon
   const Icon = event.type === 'call' ? getCallIcon(event.direction) : config.icon;
-  
+
   const statusStyle = event.status ? STATUS_STYLES[event.status] || STATUS_STYLES.pending : null;
+
+  const communicationId = event.metadata?.communicationId as string | undefined;
+  const canRemove = !!onDeleteCommunication && COMMUNICATION_EVENT_TYPES.includes(event.type) && !!communicationId;
 
   return (
     <div className="flex gap-3 pb-6 last:pb-0">
@@ -162,6 +172,18 @@ function TimelineItem({ event }: { event: ClientHistoryEvent }) {
                 {event.direction === 'inbound' ? 'Recebida' : 'Enviada'}
               </Badge>
             )}
+            {canRemove && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                onClick={() => onDeleteCommunication!(communicationId!)}
+                aria-label="Remover da ficha"
+                title="Remover da ficha"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
         <time className="text-xs text-muted-foreground mt-1 block">
@@ -172,7 +194,7 @@ function TimelineItem({ event }: { event: ClientHistoryEvent }) {
   );
 }
 
-export function ClientTimeline({ events, isLoading }: ClientTimelineProps) {
+export function ClientTimeline({ events, isLoading, onDeleteCommunication }: ClientTimelineProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -202,7 +224,7 @@ export function ClientTimeline({ events, isLoading }: ClientTimelineProps) {
   return (
     <div className="relative">
       {events.map((event) => (
-        <TimelineItem key={`${event.type}-${event.id}`} event={event} />
+        <TimelineItem key={`${event.type}-${event.id}`} event={event} onDeleteCommunication={onDeleteCommunication} />
       ))}
     </div>
   );

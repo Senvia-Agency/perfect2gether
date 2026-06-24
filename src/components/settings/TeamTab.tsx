@@ -4,6 +4,7 @@ import { invokeFunction } from '@/lib/invokeFunction';
 import { useTeamMembers, usePendingInvites, useCancelInvite, useResendInvite, useCreateTeamMember, PendingInvite, TeamMember } from '@/hooks/useTeam';
 import { useManageTeamMember } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useOrganizationProfiles } from '@/hooks/useOrganizationProfiles';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useQueryClient } from '@tanstack/react-query';
@@ -48,6 +49,8 @@ export function TeamTab() {
   const resendInvite = useResendInvite();
   const createTeamMember = useCreateTeamMember();
   const manageTeamMember = useManageTeamMember();
+  const { can } = usePermissions();
+  const canManageTeam = can('settings', 'team', 'manage');
   const { toast } = useToast();
 
   const salesSettings = (orgData?.sales_settings as any) || {};
@@ -534,12 +537,14 @@ export function TeamTab() {
             </CardDescription>
           </div>
           <Dialog open={isAddOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setIsAddOpen(true)}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Adicionar Acesso
-              </Button>
-            </DialogTrigger>
+            {canManageTeam && (
+              <DialogTrigger asChild>
+                <Button onClick={() => setIsAddOpen(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Adicionar Acesso
+                </Button>
+              </DialogTrigger>
+            )}
             <DialogContent className="sm:max-w-md">
               {!createdMember ? (
                 <>
@@ -859,6 +864,7 @@ export function TeamTab() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
+                      {canManageTeam && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon-sm">
@@ -931,6 +937,7 @@ export function TeamTab() {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1327,24 +1334,28 @@ export function TeamTab() {
                               <Copy className="h-4 w-4" />
                             )}
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => handleResendInvite(invite)}
-                            disabled={resendInvite.isPending}
-                            title="Reenviar convite (renova expiração)"
-                          >
-                            <RefreshCw className={`h-4 w-4 ${resendInvite.isPending ? 'animate-spin' : ''}`} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => handleCancelInvite(invite)}
-                            disabled={cancelInvite.isPending}
-                            title="Cancelar convite"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          {canManageTeam && (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => handleResendInvite(invite)}
+                              disabled={resendInvite.isPending}
+                              title="Reenviar convite (renova expiração)"
+                            >
+                              <RefreshCw className={`h-4 w-4 ${resendInvite.isPending ? 'animate-spin' : ''}`} />
+                            </Button>
+                          )}
+                          {canManageTeam && (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => handleCancelInvite(invite)}
+                              disabled={cancelInvite.isPending}
+                              title="Cancelar convite"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

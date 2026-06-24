@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Loader2, DollarSign, CreditCard, Calendar, MessageSquare, Save, Eye, EyeOff, ShoppingCart, FileText } from 'lucide-react';
 import { useSaleFieldsSettings, useUpdateSaleFieldsSettings } from '@/hooks/useSaleFieldsSettings';
+import { usePermissions } from '@/hooks/usePermissions';
 import { SaleFieldKey, SaleFieldsSettings, DEFAULT_SALE_FIELDS_SETTINGS, SALE_FIELD_ORDER } from '@/types/field-settings';
 
 const FIELD_ICONS: Record<SaleFieldKey, React.ReactNode> = {
@@ -19,6 +20,8 @@ const FIELD_ICONS: Record<SaleFieldKey, React.ReactNode> = {
 export function SaleFieldsEditor() {
   const { data: savedSettings, isLoading } = useSaleFieldsSettings();
   const updateSettings = useUpdateSaleFieldsSettings();
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
   const [settings, setSettings] = useState<SaleFieldsSettings>(DEFAULT_SALE_FIELDS_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -78,12 +81,14 @@ export function SaleFieldsEditor() {
           })}
         </div>
 
-        <div className="flex justify-end pt-4">
-          <Button onClick={handleSave} disabled={!hasChanges || updateSettings.isPending}>
-            {updateSettings.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Guardar Alterações
-          </Button>
-        </div>
+        {canEditGeneral && (
+          <div className="flex justify-end pt-4">
+            <Button onClick={handleSave} disabled={!hasChanges || updateSettings.isPending}>
+              {updateSettings.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Guardar Alterações
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTeams, useCreateTeam, useUpdateTeam, useDeleteTeam, useAllTeamMembersEntries, useSetTeamMembers, Team } from '@/hooks/useTeams';
 import { useTeamMembers, TeamMember } from '@/hooks/useTeam';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,8 @@ export function TeamsSection() {
   const updateTeam = useUpdateTeam();
   const deleteTeam = useDeleteTeam();
   const setTeamMembers = useSetTeamMembers();
+  const { can } = usePermissions();
+  const canManageTeam = can('settings', 'team', 'manage');
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -244,10 +247,12 @@ export function TeamsSection() {
               Crie equipas hierárquicas. O líder vê os dados dos colaboradores da sua equipa.
             </CardDescription>
           </div>
-          <Button onClick={handleOpenCreate} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Equipa
-          </Button>
+          {canManageTeam && (
+            <Button onClick={handleOpenCreate} size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Equipa
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {teams.length === 0 ? (
@@ -274,19 +279,21 @@ export function TeamsSection() {
                       <span>{teamMemberCount[team.id] || 0} membros</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon-sm" onClick={() => handleOpenEdit(team)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(team)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {canManageTeam && (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon-sm" onClick={() => handleOpenEdit(team)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(team)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

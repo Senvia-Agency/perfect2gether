@@ -3,6 +3,7 @@
 import { useSearchParams, useLocation } from "react-router-dom";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,9 @@ export default function Clients() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCreateProposal, setShowCreateProposal] = useState(false);
   const [proposalClientId, setProposalClientId] = useState<string | null>(null);
+
+  const { can } = usePermissions();
+  const canAddClient = can('clients', 'list', 'add');
 
   const { data: clients, isLoading } = useClients();
   const deleteClient = useDeleteClient();
@@ -269,7 +273,7 @@ export default function Clients() {
             </p>
           </div>
           <div className="flex gap-2">
-            {isPerfect2Gether && (
+            {isPerfect2Gether && canAddClient && (
               <>
                 <input
                   type="file"
@@ -284,10 +288,12 @@ export default function Clients() {
                 </Button>
               </>
             )}
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {labels.new}
-            </Button>
+            {canAddClient && (
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                {labels.new}
+              </Button>
+            )}
           </div>
         </div>
 

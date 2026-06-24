@@ -109,7 +109,8 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
   const createCpe = useCreateCpe();
   const uploadAttachment = useUploadLeadAttachment();
   const { data: teamMembers } = useTeamMembers();
-  const { canManageTeam } = usePermissions();
+  const { canManageTeam, can } = usePermissions();
+  const canAddLead = can('leads', 'kanban', 'add');
   const { organization } = useAuth();
   const { data: fieldSettings } = useLeadFieldsSettings();
 
@@ -819,6 +820,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
                       >
                         Cancelar
                       </Button>
+                      {canAddLead && (
                       <Button
                         type="button"
                         className="flex-1"
@@ -852,6 +854,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
                           "Criar Lead"
                         )}
                       </Button>
+                      )}
                     </div>
                   </div>
                 </div>

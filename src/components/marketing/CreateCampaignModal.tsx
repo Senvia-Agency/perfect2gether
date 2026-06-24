@@ -26,6 +26,7 @@ import { useEmailTemplates } from "@/hooks/useEmailTemplates";
 import { useCreateCampaign, useUpdateCampaignStatus, useUpdateCampaign } from "@/hooks/useCampaigns";
 import { useSendTemplateEmail } from "@/hooks/useSendTemplateEmail";
 import { useClientLabels } from "@/hooks/useClientLabels";
+import { usePermissions } from "@/hooks/usePermissions";
 import { CLIENT_STATUS_STYLES } from "@/types/clients";
 import { useContactLists } from "@/hooks/useContactLists";
 import { supabase } from "@/integrations/supabase/client";
@@ -210,6 +211,8 @@ export function CreateCampaignModal({ open, onOpenChange, campaign }: CreateCamp
   const { data: contactLists = [] } = useContactLists();
   const { organization } = useAuth();
   const organizationId = organization?.id;
+  const { can } = usePermissions();
+  const canSendCampaign = can('marketing', 'campaigns', 'send');
 
   const activeTemplates = useMemo(() => templates.filter(t => t.is_active), [templates]);
   const selectedTemplate = useMemo(() => templates.find(t => t.id === templateId), [templates, templateId]);
@@ -943,7 +946,7 @@ export function CreateCampaignModal({ open, onOpenChange, campaign }: CreateCamp
                       {(createCampaign.isPending || updateCampaign.isPending) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                       Guardar Campanha
                     </Button>
-                    {allSectionsComplete && (
+                    {allSectionsComplete && canSendCampaign && (
                       <>
                         <Popover open={showSchedulePicker} onOpenChange={setShowSchedulePicker}>
                           <PopoverTrigger asChild>

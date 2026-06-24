@@ -127,7 +127,9 @@ export function LeadDetailsModal({
 }: LeadDetailsModalProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const { canDeleteLeads, canManageTeam, isAdmin } = usePermissions();
+  const { canDeleteLeads, canManageTeam, isAdmin, can } = usePermissions();
+  const canEditLeads = can('leads', 'kanban', 'edit');
+  const canAssignLeads = can('leads', 'kanban', 'assign');
   const { organization } = useAuth();
   const { data: teamMembers } = useTeamMembers();
   const { data: stages } = usePipelineStages();
@@ -378,6 +380,7 @@ export function LeadDetailsModal({
                       <Select
                         value={lead.temperature || 'cold'}
                         onValueChange={(value) => onUpdate?.(lead.id, { temperature: value as LeadTemperature })}
+                        disabled={!canEditLeads}
                       >
                         <SelectTrigger className="w-48">
                           <SelectValue />
@@ -403,6 +406,7 @@ export function LeadDetailsModal({
                         <Select
                           value={lead.tipologia || ''}
                           onValueChange={(value) => onUpdate?.(lead.id, { tipologia: value as LeadTipologia })}
+                          disabled={!canEditLeads}
                         >
                           <SelectTrigger className="w-48">
                             <SelectValue placeholder="Selecionar tipologia" />
@@ -424,7 +428,7 @@ export function LeadDetailsModal({
                 </Card>
 
                 {/* Assignment Card */}
-                {canManageTeam && teamMembers && teamMembers.length > 0 && (
+                {canAssignLeads && canManageTeam && teamMembers && teamMembers.length > 0 && (
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -476,6 +480,7 @@ export function LeadDetailsModal({
                           onChange={handleConsumoChange}
                           onFocus={() => setIsEditingConsumo(true)}
                           onBlur={handleConsumoBlur}
+                          disabled={!canEditLeads}
                           className="pr-12"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">kWh</span>
@@ -491,6 +496,7 @@ export function LeadDetailsModal({
                           onChange={handleValueChange}
                           onFocus={() => setIsEditingValue(true)}
                           onBlur={handleValueBlur}
+                          disabled={!canEditLeads}
                           className="pl-8"
                         />
                       </div>
@@ -514,6 +520,7 @@ export function LeadDetailsModal({
                         value={editCpe}
                         onChange={(e) => setEditCpe(e.target.value)}
                         onFocus={() => setIsEditingCpe(true)}
+                        disabled={!canEditLeads}
                         onBlur={async () => {
                           const currentCpe = (lead.custom_data as Record<string, unknown>)?.cpe as string || "";
                           if (editCpe.trim() !== currentCpe) {
@@ -584,6 +591,7 @@ export function LeadDetailsModal({
                         handleNotesBlur();
                         setTimeout(() => setIsEditingNotes(false), 600);
                       }}
+                      disabled={!canEditLeads}
                       className="resize-none"
                     />
                   </CardContent>
@@ -691,6 +699,7 @@ export function LeadDetailsModal({
                             }
                             setTimeout(() => setIsEditingName(false), 600);
                           }}
+                          disabled={!canEditLeads}
                           className="h-8 text-sm font-semibold border-transparent bg-transparent px-2 focus-visible:ring-1 focus-visible:ring-primary hover:border-muted-foreground/30 transition-colors"
                           placeholder="Nome do lead"
                         />
@@ -720,6 +729,7 @@ export function LeadDetailsModal({
                             }
                             setTimeout(() => setIsEditingPhone(false), 600);
                           }}
+                          disabled={!canEditLeads}
                           className="h-8 text-sm border-transparent bg-transparent px-2 focus-visible:ring-1 focus-visible:ring-primary hover:border-muted-foreground/30 transition-colors"
                           placeholder="Telefone"
                         />
@@ -738,6 +748,7 @@ export function LeadDetailsModal({
                             }
                             setTimeout(() => setIsEditingEmail(false), 600);
                           }}
+                          disabled={!canEditLeads}
                           className="h-8 text-sm border-transparent bg-transparent px-2 focus-visible:ring-1 focus-visible:ring-primary hover:border-muted-foreground/30 transition-colors"
                           placeholder="Email"
                         />
@@ -841,15 +852,17 @@ export function LeadDetailsModal({
                         <MessageCircle className="h-4 w-4" />
                         Enviar WhatsApp
                       </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        disabled={!lead.email || isPlaceholderEmail(lead.email)}
-                        onClick={() => setShowEmailModal(true)}
-                      >
-                        <Mail className="h-4 w-4" />
-                        Enviar Email
-                      </Button>
+                      {canEditLeads && (
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          disabled={!lead.email || isPlaceholderEmail(lead.email)}
+                          onClick={() => setShowEmailModal(true)}
+                        >
+                          <Mail className="h-4 w-4" />
+                          Enviar Email
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         className="w-full"

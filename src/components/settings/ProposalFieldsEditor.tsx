@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Loader2, FileText, DollarSign, Calendar, MessageSquare, Save, Eye, EyeOff } from 'lucide-react';
 import { useProposalFieldsSettings, useUpdateProposalFieldsSettings } from '@/hooks/useProposalFieldsSettings';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ProposalFieldKey, ProposalFieldsSettings, DEFAULT_PROPOSAL_FIELDS_SETTINGS, PROPOSAL_FIELD_ORDER } from '@/types/field-settings';
 
 const FIELD_ICONS: Record<ProposalFieldKey, React.ReactNode> = {
@@ -18,6 +19,8 @@ const FIELD_ICONS: Record<ProposalFieldKey, React.ReactNode> = {
 export function ProposalFieldsEditor() {
   const { data: savedSettings, isLoading } = useProposalFieldsSettings();
   const updateSettings = useUpdateProposalFieldsSettings();
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
   const [settings, setSettings] = useState<ProposalFieldsSettings>(DEFAULT_PROPOSAL_FIELDS_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -77,12 +80,14 @@ export function ProposalFieldsEditor() {
           })}
         </div>
 
-        <div className="flex justify-end pt-4">
-          <Button onClick={handleSave} disabled={!hasChanges || updateSettings.isPending}>
-            {updateSettings.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Guardar Alterações
-          </Button>
-        </div>
+        {canEditGeneral && (
+          <div className="flex justify-end pt-4">
+            <Button onClick={handleSave} disabled={!hasChanges || updateSettings.isPending}>
+              {updateSettings.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Guardar Alterações
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

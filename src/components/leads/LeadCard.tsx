@@ -52,7 +52,8 @@ export function LeadCard({
   pipelineStages = [],
   isLocked = false,
 }: LeadCardProps) {
-  const { canDeleteLeads } = usePermissions();
+  const { canDeleteLeads, can } = usePermissions();
+  const canEditLeads = can('leads', 'kanban', 'edit');
   const { organization } = useAuth();
   const [showEmailModal, setShowEmailModal] = useState(false);
   const isTelecom = organization?.niche === 'telecom';
@@ -100,33 +101,44 @@ export function LeadCard({
         <div className="flex items-center gap-2">
           <GripVertical className="h-4 w-4 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100" />
           {/* Temperature Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className={cn("h-7 px-2 gap-1.5", tempStyle.color)}
-              >
-                <Thermometer className="h-4 w-4" />
-                <span className="text-xs font-medium">{TEMPERATURE_LABELS[temperature]}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-32">
-              {(Object.keys(TEMPERATURE_LABELS) as LeadTemperature[]).map((temp) => (
-                <DropdownMenuItem 
-                  key={temp}
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    onTemperatureChange?.(lead.id, temp); 
-                  }}
-                  disabled={temperature === temp}
+          {canEditLeads ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn("h-7 px-2 gap-1.5", tempStyle.color)}
                 >
-                  <span className="mr-2">{TEMPERATURE_STYLES[temp].emoji}</span>
-                  {TEMPERATURE_LABELS[temp]}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <Thermometer className="h-4 w-4" />
+                  <span className="text-xs font-medium">{TEMPERATURE_LABELS[temperature]}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-32">
+                {(Object.keys(TEMPERATURE_LABELS) as LeadTemperature[]).map((temp) => (
+                  <DropdownMenuItem
+                    key={temp}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTemperatureChange?.(lead.id, temp);
+                    }}
+                    disabled={temperature === temp}
+                  >
+                    <span className="mr-2">{TEMPERATURE_STYLES[temp].emoji}</span>
+                    {TEMPERATURE_LABELS[temp]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-7 px-2 gap-1.5 pointer-events-none", tempStyle.color)}
+            >
+              <Thermometer className="h-4 w-4" />
+              <span className="text-xs font-medium">{TEMPERATURE_LABELS[temperature]}</span>
+            </Button>
+          )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -138,28 +150,30 @@ export function LeadCard({
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewDetails?.(lead); }}>
               Ver detalhes
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {!isLocked && pipelineStages.map((stage) => (
-              <DropdownMenuItem 
-                key={stage.key}
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  onStatusChange?.(lead.id, stage.key); 
-                }}
-                disabled={lead.status === stage.key}
-              >
-                <span 
-                  className="w-2 h-2 rounded-full mr-2"
-                  style={{ backgroundColor: stage.color }}
-                />
-                Mover para {stage.name}
-              </DropdownMenuItem>
-            ))}
-            {isLocked && (
-              <DropdownMenuItem disabled className="text-xs text-muted-foreground">
-                🔒 Estado bloqueado (apenas admin)
-              </DropdownMenuItem>
-            )}
+            <>
+              <DropdownMenuSeparator />
+              {!isLocked && pipelineStages.map((stage) => (
+                <DropdownMenuItem
+                  key={stage.key}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStatusChange?.(lead.id, stage.key);
+                  }}
+                  disabled={lead.status === stage.key}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full mr-2"
+                    style={{ backgroundColor: stage.color }}
+                  />
+                  Mover para {stage.name}
+                </DropdownMenuItem>
+              ))}
+              {isLocked && (
+                <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                  🔒 Estado bloqueado (apenas admin)
+                </DropdownMenuItem>
+              )}
+            </>
             {canDeleteLeads && (
               <>
                 <DropdownMenuSeparator />
@@ -287,17 +301,19 @@ export function LeadCard({
         >
           <Phone className="h-4 w-4" />
         </Button>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={!lead.email || isPlaceholderEmail(lead.email)}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowEmailModal(true);
-          }}
-        >
-          <Mail className="h-4 w-4" />
-        </Button>
+        {canEditLeads && (
+          <Button
+            variant="outline"
+            size="icon-sm"
+            disabled={!lead.email || isPlaceholderEmail(lead.email)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowEmailModal(true);
+            }}
+          >
+            <Mail className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {showEmailModal && (

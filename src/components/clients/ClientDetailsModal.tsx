@@ -1,5 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules } from "@/hooks/useModules";
+import { usePermissions } from "@/hooks/usePermissions";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import {
   Dialog,
@@ -41,7 +42,9 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
   const isP2G = isPerfect2GetherOrg(organization?.id);
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
-  
+  const { can } = usePermissions();
+  const canEditClient = can('clients', 'list', 'edit');
+
   if (!client) return null;
 
   return (
@@ -235,10 +238,12 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button onClick={() => { onOpenChange(false); onEdit(client); }}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Editar
-          </Button>
+          {canEditClient && (
+            <Button onClick={() => { onOpenChange(false); onEdit(client); }}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

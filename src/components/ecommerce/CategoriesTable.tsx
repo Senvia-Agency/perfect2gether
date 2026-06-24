@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useCategories, useUpdateCategory, useDeleteCategory } from "@/hooks/ecommerce";
+import { usePermissions } from "@/hooks/usePermissions";
 import { ProductCategory } from "@/types/ecommerce";
 import { CreateCategoryModal } from "./CreateCategoryModal";
 import { EditCategoryModal } from "./EditCategoryModal";
@@ -31,7 +32,12 @@ export function CategoriesTable() {
   const { data: categories, isLoading } = useCategories();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
-  
+  // Categories have no dedicated permission action; gate on the matching products action.
+  const { can } = usePermissions();
+  const canCreateCategory = can('ecommerce', 'products', 'create');
+  const canEditCategory = can('ecommerce', 'products', 'edit');
+  const canDeleteCategory = can('ecommerce', 'products', 'delete');
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editCategory, setEditCategory] = useState<ProductCategory | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -66,10 +72,12 @@ export function CategoriesTable() {
         <p className="text-sm text-muted-foreground">
           {categories?.length || 0} categorias
         </p>
-        <Button onClick={() => setCreateOpen(true)} size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Categoria
-        </Button>
+        {canCreateCategory && (
+          <Button onClick={() => setCreateOpen(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Categoria
+          </Button>
+        )}
       </div>
 
       {categories?.length === 0 ? (
@@ -79,10 +87,12 @@ export function CategoriesTable() {
           <p className="text-sm text-muted-foreground">
             Crie categorias para organizar os seus produtos.
           </p>
-          <Button onClick={() => setCreateOpen(true)} className="mt-4">
-            <Plus className="mr-2 h-4 w-4" />
-            Criar Categoria
-          </Button>
+          {canCreateCategory && (
+            <Button onClick={() => setCreateOpen(true)} className="mt-4">
+              <Plus className="mr-2 h-4 w-4" />
+              Criar Categoria
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-md border">
@@ -138,22 +148,26 @@ export function CategoriesTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditCategory(category)}
-                        title="Editar"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteId(category.id)}
-                        title="Eliminar"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {canEditCategory && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditCategory(category)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDeleteCategory && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteId(category.id)}
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDeleteEmailTemplate, useDuplicateEmailTemplate, useUpdateEmailTemplate } from "@/hooks/useEmailTemplates";
+import { usePermissions } from "@/hooks/usePermissions";
 import { TEMPLATE_CATEGORIES, type EmailTemplate } from "@/types/marketing";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
@@ -45,6 +46,11 @@ export function TemplatesTable({ templates, isLoading, onEdit, onSend }: Templat
   const deleteTemplate = useDeleteEmailTemplate();
   const duplicateTemplate = useDuplicateEmailTemplate();
   const updateTemplate = useUpdateEmailTemplate();
+  const { can } = usePermissions();
+  const canCreateTemplate = can('marketing', 'templates', 'create');
+  const canEditTemplate = can('marketing', 'templates', 'edit');
+  const canDeleteTemplate = can('marketing', 'templates', 'delete');
+  const canSendTemplate = can('marketing', 'templates', 'send');
 
   const handleDelete = async () => {
     if (deleteId) {
@@ -126,40 +132,54 @@ export function TemplatesTable({ templates, isLoading, onEdit, onSend }: Templat
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onSend(template)}>
-                        <Send className="mr-2 h-4 w-4" />
-                        Enviar
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onEdit(template)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => duplicateTemplate.mutate(template.id)}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Duplicar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleToggleActive(template)}>
-                        {template.is_active ? (
-                          <>
-                            <EyeOff className="mr-2 h-4 w-4" />
-                            Desativar
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Ativar
-                          </>
-                        )}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => setDeleteId(template.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Eliminar
-                      </DropdownMenuItem>
+                      {canSendTemplate && (
+                        <>
+                          <DropdownMenuItem onClick={() => onSend(template)}>
+                            <Send className="mr-2 h-4 w-4" />
+                            Enviar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      {canEditTemplate && (
+                        <DropdownMenuItem onClick={() => onEdit(template)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+                      )}
+                      {canCreateTemplate && (
+                        <DropdownMenuItem onClick={() => duplicateTemplate.mutate(template.id)}>
+                          <Copy className="mr-2 h-4 w-4" />
+                          Duplicar
+                        </DropdownMenuItem>
+                      )}
+                      {canEditTemplate && (
+                        <DropdownMenuItem onClick={() => handleToggleActive(template)}>
+                          {template.is_active ? (
+                            <>
+                              <EyeOff className="mr-2 h-4 w-4" />
+                              Desativar
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ativar
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      )}
+                      {canDeleteTemplate && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setDeleteId(template.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

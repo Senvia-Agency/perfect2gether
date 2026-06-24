@@ -13,6 +13,7 @@ import type { EmailCampaign, CampaignStatus } from "@/types/marketing";
 import { CAMPAIGN_STATUS_LABELS, CAMPAIGN_STATUS_STYLES } from "@/types/marketing";
 import { format } from "date-fns";
 import { normalizeString } from "@/lib/utils";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface CampaignsTableProps {
   campaigns: EmailCampaign[];
@@ -33,6 +34,9 @@ const STATUS_DOT_COLORS: Record<CampaignStatus, string> = {
 export function CampaignsTable({ campaigns, onView, onEdit, onDelete, onReopen }: CampaignsTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { can } = usePermissions();
+  const canEditCampaign = can('marketing', 'campaigns', 'edit');
+  const canDeleteCampaign = can('marketing', 'campaigns', 'delete');
 
   const filtered = useMemo(() => {
     return campaigns.filter(c => {
@@ -129,18 +133,27 @@ export function CampaignsTable({ campaigns, onView, onEdit, onDelete, onReopen }
 
                     {/* Action button */}
                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => campaign.status === 'draft' ? onEdit(campaign) : onView(campaign)}
-                      >
-                        {campaign.status === 'draft' ? (
-                          <Pencil className="h-4 w-4" />
-                        ) : (
+                      {campaign.status === 'draft' ? (
+                        canEditCampaign && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => onEdit(campaign)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => onView(campaign)}
+                        >
                           <BarChart3 className="h-4 w-4" />
-                        )}
-                      </Button>
+                        </Button>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -148,7 +161,7 @@ export function CampaignsTable({ campaigns, onView, onEdit, onDelete, onReopen }
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {campaign.status === 'draft' && (
+                          {campaign.status === 'draft' && canEditCampaign && (
                             <DropdownMenuItem onClick={() => onEdit(campaign)}>
                               <Pencil className="mr-2 h-4 w-4" /> Editar
                             </DropdownMenuItem>
@@ -156,14 +169,16 @@ export function CampaignsTable({ campaigns, onView, onEdit, onDelete, onReopen }
                           <DropdownMenuItem onClick={() => onView(campaign)}>
                             <BarChart3 className="mr-2 h-4 w-4" /> Ver detalhes
                           </DropdownMenuItem>
-                          {(campaign.status === 'failed' || campaign.status === 'scheduled') && onReopen && (
+                          {(campaign.status === 'failed' || campaign.status === 'scheduled') && onReopen && canEditCampaign && (
                             <DropdownMenuItem onClick={() => onReopen(campaign.id)}>
                               <RotateCcw className="mr-2 h-4 w-4" /> Reabrir como rascunho
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem className="text-destructive" onClick={() => onDelete(campaign.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                          </DropdownMenuItem>
+                          {canDeleteCampaign && (
+                            <DropdownMenuItem className="text-destructive" onClick={() => onDelete(campaign.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

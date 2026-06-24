@@ -75,7 +75,8 @@ export function LeadsTableView({
   const { data: stages = [], isLoading: stagesLoading } = usePipelineStages();
   const { data: proposalValues } = useLeadProposalValues();
   const { organization } = useAuth();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, can, canDeleteLeads } = usePermissions();
+  const canEditLeads = can('leads', 'kanban', 'edit');
   const isTelecom = organization?.niche === 'telecom';
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
@@ -324,8 +325,8 @@ export function LeadsTableView({
                         disabled={isLocked}
                       >
                         <SelectTrigger className="w-[130px] h-8 border-0 bg-transparent p-0">
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className="text-xs"
                             style={currentStage ? getStatusBadgeStyle(currentStage.color) : undefined}
                           >
@@ -335,8 +336,8 @@ export function LeadsTableView({
                         <SelectContent>
                           {stages.map((stage) => (
                             <SelectItem key={stage.id} value={stage.key}>
-                              <Badge 
-                                variant="outline" 
+                              <Badge
+                                variant="outline"
                                 className="text-xs"
                                 style={getStatusBadgeStyle(stage.color)}
                               >
@@ -350,6 +351,7 @@ export function LeadsTableView({
                       })()}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell" onClick={(e) => e.stopPropagation()}>
+                      {canEditLeads ? (
                       <Select
                         value={lead.temperature || 'warm'}
                         onValueChange={(value) => onTemperatureChange(lead.id, value as LeadTemperature)}
@@ -370,6 +372,11 @@ export function LeadsTableView({
                           ))}
                         </SelectContent>
                       </Select>
+                      ) : (
+                        <span className="text-lg">
+                          {TEMPERATURE_STYLES[lead.temperature as LeadTemperature || 'warm'].emoji}
+                        </span>
+                      )}
                     </TableCell>
                     {/* Tipologia column - Only for Telecom */}
                     {showEnergy && (
@@ -435,6 +442,7 @@ export function LeadsTableView({
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        {canDeleteLeads && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
@@ -463,6 +471,7 @@ export function LeadsTableView({
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

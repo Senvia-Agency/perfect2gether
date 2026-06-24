@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useCustomers, useDeleteCustomer } from "@/hooks/ecommerce";
+import { usePermissions } from "@/hooks/usePermissions";
 import { formatCurrency } from "@/lib/format";
 import { Customer } from "@/types/ecommerce";
 import { CreateCustomerModal } from "./CreateCustomerModal";
@@ -33,7 +34,10 @@ import { EditCustomerModal } from "./EditCustomerModal";
 export function CustomersTable() {
   const { data: customers, isLoading } = useCustomers();
   const deleteCustomer = useDeleteCustomer();
-  
+  const { can } = usePermissions();
+  const canCreateCustomer = can('ecommerce', 'customers', 'create');
+  const canEditCustomer = can('ecommerce', 'customers', 'edit');
+
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
@@ -79,10 +83,12 @@ export function CustomersTable() {
             {filteredCustomers?.length || 0} clientes
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Cliente
-        </Button>
+        {canCreateCustomer && (
+          <Button onClick={() => setCreateOpen(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Cliente
+          </Button>
+        )}
       </div>
 
       {filteredCustomers?.length === 0 ? (
@@ -92,7 +98,7 @@ export function CustomersTable() {
           <p className="text-sm text-muted-foreground">
             {search ? "Nenhum cliente encontrado." : "Adicione o seu primeiro cliente."}
           </p>
-          {!search && (
+          {!search && canCreateCustomer && (
             <Button onClick={() => setCreateOpen(true)} className="mt-4">
               <Plus className="mr-2 h-4 w-4" />
               Adicionar Cliente
@@ -150,14 +156,16 @@ export function CustomersTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditCustomer(customer)}
-                        title="Editar"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      {canEditCustomer && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditCustomer(customer)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"

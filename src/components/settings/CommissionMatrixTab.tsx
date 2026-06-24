@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { useOrganization, useUpdateOrganization } from '@/hooks/useOrganization';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useServicosProducts } from '@/hooks/useServicosProducts';
 import type { CommissionMatrix, CommissionRule, SolarTier, EnergyCommissionConfig, EnergyMarginBand, TierDerivationRule, TierRules } from '@/hooks/useCommissionMatrix';
 import { DEFAULT_ENERGY_CONFIG, DEFAULT_TIER_RULES } from '@/hooks/useCommissionMatrix';
@@ -63,6 +64,8 @@ function getDefaultRule(method: string): CommissionRule {
 export function CommissionMatrixTab() {
   const { data: org } = useOrganization();
   const updateOrg = useUpdateOrganization();
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
   const { products: SERVICOS_PRODUCTS } = useServicosProducts();
   const [localMatrix, setLocalMatrix] = useState<CommissionMatrix>({});
   const [openProduct, setOpenProduct] = useState<string | null>(null);
@@ -166,6 +169,7 @@ export function CommissionMatrixTab() {
           }
           onSave={() => handleSave(openProduct)}
           isSaving={updateOrg.isPending}
+          canSave={canEditGeneral}
           onClose={() => setOpenProduct(null)}
         />
       )}
@@ -176,6 +180,7 @@ export function CommissionMatrixTab() {
           onChange={setLocalEnergy}
           onSave={handleSaveEnergy}
           isSaving={updateOrg.isPending}
+          canSave={canEditGeneral}
           onClose={() => setOpenEnergy(false)}
         />
       )}
@@ -192,6 +197,7 @@ function ProductModal({
   onRuleChange,
   onSave,
   isSaving,
+  canSave,
   onClose,
 }: {
   product: string;
@@ -200,6 +206,7 @@ function ProductModal({
   onRuleChange: (rule: CommissionRule) => void;
   onSave: () => void;
   isSaving: boolean;
+  canSave: boolean;
   onClose: () => void;
 }) {
   const Icon = getProductIcon(product);
@@ -257,10 +264,12 @@ function ProductModal({
           <Button variant="outline" onClick={onClose} disabled={isSaving}>
             Cancelar
           </Button>
-          <Button onClick={onSave} disabled={isSaving} className="gap-1.5">
-            <Save className="h-4 w-4" />
-            {isSaving ? 'A guardar...' : 'Guardar'}
-          </Button>
+          {canSave && (
+            <Button onClick={onSave} disabled={isSaving} className="gap-1.5">
+              <Save className="h-4 w-4" />
+              {isSaving ? 'A guardar...' : 'Guardar'}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -588,12 +597,14 @@ function EnergyModal({
   onChange,
   onSave,
   isSaving,
+  canSave,
   onClose,
 }: {
   config: EnergyCommissionConfig;
   onChange: (c: EnergyCommissionConfig) => void;
   onSave: () => void;
   isSaving: boolean;
+  canSave: boolean;
   onClose: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -892,10 +903,12 @@ function EnergyModal({
 
         <div className="shrink-0 border-t px-4 sm:px-6 py-3 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancelar</Button>
-          <Button onClick={onSave} disabled={isSaving} className="gap-1.5">
-            <Save className="h-4 w-4" />
-            {isSaving ? 'A guardar...' : 'Guardar'}
-          </Button>
+          {canSave && (
+            <Button onClick={onSave} disabled={isSaving} className="gap-1.5">
+              <Save className="h-4 w-4" />
+              {isSaving ? 'A guardar...' : 'Guardar'}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

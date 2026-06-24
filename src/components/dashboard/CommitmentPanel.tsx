@@ -36,7 +36,8 @@ interface RowData {
 
 export function CommitmentPanel() {
   const { user, profile, organization } = useAuth();
-  const { isAdmin } = usePermissions();
+  const { can } = usePermissions();
+  const canManageCommitments = can('gestao', 'commitments', 'manage');
   const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
   const { selectedMemberId, canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { selectedMonth } = useDashboardPeriod();
@@ -113,9 +114,11 @@ export function CommitmentPanel() {
             </div>
             <div className="flex items-center gap-1">
               <PrintCardButton targetRef={cardRef} />
-              <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)}>
-                {commitment ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              </Button>
+              {canManageCommitments && (
+                <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)}>
+                  {commitment ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -128,9 +131,11 @@ export function CommitmentPanel() {
           ) : rows.every((r) => !r.hasCommitment) ? (
             <div className="text-center py-6">
               <p className="text-sm text-muted-foreground mb-3">Nenhum compromisso definido para este mês.</p>
-              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" /> Definir Compromisso
-              </Button>
+              {canManageCommitments && (
+                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1" /> Definir Compromisso
+                </Button>
+              )}
             </div>
           ) : (
             <Table>

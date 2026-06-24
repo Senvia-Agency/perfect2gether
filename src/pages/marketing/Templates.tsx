@@ -8,6 +8,7 @@ import { CreateTemplateModal } from "@/components/marketing/CreateTemplateModal"
 import { EditTemplateModal } from "@/components/marketing/EditTemplateModal";
 import { SendTemplateModal } from "@/components/marketing/SendTemplateModal";
 import { useEmailTemplates } from "@/hooks/useEmailTemplates";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { EmailTemplate } from "@/types/marketing";
 
 export default function Templates() {
@@ -15,6 +16,8 @@ export default function Templates() {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [sendingTemplate, setSendingTemplate] = useState<EmailTemplate | null>(null);
   const { data: templates, isLoading } = useEmailTemplates();
+  const { can } = usePermissions();
+  const canCreateTemplate = can('marketing', 'templates', 'create');
 
   return (
     <div className="space-y-6 p-4 md:p-6 pb-24 md:pb-6">
@@ -33,10 +36,12 @@ export default function Templates() {
               </p>
             </div>
           </div>
-          <Button onClick={() => setCreateModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Template
-          </Button>
+          {canCreateTemplate && (
+            <Button onClick={() => setCreateModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Template
+            </Button>
+          )}
         </div>
 
         {/* Table */}

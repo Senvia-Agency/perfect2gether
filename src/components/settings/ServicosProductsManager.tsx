@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useOrganization, useUpdateOrganization } from '@/hooks/useOrganization';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { CatalogProduct } from '@/types/proposals';
 import type { Json } from '@/integrations/supabase/types';
 
 export function ServicosProductsManager() {
   const { data: org } = useOrganization();
   const updateOrg = useUpdateOrganization();
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [newName, setNewName] = useState('');
 
@@ -68,9 +71,11 @@ export function ServicosProductsManager() {
           <div key={product.name} className="p-4 rounded-lg border bg-card space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-medium text-sm">{product.name}</span>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeProduct(product.name)}>
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-              </Button>
+              {canEditGeneral && (
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeProduct(product.name)}>
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                </Button>
+              )}
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
@@ -119,25 +124,29 @@ export function ServicosProductsManager() {
           </div>
         ))}
 
-        <div className="flex gap-2">
-          <Input
-            placeholder="Nome do novo produto..."
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addProduct()}
-            className="flex-1"
-          />
-          <Button variant="outline" size="sm" onClick={addProduct} disabled={!newName.trim()}>
-            <Plus className="h-4 w-4 mr-1" />
-            Adicionar
-          </Button>
-        </div>
+        {canEditGeneral && (
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nome do novo produto..."
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addProduct()}
+              className="flex-1"
+            />
+            <Button variant="outline" size="sm" onClick={addProduct} disabled={!newName.trim()}>
+              <Plus className="h-4 w-4 mr-1" />
+              Adicionar
+            </Button>
+          </div>
+        )}
 
-        <div className="flex justify-end pt-2">
-          <Button onClick={handleSave} disabled={updateOrg.isPending} size="sm">
-            {updateOrg.isPending ? 'A guardar...' : 'Guardar Produtos'}
-          </Button>
-        </div>
+        {canEditGeneral && (
+          <div className="flex justify-end pt-2">
+            <Button onClick={handleSave} disabled={updateOrg.isPending} size="sm">
+              {updateOrg.isPending ? 'A guardar...' : 'Guardar Produtos'}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

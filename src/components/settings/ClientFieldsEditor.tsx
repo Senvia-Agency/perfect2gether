@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Loader2, User, Mail, Phone, Building, FileText, MapPin, MessageSquare, Save, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useClientFieldsSettings, useUpdateClientFieldsSettings } from '@/hooks/useClientFieldsSettings';
+import { usePermissions } from '@/hooks/usePermissions';
 import { ClientFieldKey, ClientFieldsSettings, DEFAULT_CLIENT_FIELDS_SETTINGS } from '@/types/clients';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -25,6 +26,8 @@ const FIELD_ORDER: ClientFieldKey[] = ['name', 'email', 'phone', 'company', 'com
 export function ClientFieldsEditor() {
   const { data: savedSettings, isLoading } = useClientFieldsSettings();
   const updateSettings = useUpdateClientFieldsSettings();
+  const { can } = usePermissions();
+  const canEditGeneral = can('settings', 'general', 'edit');
   const [settings, setSettings] = useState<ClientFieldsSettings>(DEFAULT_CLIENT_FIELDS_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -177,19 +180,21 @@ export function ClientFieldsEditor() {
         </p>
 
         {/* Save Button */}
-        <div className="flex justify-end pt-4">
-          <Button 
-            onClick={handleSave}
-            disabled={!hasChanges || updateSettings.isPending || !hasIdentificationField}
-          >
-            {updateSettings.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Guardar Alterações
-          </Button>
-        </div>
+        {canEditGeneral && (
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || updateSettings.isPending || !hasIdentificationField}
+            >
+              {updateSettings.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Guardar Alterações
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

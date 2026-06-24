@@ -101,7 +101,10 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const [pendingActivationDate, setPendingActivationDate] = useState("");
 
   const { organization } = useAuth();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, can } = usePermissions();
+  const canEditSale = can('sales', 'sales', 'edit');
+  const canIssueInvoice = can('finance', 'invoices', 'issue');
+  const canCancelInvoice = can('finance', 'invoices', 'cancel');
   const { data: orgData } = useOrganization();
   const salesSettings = (orgData?.sales_settings as { lock_delivered_sales?: boolean; lock_fulfilled_sales?: boolean; prevent_payment_deletion?: boolean }) || {};
   const lockDeliveredSales = !!salesSettings.lock_delivered_sales;
@@ -976,7 +979,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
             <div className="flex gap-3 max-w-6xl mx-auto">
               {(() => {
                 const canEmit = hasInvoiceXpress && !sale.invoicexpress_id && !!sale.client?.nif && !sale.credit_note_id;
-                if (canEmit) {
+                if (canEmit && canIssueInvoice) {
                   const allPaid = salePayments.length > 0 && salePayments.every(p => p.status === 'paid');
                   const mode = allPaid ? "invoice_receipt" as const : "invoice" as const;
                   const emitLabel = allPaid ? "Emitir Fatura-Recibo" : "Emitir Fatura";
@@ -1028,7 +1031,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                           Ver PDF
                         </Button>
                       )}
-                      {(sale.client?.email || sale.lead?.email) && (
+                      {(sale.client?.email || sale.lead?.email) && canIssueInvoice && (
                         <Button
                           variant="outline"
                           className="flex-1"
@@ -1046,7 +1049,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                         <Info className="h-4 w-4 mr-2" />
                         Detalhes
                       </Button>
-                      {!sale.credit_note_id && (
+                      {!sale.credit_note_id && canCancelInvoice && (
                         <Button
                           variant="destructive"
                           className="flex-1"
@@ -1062,7 +1065,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
 
                 return null;
               })()}
-              {sale.status !== 'cancelled' && onEdit && !isLocked && (
+              {sale.status !== 'cancelled' && onEdit && !isLocked && canEditSale && (
                 <Button
                   variant="outline"
                   className="flex-1"

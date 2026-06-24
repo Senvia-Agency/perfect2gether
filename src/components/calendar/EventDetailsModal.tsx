@@ -34,6 +34,7 @@ import {
 import { cn } from '@/lib/utils';
 import { LeadStatusDialog } from './LeadStatusDialog';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const EVENT_TYPE_ICONS: Record<EventType, React.ElementType> = {
   meeting: Video,
@@ -53,6 +54,9 @@ export function EventDetailsModal({ open, onOpenChange, event, onEdit }: EventDe
   const deleteEvent = useDeleteEvent();
   const updateEvent = useUpdateEvent();
   const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canEditEvent = can('calendar', 'events', 'edit');
+  const canDeleteEvent = can('calendar', 'events', 'delete');
 
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [actionType, setActionType] = useState<'delete' | 'cancel'>('delete');
@@ -220,23 +224,25 @@ export function EventDetailsModal({ open, onOpenChange, event, onEdit }: EventDe
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMarkComplete}
-              disabled={updateEvent.isPending}
-            >
-              {updateEvent.isPending ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : event.status === 'completed' ? (
-                <X className="h-4 w-4 mr-1" />
-              ) : (
-                <Check className="h-4 w-4 mr-1" />
-              )}
-              {event.status === 'completed' ? 'Reabrir' : 'Concluir'}
-            </Button>
+            {canEditEvent && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkComplete}
+                disabled={updateEvent.isPending}
+              >
+                {updateEvent.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : event.status === 'completed' ? (
+                  <X className="h-4 w-4 mr-1" />
+                ) : (
+                  <Check className="h-4 w-4 mr-1" />
+                )}
+                {event.status === 'completed' ? 'Reabrir' : 'Concluir'}
+              </Button>
+            )}
 
-            {event.status !== 'cancelled' && (
+            {canEditEvent && event.status !== 'cancelled' && (
               <Button
                 variant="outline"
                 size="sm"
@@ -248,21 +254,25 @@ export function EventDetailsModal({ open, onOpenChange, event, onEdit }: EventDe
               </Button>
             )}
 
-            <Button variant="outline" size="sm" onClick={onEdit}>
-              <Edit className="h-4 w-4 mr-1" />
-              Editar
-            </Button>
+            {canEditEvent && (
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Edit className="h-4 w-4 mr-1" />
+                Editar
+              </Button>
+            )}
 
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDeleteClick}
-              disabled={deleteEvent.isPending}
-            >
-              {deleteEvent.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              <Trash2 className="h-4 w-4 mr-1" />
-              Eliminar
-            </Button>
+            {canDeleteEvent && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteClick}
+                disabled={deleteEvent.isPending}
+              >
+                {deleteEvent.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                <Trash2 className="h-4 w-4 mr-1" />
+                Eliminar
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEcommerceProducts, useLowStockProducts } from "@/hooks/ecommerce";
 import { useAdjustStock } from "@/hooks/ecommerce";
+import { usePermissions } from "@/hooks/usePermissions";
 import { EcommerceProduct } from "@/types/ecommerce";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -29,7 +30,9 @@ export function InventoryTable() {
   const { data: allProducts, isLoading } = useEcommerceProducts();
   const { data: lowStockProducts } = useLowStockProducts();
   const adjustStock = useAdjustStock();
-  
+  const { can } = usePermissions();
+  const canEditInventory = can('ecommerce', 'inventory', 'edit');
+
   const [adjustProduct, setAdjustProduct] = useState<EcommerceProduct | null>(null);
   const [newQuantity, setNewQuantity] = useState<number>(0);
   const [notes, setNotes] = useState("");
@@ -148,14 +151,16 @@ export function InventoryTable() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAdjust(product)}
-                    >
-                      <RefreshCw className="mr-2 h-3 w-3" />
-                      Ajustar
-                    </Button>
+                    {canEditInventory && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAdjust(product)}
+                      >
+                        <RefreshCw className="mr-2 h-3 w-3" />
+                        Ajustar
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               );

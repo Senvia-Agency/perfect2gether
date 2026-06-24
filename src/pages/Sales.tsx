@@ -23,6 +23,7 @@ import type { DateRange } from "react-day-picker";
 import type { SaleWithDetails, SaleStatus } from "@/types/sales";
 import { SALE_STATUS_LABELS, SALE_STATUS_COLORS, SALE_STATUSES } from "@/types/sales";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useTelecomSaleMetrics } from "@/hooks/useTelecomSaleMetrics";
 import { useModules } from "@/hooks/useModules";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +33,8 @@ export default function Sales() {
   // Subscribe to realtime updates
   useSalesRealtime();
   const { profile, organization, organizations, isSuperAdmin } = useAuth();
+  const { can } = usePermissions();
+  const canCreateSale = can('sales', 'sales', 'create');
   const { data: sales, isLoading } = useSales();
   const isTelecom = organization?.niche === 'telecom';
   const isPerfect2Gether = hasPerfect2GetherAccess({
@@ -251,11 +254,13 @@ export default function Sales() {
                 Exportar
               </Button>
             )}
-            <Button onClick={() => setShowCreateModal(true)} size="sm" className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Nova Venda</span>
-              <span className="sm:hidden">Nova</span>
-            </Button>
+            {canCreateSale && (
+              <Button onClick={() => setShowCreateModal(true)} size="sm" className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Nova Venda</span>
+                <span className="sm:hidden">Nova</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>

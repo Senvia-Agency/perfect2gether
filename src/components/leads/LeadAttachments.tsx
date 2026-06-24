@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { FileText, Upload, Trash2, Download, Loader2, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLeadAttachments, useUploadLeadAttachment, useDeleteLeadAttachment, getAttachmentSignedUrl, LeadAttachment } from '@/hooks/useLeadAttachments';
+import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 
 interface LeadAttachmentsProps {
@@ -23,6 +24,9 @@ export function LeadAttachments({ leadId, readOnly = false }: LeadAttachmentsPro
   const { data: attachments = [], isLoading } = useLeadAttachments(leadId);
   const upload = useUploadLeadAttachment();
   const remove = useDeleteLeadAttachment();
+  const { can } = usePermissions();
+  const canEditLeads = can('leads', 'kanban', 'edit');
+  const canModify = !readOnly && canEditLeads;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
@@ -65,7 +69,7 @@ export function LeadAttachments({ leadId, readOnly = false }: LeadAttachmentsPro
             <span className="text-xs text-muted-foreground">({attachments.length})</span>
           )}
         </h4>
-        {!readOnly && (
+        {canModify && (
           <>
             <input
               ref={fileInputRef}
@@ -121,7 +125,7 @@ export function LeadAttachments({ leadId, readOnly = false }: LeadAttachmentsPro
                     <Download className="h-4 w-4" />
                   )}
                 </Button>
-                {!readOnly && (
+                {canModify && (
                   <Button
                     variant="ghost"
                     size="icon-sm"

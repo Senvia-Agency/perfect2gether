@@ -51,7 +51,10 @@ export default function Leads() {
   useLeadsRealtime();
   useProposalsRealtime();
   const { user, profile, organization } = useAuth();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, can } = usePermissions();
+  const canAddLead = can('leads', 'kanban', 'add');
+  const canAssignLeads = can('leads', 'kanban', 'assign');
+  const canExportLeads = can('leads', 'export', 'export');
   const { data: leads = [], isLoading } = useLeads();
   const { data: proposals = [] } = useProposals();
   const { data: clients = [] } = useClients();
@@ -608,10 +611,12 @@ export default function Leads() {
                     </Button>
                   </div>
                   
-                  <Button onClick={() => setIsAddModalOpen(true)} className="shrink-0 h-9 lg:h-10">
-                    <Plus className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Adicionar</span>
-                  </Button>
+                  {canAddLead && (
+                    <Button onClick={() => setIsAddModalOpen(true)} className="shrink-0 h-9 lg:h-10">
+                      <Plus className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Adicionar</span>
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -727,12 +732,12 @@ export default function Leads() {
 
         <TabsContent value="pipeline" className="mt-0">
         {/* Bulk Actions Bar */}
-        {viewMode === 'table' && (
+        {viewMode === 'table' && canAssignLeads && (
           <BulkActionsBar
             selectedCount={selectedIds.length}
             onAssignTeamMember={() => setShowAssignModal(true)}
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
+            onExportCsv={canExportLeads ? handleExportCsv : undefined}
+            onExportExcel={canExportLeads ? handleExportExcel : undefined}
             onClearSelection={() => setSelectedIds([])}
             entityLabel="leads selecionados"
           />

@@ -3,6 +3,7 @@ import { Plus, FileText, ChevronRight, Zap, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useLeadProposals } from '@/hooks/useProposals';
+import { usePermissions } from '@/hooks/usePermissions';
 import { CreateProposalModal } from './CreateProposalModal';
 import { ProposalDetailsModal } from './ProposalDetailsModal';
 import { PROPOSAL_STATUS_LABELS, PROPOSAL_STATUS_COLORS, PROPOSAL_TYPE_LABELS } from '@/types/proposals';
@@ -18,6 +19,8 @@ interface ProposalsListProps {
 
 export function ProposalsList({ lead }: ProposalsListProps) {
   const { data: proposals = [], isLoading } = useLeadProposals(lead.id);
+  const { can } = usePermissions();
+  const canCreateProposal = can('proposals', 'proposals', 'create');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
 
@@ -40,10 +43,12 @@ export function ProposalsList({ lead }: ProposalsListProps) {
           <FileText className="h-4 w-4" />
           Propostas ({proposals.length})
         </h3>
-        <Button size="sm" onClick={() => setCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          Nova
-        </Button>
+        {canCreateProposal && (
+          <Button size="sm" onClick={() => setCreateModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Nova
+          </Button>
+        )}
       </div>
 
       {proposals.length === 0 ? (

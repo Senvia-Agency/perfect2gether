@@ -3,6 +3,7 @@ import { NavLink, useLocation, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/hooks/usePermissions";
 import { PortalTotalLinkFilters } from "./PortalTotalLinkFilters";
 import { PortalTotalLinkReclamacaoAddDialog } from "./PortalTotalLinkReclamacaoAddDialog";
 import { PortalTotalLinkContratoAddDialog } from "./PortalTotalLinkContratoAddDialog";
@@ -29,6 +30,16 @@ export function PortalTotalLinkLayout({ children }: { children: ReactNode }) {
   const selectedCycle = searchParams.get("homeCycle") ?? portalTotalLinkHomeCycleOptions[0]?.value ?? "1";
   const selectedYear = searchParams.get("homeYear") ?? portalTotalLinkHomeYearOptions[2]?.value ?? String(new Date().getFullYear());
   const ActionIcon = currentSection.action?.icon;
+
+  const { can } = usePermissions();
+  // Gate the header action button per section. The "pendentes" action is a read-only
+  // search trigger (no-op here), so it is not permission-gated.
+  // Contratos has no dedicated 'add' permission action; gate it on 'edit'.
+  const canSectionAction =
+    currentSection.key === "contratos" ? can('portal_total_link', 'contratos', 'edit')
+    : currentSection.key === "ids" ? can('portal_total_link', 'ids', 'edit')
+    : currentSection.key === "reclamacoes" ? can('portal_total_link', 'reclamacoes', 'add')
+    : true;
 
   const updateHomeParam = (key: "homeCycle" | "homeYear", value: string) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -76,7 +87,7 @@ export function PortalTotalLinkLayout({ children }: { children: ReactNode }) {
                   </SelectContent>
                 </Select>
               </div>
-              {currentSection.action ? (
+              {currentSection.action && canSectionAction ? (
                 <Button
                   type="button"
                   size="sm"

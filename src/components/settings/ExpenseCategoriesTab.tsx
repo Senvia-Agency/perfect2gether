@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useExpenseCategories, useDeleteExpenseCategory } from '@/hooks/useExpenseCategories';
+import { usePermissions } from '@/hooks/usePermissions';
 import { CreateExpenseCategoryModal } from './CreateExpenseCategoryModal';
 import { EditExpenseCategoryModal } from './EditExpenseCategoryModal';
 import type { ExpenseCategory } from '@/types/expenses';
@@ -21,6 +22,8 @@ import {
 export function ExpenseCategoriesTab() {
   const { data: categories, isLoading } = useExpenseCategories();
   const deleteCategory = useDeleteExpenseCategory();
+  const { can } = usePermissions();
+  const canManageCategories = can('finance', 'expense_categories', 'manage');
 
   const [showCreate, setShowCreate] = useState(false);
   const [editCategory, setEditCategory] = useState<ExpenseCategory | null>(null);
@@ -40,10 +43,12 @@ export function ExpenseCategoriesTab() {
           <CardTitle>Tipos de Despesas</CardTitle>
           <CardDescription>Categorias para organizar as suas despesas</CardDescription>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Adicionar</span>
-        </Button>
+        {canManageCategories && (
+          <Button onClick={() => setShowCreate(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Adicionar</span>
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -77,20 +82,24 @@ export function ExpenseCategoriesTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setEditCategory(category)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteId(category.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {canManageCategories && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditCategory(category)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {canManageCategories && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeleteId(category.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

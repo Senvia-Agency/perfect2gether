@@ -26,6 +26,7 @@ import { useFinalStages } from '@/hooks/usePipelineStages';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useModules } from '@/hooks/useModules';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useCommissionMatrix, getVolumeTier } from '@/hooks/useCommissionMatrix';
 import { 
   PROPOSAL_STATUS_LABELS, 
@@ -76,6 +77,10 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   const updateLead = useUpdateLead();
   const { finalPositiveStage, finalNegativeStage } = useFinalStages();
   const sendProposalEmail = useSendProposalEmail();
+  const { can } = usePermissions();
+  const canEditProposal = can('proposals', 'proposals', 'edit');
+  const canDeleteProposal = can('proposals', 'proposals', 'delete');
+  const canSendProposal = can('proposals', 'proposals', 'send');
   const { calculateEnergyCommission, hasEnergyConfig } = useCommissionMatrix();
   // Obter logo e nome da organização
   const logoUrl = (orgData?.form_settings as any)?.logo_url || null;
@@ -772,16 +777,18 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                         <CardTitle className="text-sm font-medium text-muted-foreground">Ações</CardTitle>
                       </CardHeader>
                       <CardContent className="p-4 pt-0 space-y-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start"
-                          onClick={() => setShowEditModal(true)}
-                          disabled={hasCompletedSale}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
-                        </Button>
+                        {canEditProposal && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => setShowEditModal(true)}
+                            disabled={hasCompletedSale}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -791,29 +798,33 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                           <Printer className="h-4 w-4 mr-2" />
                           Imprimir
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start"
-                          onClick={handleSendEmail}
-                          disabled={!canSendEmail}
-                        >
-                          {sendProposalEmail.isPending ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Mail className="h-4 w-4 mr-2" />
-                          )}
-                          {!isBrevoConfigured ? 'Configurar Email' : 'Enviar Email'}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="w-full justify-start"
-                          onClick={() => setShowDeleteConfirm(true)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Eliminar
-                        </Button>
+                        {canSendProposal && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={handleSendEmail}
+                            disabled={!canSendEmail}
+                          >
+                            {sendProposalEmail.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Mail className="h-4 w-4 mr-2" />
+                            )}
+                            {!isBrevoConfigured ? 'Configurar Email' : 'Enviar Email'}
+                          </Button>
+                        )}
+                        {canDeleteProposal && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => setShowDeleteConfirm(true)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   </div>

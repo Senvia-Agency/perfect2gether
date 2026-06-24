@@ -7,6 +7,7 @@ import { CreateListModal } from "@/components/marketing/CreateListModal";
 import { ListDetailsModal } from "@/components/marketing/ListDetailsModal";
 import { ImportContactsModal } from "@/components/marketing/ImportContactsModal";
 import { useContactLists, useDeleteContactList, type ContactList } from "@/hooks/useContactLists";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Lists() {
   const { data: lists = [], isLoading } = useContactLists();
@@ -15,6 +16,9 @@ export default function Lists() {
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [selectedList, setSelectedList] = useState<ContactList | null>(null);
+  const { can } = usePermissions();
+  const canCreateList = can('marketing', 'lists', 'create');
+  const canImportList = can('marketing', 'lists', 'import');
 
   return (
     <>
@@ -30,12 +34,16 @@ export default function Lists() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" /> Importar
-            </Button>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Nova Lista
-            </Button>
+            {canImportList && (
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" /> Importar
+              </Button>
+            )}
+            {canCreateList && (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" /> Nova Lista
+              </Button>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export type ViewType = 'month' | 'week' | 'day';
 
@@ -35,6 +36,9 @@ export function CalendarHeader({
   isAdmin,
   allOptionLabel,
 }: CalendarHeaderProps) {
+  const { can } = usePermissions();
+  const canCreateEvent = can('calendar', 'events', 'create');
+
   const getTitle = () => {
     switch (view) {
       case 'month':
@@ -97,10 +101,12 @@ export function CalendarHeader({
         </div>
 
         {/* Create Event */}
-        <Button onClick={onCreateEvent}>
-          <Plus className="h-4 w-4 mr-1" />
-          <span className="hidden sm:inline">Novo Evento</span>
-        </Button>
+        {canCreateEvent && (
+          <Button onClick={onCreateEvent}>
+            <Plus className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Novo Evento</span>
+          </Button>
+        )}
       </div>
     </div>
   );

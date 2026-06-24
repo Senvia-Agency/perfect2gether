@@ -12,7 +12,9 @@ import RhAdminPanel from "@/components/portal-total-link/rh/RhAdminPanel";
 
 export default function Rh() {
   const [showRequestForm, setShowRequestForm] = useState(false);
-  const { isAdmin } = usePermissions();
+  const { can } = usePermissions();
+  const canAddAbsence = can('portal_total_link', 'rh', 'add');
+  const canManageRh = can('portal_total_link', 'rh', 'edit');
   const { data: holidays = [] } = useRhHolidays();
   const { data: myAbsences = [], isLoading } = useMyAbsences();
   const deleteAbsence = useDeleteAbsence();
@@ -29,9 +31,11 @@ export default function Rh() {
       <RhVacationBalance />
 
       {/* Action Button */}
-      <Button onClick={() => setShowRequestForm(true)} className="w-full sm:w-auto">
-        <Plus className="h-4 w-4 mr-2" /> Marcar Ausência
-      </Button>
+      {canAddAbsence && (
+        <Button onClick={() => setShowRequestForm(true)} className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-2" /> Marcar Ausência
+        </Button>
+      )}
 
       {/* My Absences */}
       <div>
@@ -54,8 +58,8 @@ export default function Rh() {
         )}
       </div>
 
-      {/* Admin Panel */}
-      {isAdmin && (
+      {/* Admin Panel (management = rh edit; admins always pass can()) */}
+      {canManageRh && (
         <div className="pt-4 border-t">
           <RhAdminPanel />
         </div>

@@ -10,6 +10,7 @@ import { LucideIcon } from "lucide-react";
 import { useOrganizationWebhooks, useCreateWebhook, useToggleWebhook, useDeleteWebhook, OrganizationWebhook } from "@/hooks/useOrganizationWebhooks";
 import { useTestWebhook } from "@/hooks/useOrganization";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface IntegrationsContentProps {
   isLoadingIntegrations: boolean;
@@ -46,6 +47,7 @@ interface IntegrationsContentProps {
   showKeyinvoiceApiKey: boolean;
   setShowKeyinvoiceApiKey: (value: boolean) => void;
   handleSaveKeyInvoice: () => void;
+  canEdit?: boolean;
 }
 
 type IntegrationKey = 'webhook' | 'webhook_inbound' | 'whatsapp' | 'brevo' | 'invoicexpress' | 'keyinvoice';
@@ -99,7 +101,10 @@ function IntegrationCard({
   );
 }
 
-export const IntegrationsContent = (props: IntegrationsContentProps) => {
+export const IntegrationsContent = (rawProps: IntegrationsContentProps) => {
+  const { can } = usePermissions();
+  const canEdit = can('settings', 'general', 'edit');
+  const props = { ...rawProps, canEdit };
   const [active, setActive] = useState<IntegrationKey | null>(null);
   const { data: webhooks = [] } = useOrganizationWebhooks();
 
@@ -200,6 +205,7 @@ export const IntegrationsContent = (props: IntegrationsContentProps) => {
           <Switch
             checked={active === 'keyinvoice' ? integrationsEnabled.keyinvoice === true : integrationsEnabled[active] !== false}
             onCheckedChange={(checked) => onToggleIntegration(active, checked)}
+            disabled={!canEdit}
           />
         </div>
       </div>
@@ -231,6 +237,8 @@ function WebhooksManager() {
   const toggleWebhook = useToggleWebhook();
   const deleteWebhook = useDeleteWebhook();
   const testWebhook = useTestWebhook();
+  const { can } = usePermissions();
+  const canEdit = can('settings', 'general', 'edit');
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -296,15 +304,18 @@ function WebhooksManager() {
                 <Switch
                   checked={wh.is_active}
                   onCheckedChange={(checked) => toggleWebhook.mutate({ id: wh.id, is_active: checked })}
+                  disabled={!canEdit}
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteWebhook.mutate(wh.id)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                {canEdit && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteWebhook.mutate(wh.id)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </div>
           ))}
@@ -319,7 +330,7 @@ function WebhooksManager() {
       )}
 
       {/* Add form */}
-      {isAdding ? (
+      {canEdit && (isAdding ? (
         <div className="space-y-3 p-4 rounded-lg border bg-muted/30">
           <div className="space-y-2">
             <Label htmlFor="wh-name">Nome</Label>
@@ -345,7 +356,7 @@ function WebhooksManager() {
           <Plus className="mr-2 h-4 w-4" />
           Adicionar Webhook
         </Button>
-      )}
+      ))}
     </div>
   );
 }
@@ -471,7 +482,7 @@ function InboundWebhookSection() {
 
 // --- Form sub-components ---
 
-function WhatsAppForm({ whatsappBaseUrl, setWhatsappBaseUrl, whatsappInstance, setWhatsappInstance, whatsappApiKey, setWhatsappApiKey, showWhatsappApiKey, setShowWhatsappApiKey, handleSaveWhatsApp, updateOrganizationIsPending }: IntegrationsContentProps) {
+function WhatsAppForm({ whatsappBaseUrl, setWhatsappBaseUrl, whatsappInstance, setWhatsappInstance, whatsappApiKey, setWhatsappApiKey, showWhatsappApiKey, setShowWhatsappApiKey, handleSaveWhatsApp, updateOrganizationIsPending, canEdit }: IntegrationsContentProps) {
   return (
     <>
       <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 space-y-2">
@@ -502,15 +513,17 @@ function WhatsAppForm({ whatsappBaseUrl, setWhatsappBaseUrl, whatsappInstance, s
         </div>
         <p className="text-xs text-muted-foreground">Chave de autenticação da Evolution API.</p>
       </div>
-      <Button onClick={handleSaveWhatsApp} disabled={updateOrganizationIsPending}>
-        {updateOrganizationIsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Guardar
-      </Button>
+      {canEdit && (
+        <Button onClick={handleSaveWhatsApp} disabled={updateOrganizationIsPending}>
+          {updateOrganizationIsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Guardar
+        </Button>
+      )}
     </>
   );
 }
 
-function BrevoForm({ brevoApiKey, setBrevoApiKey, brevoSenderEmail, setBrevoSenderEmail, showBrevoApiKey, setShowBrevoApiKey, handleSaveBrevo, updateOrganizationIsPending }: IntegrationsContentProps) {
+function BrevoForm({ brevoApiKey, setBrevoApiKey, brevoSenderEmail, setBrevoSenderEmail, showBrevoApiKey, setShowBrevoApiKey, handleSaveBrevo, updateOrganizationIsPending, canEdit }: IntegrationsContentProps) {
   return (
     <>
       <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
@@ -541,15 +554,17 @@ function BrevoForm({ brevoApiKey, setBrevoApiKey, brevoSenderEmail, setBrevoSend
         </div>
         <p className="text-xs text-muted-foreground">Cole este URL no painel do Brevo → Definições → Webhooks para ativar tracking de entregas, aberturas e cliques.</p>
       </div>
-      <Button onClick={handleSaveBrevo} disabled={updateOrganizationIsPending}>
-        {updateOrganizationIsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Guardar
-      </Button>
+      {canEdit && (
+        <Button onClick={handleSaveBrevo} disabled={updateOrganizationIsPending}>
+          {updateOrganizationIsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Guardar
+        </Button>
+      )}
     </>
   );
 }
 
-function InvoiceXpressForm({ invoiceXpressAccountName, setInvoiceXpressAccountName, invoiceXpressApiKey, setInvoiceXpressApiKey, showInvoiceXpressApiKey, setShowInvoiceXpressApiKey, handleSaveInvoiceXpress, updateOrganizationIsPending }: IntegrationsContentProps) {
+function InvoiceXpressForm({ invoiceXpressAccountName, setInvoiceXpressAccountName, invoiceXpressApiKey, setInvoiceXpressApiKey, showInvoiceXpressApiKey, setShowInvoiceXpressApiKey, handleSaveInvoiceXpress, updateOrganizationIsPending, canEdit }: IntegrationsContentProps) {
   return (
     <>
       <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
@@ -570,15 +585,17 @@ function InvoiceXpressForm({ invoiceXpressAccountName, setInvoiceXpressAccountNa
         </div>
         <p className="text-xs text-muted-foreground">Chave de autenticação da API InvoiceXpress.</p>
       </div>
-      <Button onClick={handleSaveInvoiceXpress} disabled={updateOrganizationIsPending}>
-        {updateOrganizationIsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Guardar
-      </Button>
+      {canEdit && (
+        <Button onClick={handleSaveInvoiceXpress} disabled={updateOrganizationIsPending}>
+          {updateOrganizationIsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Guardar
+        </Button>
+      )}
     </>
   );
 }
 
-function KeyInvoiceForm({ keyinvoiceApiKey, setKeyinvoiceApiKey, keyinvoiceApiUrl, setKeyinvoiceApiUrl, showKeyinvoiceApiKey, setShowKeyinvoiceApiKey, handleSaveKeyInvoice, updateOrganizationIsPending }: IntegrationsContentProps) {
+function KeyInvoiceForm({ keyinvoiceApiKey, setKeyinvoiceApiKey, keyinvoiceApiUrl, setKeyinvoiceApiUrl, showKeyinvoiceApiKey, setShowKeyinvoiceApiKey, handleSaveKeyInvoice, updateOrganizationIsPending, canEdit }: IntegrationsContentProps) {
   return (
     <>
       <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
@@ -599,10 +616,12 @@ function KeyInvoiceForm({ keyinvoiceApiKey, setKeyinvoiceApiKey, keyinvoiceApiUr
         <Input id="ki-api-url" type="url" placeholder="https://login.keyinvoice.com/API5.php" value={keyinvoiceApiUrl} onChange={(e) => setKeyinvoiceApiUrl(e.target.value)} />
         <p className="text-xs text-muted-foreground">Endereço base da API KeyInvoice. Deixe em branco para usar o valor padrão.</p>
       </div>
-      <Button onClick={handleSaveKeyInvoice} disabled={updateOrganizationIsPending}>
-        {updateOrganizationIsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Guardar
-      </Button>
+      {canEdit && (
+        <Button onClick={handleSaveKeyInvoice} disabled={updateOrganizationIsPending}>
+          {updateOrganizationIsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Guardar
+        </Button>
+      )}
     </>
   );
 }

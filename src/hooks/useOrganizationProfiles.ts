@@ -25,6 +25,12 @@ export const ACTION_LABELS: Record<string, string> = {
 export interface SubareaSchema {
   label: string;
   actions: string[];
+  /**
+   * Optional per-subarea overrides for action labels. Lets the same action key
+   * (e.g. `add`, `delete`) read differently depending on context, e.g. for
+   * Clientes: list.add = "Adicionar Cliente" but communications.add = "Acrescentar à ficha".
+   */
+  actionLabels?: Record<string, string>;
 }
 
 export interface ModuleSchema {
@@ -51,8 +57,16 @@ export const MODULE_SCHEMA: Record<string, ModuleSchema> = {
   clients: {
     label: 'Clientes',
     subareas: {
-      list: { label: 'Lista de Clientes', actions: ['view', 'add', 'edit', 'delete'] },
-      communications: { label: 'Comunicações', actions: ['view', 'add'] },
+      list: {
+        label: 'Lista de Clientes',
+        actions: ['view', 'add', 'edit', 'delete'],
+        actionLabels: { add: 'Adicionar Cliente', edit: 'Editar Cliente', delete: 'Excluir Cliente' },
+      },
+      communications: {
+        label: 'Ficha / Histórico',
+        actions: ['view', 'add', 'delete'],
+        actionLabels: { add: 'Acrescentar à ficha', delete: 'Remover da ficha' },
+      },
       cpes: { label: 'CPEs', actions: ['view', 'add', 'edit', 'delete'] },
     },
   },
@@ -75,9 +89,11 @@ export const MODULE_SCHEMA: Record<string, ModuleSchema> = {
       summary: { label: 'Resumo', actions: ['view'] },
       invoices: { label: 'Faturas', actions: ['view', 'issue', 'cancel'] },
       expenses: { label: 'Despesas', actions: ['view', 'add', 'edit', 'delete'] },
+      expense_categories: { label: 'Categorias de Despesa', actions: ['view', 'manage'] },
       payments: { label: 'Pagamentos', actions: ['view'] },
       requests: { label: 'Pedidos Internos', actions: ['view', 'submit', 'approve'] },
       commissions: { label: 'Comissões', actions: ['view', 'manage'] },
+      bank_accounts: { label: 'Contas Bancárias', actions: ['view', 'manage'] },
     },
   },
   gestao: {
@@ -85,6 +101,7 @@ export const MODULE_SCHEMA: Record<string, ModuleSchema> = {
     subareas: {
       reports: { label: 'Relatórios e Análises', actions: ['view'] },
       commissions: { label: 'Análise de Comissões', actions: ['view', 'manage'] },
+      commitments: { label: 'Compromissos', actions: ['view', 'manage'] },
     },
   },
   calendar: {

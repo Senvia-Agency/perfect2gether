@@ -7,6 +7,7 @@ import { CampaignsTable } from "@/components/marketing/CampaignsTable";
 import { CreateCampaignModal } from "@/components/marketing/CreateCampaignModal";
 import { CampaignDetailsModal } from "@/components/marketing/CampaignDetailsModal";
 import { useCampaigns, useDeleteCampaign, useReopenCampaign } from "@/hooks/useCampaigns";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { EmailCampaign } from "@/types/marketing";
 
 export default function Campaigns() {
@@ -16,6 +17,8 @@ export default function Campaigns() {
   const { data: campaigns = [], isLoading } = useCampaigns();
   const deleteCampaign = useDeleteCampaign();
   const reopenCampaign = useReopenCampaign();
+  const { can } = usePermissions();
+  const canCreateCampaign = can('marketing', 'campaigns', 'create');
 
   const handleCampaignClick = (campaign: EmailCampaign) => {
     if (campaign.status === 'draft') {
@@ -40,9 +43,11 @@ export default function Campaigns() {
               <p className="text-muted-foreground text-sm">Envie emails em massa para os seus clientes</p>
             </div>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Nova Campanha
-          </Button>
+          {canCreateCampaign && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Nova Campanha
+            </Button>
+          )}
         </div>
 
         {/* Content */}

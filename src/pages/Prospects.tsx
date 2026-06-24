@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useProspects, useProspectSalespeople } from "@/hooks/useProspects";
 import { useModules } from "@/hooks/useModules";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useTeamScopedMembers } from "@/hooks/useTeamFilter";
 import { mapProspectsForExport, exportToCsv, exportToExcel } from "@/lib/export";
 import { getProspectCom, getProspectSegment } from "@/lib/prospects/segment";
@@ -63,6 +64,11 @@ const SocialMediaLinks = ({ metadata }: { metadata: Record<string, unknown> | nu
 export default function Prospects() {
   const { organization } = useAuth();
   const { modules } = useModules();
+  const { can } = usePermissions();
+  const canImportProspects = can('prospects', 'import_export', 'import');
+  const canExportProspects = can('prospects', 'import_export', 'export');
+  const canDistributeProspects = can('prospects', 'list', 'assign');
+  const canGenerateProspects = can('prospects', 'generate', 'manage');
   const { data: prospects = [], isLoading } = useProspects();
   const { data: salespeople = [], isLoading: salespeopleLoading } = useProspectSalespeople();
   // Filtro por comercial: só admin / líder de equipa; líder vê apenas a sua equipa.
@@ -223,24 +229,32 @@ export default function Prospects() {
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           {isP2G ? (
-            <Button variant="outline" onClick={() => setIsImportOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" />
-              Importar
-            </Button>
+            canImportProspects && (
+              <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                Importar
+              </Button>
+            )
           ) : (
-            <Button variant="outline" onClick={() => setIsGenerateOpen(true)}>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Gerar Prospects
-            </Button>
+            canGenerateProspects && (
+              <Button variant="outline" onClick={() => setIsGenerateOpen(true)}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Gerar Prospects
+              </Button>
+            )
           )}
-          <Button variant="outline" onClick={handleExportCsv} disabled={filteredProspects.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            CSV
-          </Button>
-          <Button variant="outline" onClick={handleExportExcel} disabled={filteredProspects.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Excel
-          </Button>
+          {canExportProspects && (
+            <>
+              <Button variant="outline" onClick={handleExportCsv} disabled={filteredProspects.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                CSV
+              </Button>
+              <Button variant="outline" onClick={handleExportExcel} disabled={filteredProspects.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                Excel
+              </Button>
+            </>
+          )}
         </div>
 
         <Card>
@@ -290,14 +304,16 @@ export default function Prospects() {
                 </Select>
                 )}
 
-                <Button
-                  onClick={() => setIsDistributeOpen(true)}
-                  disabled={selectedEligibleIds.length === 0 || salespeople.length === 0}
-                  className="w-full md:w-auto"
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Distribuir leads{selectedEligibleIds.length ? ` (${selectedEligibleIds.length})` : ""}
-                </Button>
+                {canDistributeProspects && (
+                  <Button
+                    onClick={() => setIsDistributeOpen(true)}
+                    disabled={selectedEligibleIds.length === 0 || salespeople.length === 0}
+                    className="w-full md:w-auto"
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Distribuir leads{selectedEligibleIds.length ? ` (${selectedEligibleIds.length})` : ""}
+                  </Button>
+                )}
               </div>
             </div>
 

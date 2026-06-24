@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useEcommerceProducts, useUpdateEcommerceProduct, useDeleteEcommerceProduct } from "@/hooks/ecommerce";
+import { usePermissions } from "@/hooks/usePermissions";
 import { formatCurrency } from "@/lib/format";
 import { EcommerceProduct } from "@/types/ecommerce";
 import { CreateProductModal } from "./CreateProductModal";
@@ -34,7 +35,11 @@ export function ProductsTable() {
   const { data: products, isLoading } = useEcommerceProducts();
   const updateProduct = useUpdateEcommerceProduct();
   const deleteProduct = useDeleteEcommerceProduct();
-  
+  const { can } = usePermissions();
+  const canCreateProduct = can('ecommerce', 'products', 'create');
+  const canEditProduct = can('ecommerce', 'products', 'edit');
+  const canDeleteProduct = can('ecommerce', 'products', 'delete');
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<EcommerceProduct | null>(null);
   const [imagesProduct, setImagesProduct] = useState<EcommerceProduct | null>(null);
@@ -71,10 +76,12 @@ export function ProductsTable() {
         <p className="text-sm text-muted-foreground">
           {products?.length || 0} produtos
         </p>
-        <Button onClick={() => setCreateOpen(true)} size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Produto
-        </Button>
+        {canCreateProduct && (
+          <Button onClick={() => setCreateOpen(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Produto
+          </Button>
+        )}
       </div>
 
       {products?.length === 0 ? (
@@ -84,10 +91,12 @@ export function ProductsTable() {
           <p className="text-sm text-muted-foreground">
             Crie o seu primeiro produto para começar a vender.
           </p>
-          <Button onClick={() => setCreateOpen(true)} className="mt-4">
-            <Plus className="mr-2 h-4 w-4" />
-            Criar Produto
-          </Button>
+          {canCreateProduct && (
+            <Button onClick={() => setCreateOpen(true)} className="mt-4">
+              <Plus className="mr-2 h-4 w-4" />
+              Criar Produto
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-md border">
@@ -168,38 +177,46 @@ export function ProductsTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setImagesProduct(product)}
-                        title="Imagens"
-                      >
-                        <Image className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setVariantsProduct(product)}
-                        title="Variantes"
-                      >
-                        <Package className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditProduct(product)}
-                        title="Editar"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteId(product.id)}
-                        title="Eliminar"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {canEditProduct && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setImagesProduct(product)}
+                          title="Imagens"
+                        >
+                          <Image className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canEditProduct && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setVariantsProduct(product)}
+                          title="Variantes"
+                        >
+                          <Package className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canEditProduct && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditProduct(product)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDeleteProduct && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteId(product.id)}
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

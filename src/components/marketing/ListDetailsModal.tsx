@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useContactListMembers, useRemoveListMember, useAddListMembers, useUpdateContactList, useMarketingContacts, type ContactList } from "@/hooks/useContactLists";
 import { ConvertToLeadModal } from "@/components/marketing/ConvertToLeadModal";
 import { normalizeString } from "@/lib/utils";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { MarketingContact } from "@/types/marketing";
 
 interface Props {
@@ -24,6 +25,8 @@ export function ListDetailsModal({ list, open, onOpenChange }: Props) {
   const addMembers = useAddListMembers();
   const updateList = useUpdateContactList();
   const { data: allContacts = [] } = useMarketingContacts();
+  const { can } = usePermissions();
+  const canEditList = can('marketing', 'lists', 'edit');
 
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
@@ -93,9 +96,11 @@ export function ListDetailsModal({ list, open, onOpenChange }: Props) {
                 <DialogTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
                   {list.name}
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={startEditList}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
+                  {canEditList && (
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={startEditList}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </DialogTitle>
                 {list.description && <p className="text-sm text-muted-foreground mt-1">{list.description}</p>}
               </div>
@@ -110,9 +115,11 @@ export function ListDetailsModal({ list, open, onOpenChange }: Props) {
                   <ArrowRightCircle className="h-4 w-4 mr-1" /> Converter {selectedForConvert.length} em Leads
                 </Button>
               )}
-              <Button size="sm" variant="outline" onClick={() => setShowAdd(!showAdd)}>
-                <UserPlus className="h-4 w-4 mr-1" /> Adicionar
-              </Button>
+              {canEditList && (
+                <Button size="sm" variant="outline" onClick={() => setShowAdd(!showAdd)}>
+                  <UserPlus className="h-4 w-4 mr-1" /> Adicionar
+                </Button>
+              )}
             </div>
           </div>
 
@@ -178,9 +185,11 @@ export function ListDetailsModal({ list, open, onOpenChange }: Props) {
                             {m.contact?.phone && <p className="text-xs text-muted-foreground truncate">{m.contact.phone}</p>}
                           </div>
                         </div>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive shrink-0" onClick={() => removeMember.mutate({ listId: list.id, contactId: m.contact_id })}>
-                          <UserMinus className="h-4 w-4" />
-                        </Button>
+                        {canEditList && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive shrink-0" onClick={() => removeMember.mutate({ listId: list.id, contactId: m.contact_id })}>
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

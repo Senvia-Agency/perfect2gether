@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDiscountCodes, useCreateDiscountCode, useUpdateDiscountCode, useDeleteDiscountCode } from "@/hooks/ecommerce/useDiscountCodes";
+import { usePermissions } from "@/hooks/usePermissions";
 import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -51,6 +52,9 @@ export function DiscountsTable() {
   const createMutation = useCreateDiscountCode();
   const updateMutation = useUpdateDiscountCode();
   const deleteMutation = useDeleteDiscountCode();
+  const { can } = usePermissions();
+  const canCreateDiscount = can('ecommerce', 'discounts', 'create');
+  const canDeleteDiscount = can('ecommerce', 'discounts', 'delete');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -133,10 +137,12 @@ export function DiscountsTable() {
                 {discounts?.length || 0} códigos de desconto
               </p>
             </div>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Código
-            </Button>
+            {canCreateDiscount && (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Código
+              </Button>
+            )}
           </div>
 
           {!discounts?.length ? (
@@ -221,14 +227,16 @@ export function DiscountsTable() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteId(discount.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canDeleteDiscount && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeleteId(discount.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

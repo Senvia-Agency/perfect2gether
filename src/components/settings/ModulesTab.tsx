@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useModules, EnabledModules } from "@/hooks/useModules";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ModuleConfig {
@@ -29,6 +30,8 @@ export function ModulesTab() {
   const { modules, isLoading, updateModule, isUpdating } = useModules();
   const { isModuleLocked, getRequiredPlan } = useSubscription();
   const { organization } = useAuth();
+  const { can } = usePermissions();
+  const canEditModules = can('settings', 'modules', 'edit');
   const isTelecom = organization?.niche === 'telecom';
 
   if (isLoading) {
@@ -79,10 +82,10 @@ export function ModulesTab() {
                   <Switch
                     id={module.key}
                     checked={locked ? false : modules[module.key]}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       updateModule({ module: module.key, enabled: checked })
                     }
-                    disabled={isUpdating || locked}
+                    disabled={isUpdating || locked || !canEditModules}
                   />
                 </div>
               </CardHeader>
@@ -114,10 +117,10 @@ export function ModulesTab() {
                 <Switch
                   id="energy"
                   checked={modules.energy}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     updateModule({ module: 'energy', enabled: checked })
                   }
-                  disabled={isUpdating}
+                  disabled={isUpdating || !canEditModules}
                 />
               </div>
             </CardHeader>

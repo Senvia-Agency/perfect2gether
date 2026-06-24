@@ -12,6 +12,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Plus, Search, X, Pencil, Trash2, ArrowLeft, Download, RefreshCw } from 'lucide-react';
 import { useExpenses, useDeleteExpense } from '@/hooks/useExpenses';
 import { useExpenseCategories } from '@/hooks/useExpenseCategories';
+import { usePermissions } from '@/hooks/usePermissions';
 import { AddExpenseModal } from '@/components/finance/AddExpenseModal';
 import { EditExpenseModal } from '@/components/finance/EditExpenseModal';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -35,6 +36,10 @@ export default function Expenses() {
   const { data: expenses, isLoading } = useExpenses();
   const { data: categories } = useExpenseCategories();
   const deleteExpense = useDeleteExpense();
+  const { can } = usePermissions();
+  const canAddExpense = can('finance', 'expenses', 'add');
+  const canEditExpense = can('finance', 'expenses', 'edit');
+  const canDeleteExpense = can('finance', 'expenses', 'delete');
 
   const [showAdd, setShowAdd] = useState(false);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
@@ -107,10 +112,12 @@ export default function Expenses() {
               <p className="text-sm text-muted-foreground">Gerir custos e despesas</p>
             </div>
           </div>
-          <Button onClick={() => setShowAdd(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Adicionar Despesa
-          </Button>
+          {canAddExpense && (
+            <Button onClick={() => setShowAdd(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Adicionar Despesa
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -219,12 +226,16 @@ export default function Expenses() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => setEditExpense(expense)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setDeleteId(expense.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            {canEditExpense && (
+                              <Button variant="ghost" size="icon" onClick={() => setEditExpense(expense)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canDeleteExpense && (
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteId(expense.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
