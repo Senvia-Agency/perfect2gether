@@ -53,9 +53,29 @@ export const importClients = async (
         findValue(row, ["Nível Tensão", "Nivel Tensao", "Tensão"])
       ) || null;
 
-      const formatDate = (val: unknown) => {
-        if (val instanceof Date) return val.toISOString().split("T")[0];
-        return normalizeTextValue(val) || null;
+      // Datas: NAO usar toISOString(). A libraria de Excel cria a data a meia-noite
+      // LOCAL; toISOString() converte para UTC e, com offset positivo (Portugal UTC+1
+      // no verao), recua 1 dia -> 21/06 virava 20/06. Usamos os componentes locais.
+      // Aceita tambem texto em DD/MM/AAAA (ou DD-MM-AAAA) e ISO AAAA-MM-DD.
+      const formatDate = (val: unknown): string | null => {
+        if (val instanceof Date && !isNaN(val.getTime())) {
+          const y = val.getFullYear();
+          const m = String(val.getMonth() + 1).padStart(2, "0");
+          const d = String(val.getDate()).padStart(2, "0");
+          return `${y}-${m}-${d}`;
+        }
+        const s = normalizeTextValue(val);
+        if (!s) return null;
+        const dmy = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
+        if (dmy) {
+          const dd = dmy[1].padStart(2, "0");
+          const mm = dmy[2].padStart(2, "0");
+          const yyyy = dmy[3].length === 2 ? "20" + dmy[3] : dmy[3];
+          return `${yyyy}-${mm}-${dd}`;
+        }
+        const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+        return null; // formato desconhecido: melhor null do que data errada
       };
       const fidelizacaoStart = formatDate(findValue(row, ["Data Inicio", "Linha de Contrato: Data de inici", "Start Date"]));
       const fidelizacaoEnd = formatDate(findValue(row, ["Data Fim", "Linha de Contrato: Data Fim de C", "End Date"]));
@@ -130,40 +150,36 @@ export const importClients = async (
         clientId = newClient.id;
       }
 
-      // 4. Criar ou atualizar CPE no cliente
+      // 4. Criar CPE para ESTA linha.
+      //    Decisao: cada linha do ficheiro = um registo proprio (mesmo que o numero
+      //    de CPE se repita). As linhas de "Oportunidade de Servicos" ficam com
+      //    equipment_type 'Servicos' (em vez de 'Energia'), para se distinguirem.
+      //    NOTA: nao deduplica -> reimportar o mesmo ficheiro cria duplicados.
       if (cpeSerial) {
-        const { data: existingCpe } = await supabase
-          .from("cpes")
-          .select("id")
-          .eq("client_id", clientId)
-          .eq("serial_number", cpeSerial)
-          .maybeSingle();
-
-        if (existingCpe) {
-          await supabase
-            .from("cpes")
-            .update({
-              consumo_anual: consumoAnual || null,
-              comercializador,
-              fidelizacao_start: fidelizacaoStart,
-              fidelizacao_end: fidelizacaoEnd,
-              nivel_tensao: nivelTensao as any,
-            })
-            .eq("id", existingCpe.id);
+        const tipoOportunidade = normalizeTextValue(
+          findValue(row, ["Tipo de Oportunidade", "Tipo Oportunidade", "Oportunidade", "Tipo", "Produto", "Familia", "Família"])
+        );
+        let equipmentType: string;
+        if (tipoOportunidade) {
+          equipmentType = /servi[cç]/i.test(tipoOportunidade) ? "Serviços" : "Energia";
         } else {
-          await supabase.from("cpes").insert({
-            client_id: clientId,
-            organization_id: organizationId,
-            equipment_type: "Energia",
-            serial_number: cpeSerial,
-            status: "active",
-            comercializador,
-            consumo_anual: consumoAnual || null,
-            fidelizacao_start: fidelizacaoStart,
-            fidelizacao_end: fidelizacaoEnd,
-            nivel_tensao: nivelTensao as any,
-          });
+          // Sem coluna de tipo: heuristica — linhas de servico vem sem consumo nem datas.
+          equipmentType = (!consumoAnual && !fidelizacaoStart && !fidelizacaoEnd) ? "Serviços" : "Energia";
         }
+
+        const { error: cpeError } = await supabase.from("cpes").insert({
+          client_id: clientId,
+          organization_id: organizationId,
+          equipment_type: equipmentType,
+          serial_number: cpeSerial,
+          status: "active",
+          comercializador,
+          consumo_anual: consumoAnual || null,
+          fidelizacao_start: fidelizacaoStart,
+          fidelizacao_end: fidelizacaoEnd,
+          nivel_tensao: nivelTensao as any,
+        });
+        if (cpeError) throw cpeError;
       }
 
       inserted++;
