@@ -46,9 +46,10 @@ export const importClients = async (
       const consumoAnual = parseNumericValue(
         findValue(row, ["Linha de Contrato: Consumo anual", "Consumo Anual", "Consumo"])
       );
-      const comercializador = normalizeTextValue(
+      const comercializadorRaw = normalizeTextValue(
         findValue(row, ["Comercializador", "Fornecedor"])
-      ) || "EDP Comercial";
+      );
+      const comercializador = comercializadorRaw || "EDP Comercial";
       const nivelTensao = normalizeTextValue(
         findValue(row, ["Nível Tensão", "Nivel Tensao", "Tensão"])
       ) || null;
@@ -150,36 +151,54 @@ export const importClients = async (
         clientId = newClient.id;
       }
 
-      // 4. Criar CPE para ESTA linha.
-      //    Decisao: cada linha do ficheiro = um registo proprio (mesmo que o numero
-      //    de CPE se repita). As linhas de "Oportunidade de Servicos" ficam com
-      //    equipment_type 'Servicos' (em vez de 'Energia'), para se distinguirem.
-      //    NOTA: nao deduplica -> reimportar o mesmo ficheiro cria duplicados.
+      // 4. Linhas de ENERGIA -> CPE. Linhas de SERVICOS -> proposta de servicos
+      //    (fase 2, falta mapear a coluna do valor).
+      //    REGRA: nunca duplicar. Se o CPE ja existe (mesmo cliente + numero), ATUALIZA;
+      //    so insere se nao existir. Na atualizacao nunca apaga dados com vazios.
       if (cpeSerial) {
         const tipoOportunidade = normalizeTextValue(
           findValue(row, ["Tipo de Oportunidade", "Tipo Oportunidade", "Oportunidade", "Tipo", "Produto", "Familia", "Família"])
         );
-        let equipmentType: string;
-        if (tipoOportunidade) {
-          equipmentType = /servi[cç]/i.test(tipoOportunidade) ? "Serviços" : "Energia";
-        } else {
-          // Sem coluna de tipo: heuristica — linhas de servico vem sem consumo nem datas.
-          equipmentType = (!consumoAnual && !fidelizacaoStart && !fidelizacaoEnd) ? "Serviços" : "Energia";
-        }
+        const isServico = tipoOportunidade
+          ? /servi[cç]/i.test(tipoOportunidade)
+          : (!consumoAnual && !fidelizacaoStart && !fidelizacaoEnd);
 
-        const { error: cpeError } = await supabase.from("cpes").insert({
-          client_id: clientId,
-          organization_id: organizationId,
-          equipment_type: equipmentType,
-          serial_number: cpeSerial,
-          status: "active",
-          comercializador,
-          consumo_anual: consumoAnual || null,
-          fidelizacao_start: fidelizacaoStart,
-          fidelizacao_end: fidelizacaoEnd,
-          nivel_tensao: nivelTensao as any,
-        });
-        if (cpeError) throw cpeError;
+        if (!isServico) {
+          // ENERGIA -> CPE (upsert pelo numero de CPE dentro do cliente).
+          const { data: existingCpe } = await supabase
+            .from("cpes")
+            .select("id")
+            .eq("client_id", clientId)
+            .eq("serial_number", cpeSerial)
+            .maybeSingle();
+
+          if (existingCpe) {
+            // Atualizar SEM sobrescrever valores existentes com vazios.
+            const updateData: Record<string, unknown> = { equipment_type: "Energia" };
+            if (consumoAnual) updateData.consumo_anual = consumoAnual;
+            if (comercializadorRaw) updateData.comercializador = comercializadorRaw;
+            if (fidelizacaoStart) updateData.fidelizacao_start = fidelizacaoStart;
+            if (fidelizacaoEnd) updateData.fidelizacao_end = fidelizacaoEnd;
+            if (nivelTensao) updateData.nivel_tensao = nivelTensao;
+            const { error: updErr } = await supabase.from("cpes").update(updateData).eq("id", existingCpe.id);
+            if (updErr) throw updErr;
+          } else {
+            const { error: insErr } = await supabase.from("cpes").insert({
+              client_id: clientId,
+              organization_id: organizationId,
+              equipment_type: "Energia",
+              serial_number: cpeSerial,
+              status: "active",
+              comercializador,
+              consumo_anual: consumoAnual || null,
+              fidelizacao_start: fidelizacaoStart,
+              fidelizacao_end: fidelizacaoEnd,
+              nivel_tensao: nivelTensao as any,
+            });
+            if (insErr) throw insErr;
+          }
+        }
+        // else: linha de Servicos -> proposta de servicos (fase 2; ignorada por agora).
       }
 
       inserted++;
