@@ -165,7 +165,7 @@ begin
     tbl := item->>'table';
 
     if to_regclass('public.' || tbl) is null then
-      raise notice 'has_module_permission RLS: tabela %% inexistente, saltada.', tbl;
+      raise notice 'has_module_permission RLS: tabela % inexistente, saltada.', tbl;
       continue;
     end if;
 
@@ -175,7 +175,7 @@ begin
     ) into has_org;
 
     if not has_org then
-      raise notice 'has_module_permission RLS: %% sem organization_id, saltada.', tbl;
+      raise notice 'has_module_permission RLS: % sem organization_id, saltada.', tbl;
       continue;
     end if;
 
@@ -184,7 +184,7 @@ begin
     where n.nspname = 'public' and c.relname = tbl;
 
     if not coalesce(has_rls, false) then
-      raise notice 'has_module_permission RLS: %% tem RLS desativada (politica criada mas inativa ate ativar RLS).', tbl;
+      raise notice 'has_module_permission RLS: % tem RLS desativada (politica criada mas inativa ate ativar RLS).', tbl;
     end if;
 
     -- INSERT
