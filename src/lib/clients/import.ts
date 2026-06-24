@@ -151,10 +151,11 @@ export const importClients = async (
         clientId = newClient.id;
       }
 
-      // 4. Linhas de ENERGIA -> CPE. Linhas de SERVICOS -> proposta de servicos
-      //    (fase 2, falta mapear a coluna do valor).
-      //    REGRA: nunca duplicar. Se o CPE ja existe (mesmo cliente + numero), ATUALIZA;
-      //    so insere se nao existir. Na atualizacao nunca apaga dados com vazios.
+      // 4. Cada linha -> CPE. Linhas de "Servicos" ficam com equipment_type 'Servicos'
+      //    (distinto de 'Energia'; o mesmo numero de CPE pode ter um de cada).
+      //    REGRA: nunca duplicar -> upsert por (cliente, numero de CPE, tipo):
+      //    atualiza se ja existe, insere se nao. Na atualizacao nunca sobrescreve
+      //    valores existentes com vazios.
       if (cpeSerial) {
         const tipoOportunidade = normalizeTextValue(
           findValue(row, ["Tipo de Oportunidade", "Tipo Oportunidade", "Oportunidade", "Tipo", "Produto", "Familia", "Família"])
@@ -162,43 +163,43 @@ export const importClients = async (
         const isServico = tipoOportunidade
           ? /servi[cç]/i.test(tipoOportunidade)
           : (!consumoAnual && !fidelizacaoStart && !fidelizacaoEnd);
+        const equipmentType = isServico ? "Serviços" : "Energia";
 
-        if (!isServico) {
-          // ENERGIA -> CPE (upsert pelo numero de CPE dentro do cliente).
-          const { data: existingCpe } = await supabase
-            .from("cpes")
-            .select("id")
-            .eq("client_id", clientId)
-            .eq("serial_number", cpeSerial)
-            .maybeSingle();
+        const { data: existingCpe } = await supabase
+          .from("cpes")
+          .select("id")
+          .eq("client_id", clientId)
+          .eq("serial_number", cpeSerial)
+          .eq("equipment_type", equipmentType)
+          .maybeSingle();
 
-          if (existingCpe) {
-            // Atualizar SEM sobrescrever valores existentes com vazios.
-            const updateData: Record<string, unknown> = { equipment_type: "Energia" };
-            if (consumoAnual) updateData.consumo_anual = consumoAnual;
-            if (comercializadorRaw) updateData.comercializador = comercializadorRaw;
-            if (fidelizacaoStart) updateData.fidelizacao_start = fidelizacaoStart;
-            if (fidelizacaoEnd) updateData.fidelizacao_end = fidelizacaoEnd;
-            if (nivelTensao) updateData.nivel_tensao = nivelTensao;
+        if (existingCpe) {
+          // Atualizar SEM sobrescrever valores existentes com vazios.
+          const updateData: Record<string, unknown> = {};
+          if (consumoAnual) updateData.consumo_anual = consumoAnual;
+          if (comercializadorRaw) updateData.comercializador = comercializadorRaw;
+          if (fidelizacaoStart) updateData.fidelizacao_start = fidelizacaoStart;
+          if (fidelizacaoEnd) updateData.fidelizacao_end = fidelizacaoEnd;
+          if (nivelTensao) updateData.nivel_tensao = nivelTensao;
+          if (Object.keys(updateData).length > 0) {
             const { error: updErr } = await supabase.from("cpes").update(updateData).eq("id", existingCpe.id);
             if (updErr) throw updErr;
-          } else {
-            const { error: insErr } = await supabase.from("cpes").insert({
-              client_id: clientId,
-              organization_id: organizationId,
-              equipment_type: "Energia",
-              serial_number: cpeSerial,
-              status: "active",
-              comercializador,
-              consumo_anual: consumoAnual || null,
-              fidelizacao_start: fidelizacaoStart,
-              fidelizacao_end: fidelizacaoEnd,
-              nivel_tensao: nivelTensao as any,
-            });
-            if (insErr) throw insErr;
           }
+        } else {
+          const { error: insErr } = await supabase.from("cpes").insert({
+            client_id: clientId,
+            organization_id: organizationId,
+            equipment_type: equipmentType,
+            serial_number: cpeSerial,
+            status: "active",
+            comercializador,
+            consumo_anual: consumoAnual || null,
+            fidelizacao_start: fidelizacaoStart,
+            fidelizacao_end: fidelizacaoEnd,
+            nivel_tensao: nivelTensao as any,
+          });
+          if (insErr) throw insErr;
         }
-        // else: linha de Servicos -> proposta de servicos (fase 2; ignorada por agora).
       }
 
       inserted++;
