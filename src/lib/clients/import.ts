@@ -27,6 +27,7 @@ export const importClients = async (
 
   if (rows.length > 0) {
     console.log("[importClients] Colunas detectadas:", Object.keys(rows[0]));
+    console.log("[importClients] Exemplo 1a linha:", JSON.stringify(rows[0]));
   }
 
   for (let i = 0; i < total; i++) {
@@ -80,6 +81,9 @@ export const importClients = async (
       };
       const fidelizacaoStart = formatDate(findValue(row, ["Data Inicio", "Linha de Contrato: Data de inici", "Start Date"]));
       const fidelizacaoEnd = formatDate(findValue(row, ["Data Fim", "Linha de Contrato: Data Fim de C", "End Date"]));
+
+      // DIAGNOSTICO (temporario): mostra o que foi detetado por linha.
+      console.log(`[importClients] L${i + 1} "${companyName}" cpe=${cpeSerial || "-"} consumo=${consumoAnual ?? "-"} ini=${fidelizacaoStart ?? "-"} fim=${fidelizacaoEnd ?? "-"}`);
 
       if (!companyName) {
         throw new Error(`Nome da empresa é obrigatório. Colunas encontradas: ${Object.keys(row).join(" | ")}`);
