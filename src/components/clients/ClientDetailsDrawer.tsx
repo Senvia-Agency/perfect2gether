@@ -417,12 +417,10 @@ export function ClientDetailsDrawer({
                               <p className="text-xl font-bold">{(client.total_mwh || 0).toFixed(2)}</p>
                               <p className="text-xs text-muted-foreground">MWh</p>
                             </div>
-                            {!isP2G && (
-                              <div className="text-center p-3 bg-muted/50 rounded-lg">
-                                <p className="text-xl font-bold">{(client.total_kwp || 0).toFixed(2)}</p>
-                                <p className="text-xs text-muted-foreground">kWp</p>
-                              </div>
-                            )}
+                            <div className="text-center p-3 bg-muted/50 rounded-lg">
+                              <p className="text-xl font-bold">{(client.total_kwp || 0).toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">kWp</p>
+                            </div>
                           </>
                         )}
                         {!isTelecom && (

@@ -215,6 +215,24 @@ export function useConvertLeadToClient() {
 
       if (error) throw error;
 
+      // Backfill client_id on existing proposals/sales linked to this lead
+      // (proposals are created with client_id=null when created from a lead)
+      try {
+        await supabase
+          .from('proposals')
+          .update({ client_id: data.id })
+          .eq('lead_id', leadData.lead_id)
+          .is('client_id', null);
+
+        await supabase
+          .from('sales')
+          .update({ client_id: data.id })
+          .eq('lead_id', leadData.lead_id)
+          .is('client_id', null);
+      } catch (backfillError) {
+        console.error('[useConvertLeadToClient] Failed to backfill client_id on proposals/sales:', backfillError);
+      }
+
       // Auto-create CPE if lead has CPE data
       const customData = lead?.custom_data as Record<string, unknown> | null;
       const cpeValue = customData?.cpe as string | undefined;

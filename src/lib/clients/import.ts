@@ -186,7 +186,15 @@ export const importClients = async (
             if (dataFimKey) valorCell = row[rowKeys[rowKeys.indexOf(dataFimKey) + 1]];
           }
           const valorStr = normalizeTextValue(valorCell);
-          const noteText = valorStr ? `Serviço: ${valorStr}` : `Serviço (linha ${i + 1})`;
+
+          // KWP e Modalidade para servicos (solar/fotovoltaico)
+          const kwpStr = normalizeTextValue(findValue(row, ["KWP", "Potencia", "kWp"]));
+          const modalidadeStr = normalizeTextValue(findValue(row, ["Modalidade Pagamento", "Modalidade"]));
+
+          const parts = [`Serviço: ${valorStr || `${i + 1}`}`];
+          if (modalidadeStr) parts.push(`Modalidade: ${modalidadeStr}`);
+          if (kwpStr) parts.push(`KWP: ${kwpStr}`);
+          const noteText = parts.join(" | ");
 
           const { data: existingServ } = await supabase
             .from("cpes")

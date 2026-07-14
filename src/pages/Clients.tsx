@@ -74,13 +74,15 @@ export default function Clients() {
     return clients.filter((client) => {
       if (search.trim()) {
         const searchLower = search.toLowerCase();
+        const searchNormalized = search.replace(/\s+/g, '');
         const matchesSearch = 
           client.name.toLowerCase().includes(searchLower) ||
           client.email?.toLowerCase().includes(searchLower) ||
           client.phone?.includes(search) ||
           client.company?.toLowerCase().includes(searchLower) ||
           client.code?.toLowerCase().includes(searchLower) ||
-          client.nif?.includes(search);
+          client.nif?.replace(/\s+/g, '').includes(searchNormalized) ||
+          client.company_nif?.replace(/\s+/g, '').includes(searchNormalized);
         
         if (!matchesSearch) return false;
       }

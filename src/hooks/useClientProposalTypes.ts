@@ -11,20 +11,41 @@ export function useClientProposalTypes() {
     enabled: !!organization?.id && isTelecom,
     queryFn: async () => {
       // Fetch distinct proposal_type per client_id from proposals
-      const { data: proposalRows } = await supabase
+      const { data: proposalRows, error: proposalError } = await supabase
         .from('proposals')
         .select('client_id, proposal_type')
         .eq('organization_id', organization!.id)
         .not('client_id', 'is', null)
         .not('proposal_type', 'is', null);
 
+      if (proposalError) {
+        console.error('[useClientProposalTypes] Error fetching proposals:', proposalError);
+      }
+
       // Fetch distinct proposal_type per client_id from sales
-      const { data: saleRows } = await supabase
+      const { data: saleRows, error: saleError } = await supabase
         .from('sales')
         .select('client_id, proposal_type')
         .eq('organization_id', organization!.id)
         .not('client_id', 'is', null)
         .not('proposal_type', 'is', null);
+
+      if (saleError) {
+        console.error('[useClientProposalTypes] Error fetching sales:', saleError);
+      }
+
+      // Fetch distinct equipment_type per client_id from cpes
+      // (imported clients have CPEs but no proposals/sales)
+      const { data: cpeRows, error: cpeError } = await supabase
+        .from('cpes')
+        .select('client_id, equipment_type')
+        .eq('organization_id', organization!.id)
+        .not('client_id', 'is', null)
+        .not('equipment_type', 'is', null);
+
+      if (cpeError) {
+        console.error('[useClientProposalTypes] Error fetching cpes:', cpeError);
+      }
 
       const map: Record<string, Set<string>> = {};
 
@@ -39,6 +60,23 @@ export function useClientProposalTypes() {
 
       addToMap(proposalRows);
       addToMap(saleRows);
+
+      // Map CPE equipment_type to proposal_type filter values
+      const cpeTypeMap: Record<string, string> = {
+        'energia': 'energia',
+        'serviços': 'servicos',
+        'servicos': 'servicos',
+      };
+      if (cpeRows) {
+        for (const row of cpeRows) {
+          if (!row.client_id || !row.equipment_type) continue;
+          const normalized = row.equipment_type.toLowerCase().trim();
+          const filterValue = cpeTypeMap[normalized];
+          if (!filterValue) continue;
+          if (!map[row.client_id]) map[row.client_id] = new Set();
+          map[row.client_id].add(filterValue);
+        }
+      }
 
       // Convert Sets to arrays for easier consumption
       const result: Record<string, string[]> = {};
