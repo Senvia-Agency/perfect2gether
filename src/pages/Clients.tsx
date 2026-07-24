@@ -206,6 +206,24 @@ export default function Clients() {
           const wb = read(bstr, { type: 'binary', cellDates: true });
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
+
+          // Alguns exports (CRM/ERP) declaram um intervalo (!ref) mais pequeno do
+          // que os dados reais, cortando as colunas mais a direita (ex.: Valor de
+          // Venda, Modalidade Pagamento, KWP). Recalcular o intervalo a partir das
+          // celulas existentes garante que TODAS as colunas sao lidas.
+          const cellRefs = Object.keys(ws).filter((k) => k[0] !== "!");
+          if (cellRefs.length > 0) {
+            let minR = Infinity, minC = Infinity, maxR = -1, maxC = -1;
+            for (const ref of cellRefs) {
+              const { r, c } = utils.decode_cell(ref);
+              if (r < minR) minR = r;
+              if (c < minC) minC = c;
+              if (r > maxR) maxR = r;
+              if (c > maxC) maxC = c;
+            }
+            ws["!ref"] = utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
+          }
+
           const data = utils.sheet_to_json(ws);
 
           if (data.length === 0) {

@@ -160,13 +160,13 @@ export const importClients = async (
       //    Dedup dos servicos por (cliente+CPE+'Servicos'+nota/valor): linhas com
       //    valores diferentes ficam distintas; reimportar atualiza, nunca duplica.
       if (cpeSerial) {
-        // Servico vs Energia. Sinal FIAVEL (neste ficheiro): linhas de energia tem
-        // consumo e/ou datas; linhas de servico nao tem (so um valor). Usamos isso
-        // como base; a coluna de tipo, se existir e disser explicitamente, confirma.
-        // (Aliases de tipo propositadamente restritos para nao apanhar coluna errada.)
+        // Servico vs Energia. Sinal PRIMARIO: a coluna "Tipo de registro de
+        // oportunidade" ("Oportunidade de Servicos" / "Oportunidade de Energia").
+        // Fallback (ficheiros sem essa coluna): linhas de energia tem consumo e/ou
+        // datas; linhas de servico nao tem.
         const hasEnergyData = !!(consumoAnual || fidelizacaoStart || fidelizacaoEnd);
         const tipoTxt = normalizeTextValue(
-          findValue(row, ["Tipo de Oportunidade", "Tipo Oportunidade", "Tipo de Negócio", "Tipo Negocio"])
+          findValue(row, ["Tipo de registro de oportunidade", "Tipo de Oportunidade", "Tipo Oportunidade", "Tipo de Negócio", "Tipo Negocio"])
         );
         let isServico: boolean;
         if (tipoTxt && /servi[cç]/i.test(tipoTxt)) isServico = true;
