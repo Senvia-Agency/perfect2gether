@@ -196,6 +196,9 @@ export const importClients = async (
           if (kwpStr) parts.push(`KWP: ${kwpStr}`);
           const noteText = parts.join(" | ");
 
+          // DIAGNOSTICO (temporario): confirma o que foi capturado por linha de servico.
+          console.log(`[importClients] L${i + 1} SERVICO valor="${valorStr}" modalidade="${modalidadeStr}" kwp="${kwpStr}"`);
+
           const { data: existingServ } = await supabase
             .from("cpes")
             .select("id")

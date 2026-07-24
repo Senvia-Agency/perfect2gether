@@ -224,7 +224,9 @@ export default function Clients() {
             ws["!ref"] = utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
           }
 
-          const data = utils.sheet_to_json(ws);
+          // defval: null garante que TODAS as colunas aparecem em todas as linhas
+          // (mesmo vazias), para o diagnostico ser fiavel e a leitura consistente.
+          const data = utils.sheet_to_json(ws, { defval: null });
 
           if (data.length === 0) {
             toast.error("O ficheiro está vazio.", { id: toastId });
