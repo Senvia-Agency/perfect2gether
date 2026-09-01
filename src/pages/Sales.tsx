@@ -314,22 +314,6 @@ export default function Sales() {
         <Card className="bg-card/50 border-border/50">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Package className="h-4 w-4 text-blue-500" />
-              <span className="text-xs text-muted-foreground">Em Progresso</span>
-            </div>
-            <p className="text-2xl font-bold text-blue-500">{stats.inProgress}</p>
-            {isTelecom && modules.energy && (
-              <TypeSplit
-                energia={typeStats.inProgress.energiaCount}
-                servicos={typeStats.inProgress.servicosCount}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/50 border-border/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
               <Package className="h-4 w-4 text-purple-500" />
               <span className="text-xs text-muted-foreground">Entregues</span>
             </div>
@@ -341,6 +325,22 @@ export default function Sales() {
                 energiaUnit={formatCurrency(typeStats.fulfilled.energiaValue)}
                 servicos={typeStats.fulfilled.servicosCount}
                 servicosUnit={formatCurrency(typeStats.fulfilled.servicosValue)}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/50 border-border/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Package className="h-4 w-4 text-blue-500" />
+              <span className="text-xs text-muted-foreground">Em Progresso</span>
+            </div>
+            <p className="text-2xl font-bold text-blue-500">{stats.inProgress}</p>
+            {isTelecom && modules.energy && (
+              <TypeSplit
+                energia={typeStats.inProgress.energiaCount}
+                servicos={typeStats.inProgress.servicosCount}
               />
             )}
           </CardContent>
