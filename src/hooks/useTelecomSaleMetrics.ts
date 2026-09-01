@@ -19,13 +19,17 @@ export function useTelecomSaleMetrics() {
 
       const sales = allSales || [];
 
-      const totalMWh = sales.reduce((sum, s) => sum + (Number(s.consumo_anual) || 0), 0) / 1000;
+      // O MWh e exclusivo de energia: vendas de servicos nao entram, mesmo que
+      // tenham consumo_anual gravado. proposal_type a null conta como energia.
+      const isEnergiaRow = (s: { proposal_type: string | null }) => (s.proposal_type ?? 'energia') !== 'servicos';
+
+      const totalMWh = sales.filter(isEnergiaRow).reduce((sum, s) => sum + (Number(s.consumo_anual) || 0), 0) / 1000;
       const totalKWp = sales
         .filter(s => s.proposal_type === 'servicos')
         .reduce((sum, s) => sum + (Number(s.kwp) || 0), 0);
 
       const delivered = sales.filter(s => s.status === 'delivered' || s.status === 'fulfilled');
-      const deliveredMWh = delivered.reduce((sum, s) => sum + (Number(s.consumo_anual) || 0), 0) / 1000;
+      const deliveredMWh = delivered.filter(isEnergiaRow).reduce((sum, s) => sum + (Number(s.consumo_anual) || 0), 0) / 1000;
       const deliveredKWp = delivered
         .filter(s => s.proposal_type === 'servicos')
         .reduce((sum, s) => sum + (Number(s.kwp) || 0), 0);

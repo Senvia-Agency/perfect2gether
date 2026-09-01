@@ -13,6 +13,7 @@ import { SaleDetailsModal } from "@/components/sales/SaleDetailsModal";
 import { CreateSaleModal } from "@/components/sales/CreateSaleModal";
 import { EditSaleModal } from "@/components/sales/EditSaleModal";
 import { TeamMemberFilter } from "@/components/dashboard/TeamMemberFilter";
+import { TypeSplit } from "@/components/shared/TypeSplit";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { formatCurrency } from "@/lib/format";
 import { exportToExcel, mapPerfect2GetherSalesForExport } from "@/lib/export";
@@ -28,6 +29,9 @@ import { useTelecomSaleMetrics } from "@/hooks/useTelecomSaleMetrics";
 import { useModules } from "@/hooks/useModules";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+// Vendas legadas sem proposal_type contam como energia (igual ao backfill da BD).
+const isEnergiaSale = (s: SaleWithDetails) => (s.proposal_type ?? 'energia') === 'energia';
 
 export default function Sales() {
   // Subscribe to realtime updates
@@ -124,6 +128,27 @@ export default function Sales() {
       inProgress: inProgress.length,
       fulfilled: fulfilled.length,
       fulfilledValue: fulfilled.reduce((acc, s) => acc + (s.total_value || 0), 0),
+    };
+  }, [filteredSales]);
+
+  // Breakdown Energia / Servicos por card (respeita os filtros ativos)
+  const typeStats = useMemo(() => {
+    const byType = (list: SaleWithDetails[]) => {
+      const energia = list.filter(isEnergiaSale);
+      const servicos = list.filter((s) => !isEnergiaSale(s));
+      const sum = (l: SaleWithDetails[]) => l.reduce((acc, s) => acc + (s.total_value || 0), 0);
+      return {
+        energiaCount: energia.length,
+        energiaValue: sum(energia),
+        servicosCount: servicos.length,
+        servicosValue: sum(servicos),
+      };
+    };
+    return {
+      total: byType(filteredSales),
+      inProgress: byType(filteredSales.filter((s) => s.status === 'in_progress')),
+      fulfilled: byType(filteredSales.filter((s) => s.status === 'fulfilled')),
+      delivered: byType(filteredSales.filter((s) => s.status === 'delivered')),
     };
   }, [filteredSales]);
 
@@ -275,10 +300,13 @@ export default function Sales() {
             </div>
             <p className="text-2xl font-bold">{stats.total}</p>
             <p className="text-xs text-muted-foreground">{formatCurrency(stats.totalValue)}</p>
-            {isTelecom && modules.energy && telecomMetrics && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {telecomMetrics.totalMWh.toFixed(1)} MWh · {telecomMetrics.totalKWp.toFixed(1)} kWp
-              </p>
+            {isTelecom && modules.energy && (
+              <TypeSplit
+                energia={typeStats.total.energiaCount}
+                energiaUnit={`${formatCurrency(typeStats.total.energiaValue)}${telecomMetrics ? ` · ${telecomMetrics.totalMWh.toFixed(1)} MWh` : ''}`}
+                servicos={typeStats.total.servicosCount}
+                servicosUnit={`${formatCurrency(typeStats.total.servicosValue)}${telecomMetrics ? ` · ${telecomMetrics.totalKWp.toFixed(1)} kWp` : ''}`}
+              />
             )}
           </CardContent>
         </Card>
@@ -290,6 +318,12 @@ export default function Sales() {
               <span className="text-xs text-muted-foreground">Em Progresso</span>
             </div>
             <p className="text-2xl font-bold text-blue-500">{stats.inProgress}</p>
+            {isTelecom && modules.energy && (
+              <TypeSplit
+                energia={typeStats.inProgress.energiaCount}
+                servicos={typeStats.inProgress.servicosCount}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -301,6 +335,14 @@ export default function Sales() {
             </div>
             <p className="text-2xl font-bold text-purple-500">{stats.fulfilled}</p>
             <p className="text-xs text-muted-foreground">{formatCurrency(stats.fulfilledValue)}</p>
+            {isTelecom && modules.energy && (
+              <TypeSplit
+                energia={typeStats.fulfilled.energiaCount}
+                energiaUnit={formatCurrency(typeStats.fulfilled.energiaValue)}
+                servicos={typeStats.fulfilled.servicosCount}
+                servicosUnit={formatCurrency(typeStats.fulfilled.servicosValue)}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -312,10 +354,13 @@ export default function Sales() {
             </div>
             <p className="text-2xl font-bold text-green-500">{stats.delivered}</p>
             <p className="text-xs text-muted-foreground">{formatCurrency(stats.deliveredValue)}</p>
-            {isTelecom && modules.energy && telecomMetrics && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {telecomMetrics.deliveredMWh.toFixed(1)} MWh · {telecomMetrics.deliveredKWp.toFixed(1)} kWp
-              </p>
+            {isTelecom && modules.energy && (
+              <TypeSplit
+                energia={typeStats.delivered.energiaCount}
+                energiaUnit={`${formatCurrency(typeStats.delivered.energiaValue)}${telecomMetrics ? ` · ${telecomMetrics.deliveredMWh.toFixed(1)} MWh` : ''}`}
+                servicos={typeStats.delivered.servicosCount}
+                servicosUnit={`${formatCurrency(typeStats.delivered.servicosValue)}${telecomMetrics ? ` · ${telecomMetrics.deliveredKWp.toFixed(1)} kWp` : ''}`}
+              />
             )}
           </CardContent>
         </Card>

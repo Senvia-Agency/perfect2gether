@@ -16,6 +16,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 import { ProposalDetailsModal } from '@/components/proposals/ProposalDetailsModal';
 import { CreateProposalModal } from '@/components/proposals/CreateProposalModal';
+import { TypeSplit } from '@/components/shared/TypeSplit';
 import { 
   PROPOSAL_STATUS_LABELS, 
   PROPOSAL_STATUS_COLORS, 
@@ -75,10 +76,16 @@ export default function Proposals() {
     return acc;
   }, {} as Record<ProposalStatus, Proposal[]>);
 
-  const totalValue = filteredProposals.reduce((sum, p) => sum + Number(p.total_value), 0);
-  const pendingValue = filteredProposals
-    .filter(p => ['sent', 'negotiating'].includes(p.status))
-    .reduce((sum, p) => sum + Number(p.total_value), 0);
+  const sumValue = (list: Proposal[]) => list.reduce((sum, p) => sum + Number(p.total_value), 0);
+  // Propostas legadas sem proposal_type contam como energia (igual ao backfill da BD).
+  const isEnergia = (p: Proposal) => (p.proposal_type ?? 'energia') === 'energia';
+  const energiaProposals = filteredProposals.filter(isEnergia);
+  const servicosProposals = filteredProposals.filter((p) => !isEnergia(p));
+  const pendingProposals = filteredProposals.filter(p => ['sent', 'negotiating'].includes(p.status));
+  const acceptedProposals = proposalsByStatus.accepted ?? [];
+
+  const totalValue = sumValue(filteredProposals);
+  const pendingValue = sumValue(pendingProposals);
 
   return (
     <>
@@ -106,6 +113,12 @@ export default function Proposals() {
             <CardContent className="pt-4">
               <p className="text-sm text-muted-foreground">Total Propostas</p>
               <p className="text-2xl font-bold">{filteredProposals.length}</p>
+              {isTelecom && (
+                <TypeSplit
+                  energia={energiaProposals.length}
+                  servicos={servicosProposals.length}
+                />
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -113,9 +126,12 @@ export default function Proposals() {
               <p className="text-sm text-muted-foreground">Valor Total</p>
               <p className="text-2xl font-bold text-primary">{formatCurrency(totalValue)}</p>
               {isTelecom && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {(telecomMetrics?.totalMWh ?? 0).toFixed(1)} MWh · {(telecomMetrics?.totalKWp ?? 0).toFixed(1)} kWp
-                </p>
+                <TypeSplit
+                  energia={formatCurrency(sumValue(energiaProposals))}
+                  energiaUnit={`${(telecomMetrics?.totalMWh ?? 0).toFixed(1)} MWh`}
+                  servicos={formatCurrency(sumValue(servicosProposals))}
+                  servicosUnit={`${(telecomMetrics?.totalKWp ?? 0).toFixed(1)} kWp`}
+                />
               )}
             </CardContent>
           </Card>
@@ -124,16 +140,25 @@ export default function Proposals() {
               <p className="text-sm text-muted-foreground">Em Negociação</p>
               <p className="text-2xl font-bold text-amber-500">{formatCurrency(pendingValue)}</p>
               {isTelecom && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {(telecomMetrics?.pendingMWh ?? 0).toFixed(1)} MWh · {(telecomMetrics?.pendingKWp ?? 0).toFixed(1)} kWp
-                </p>
+                <TypeSplit
+                  energia={formatCurrency(sumValue(pendingProposals.filter(isEnergia)))}
+                  energiaUnit={`${(telecomMetrics?.pendingMWh ?? 0).toFixed(1)} MWh`}
+                  servicos={formatCurrency(sumValue(pendingProposals.filter((p) => !isEnergia(p))))}
+                  servicosUnit={`${(telecomMetrics?.pendingKWp ?? 0).toFixed(1)} kWp`}
+                />
               )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4">
               <p className="text-sm text-muted-foreground">Aceites</p>
-              <p className="text-2xl font-bold text-green-500">{proposalsByStatus.accepted?.length || 0}</p>
+              <p className="text-2xl font-bold text-green-500">{acceptedProposals.length}</p>
+              {isTelecom && (
+                <TypeSplit
+                  energia={acceptedProposals.filter(isEnergia).length}
+                  servicos={acceptedProposals.filter((p) => !isEnergia(p)).length}
+                />
+              )}
             </CardContent>
           </Card>
         </div>
