@@ -14,6 +14,7 @@ import { Loader2 } from "lucide-react";
 import { NicheType } from "@/lib/dashboard-templates";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useModules } from "@/hooks/useModules";
+import { usePermissions } from "@/hooks/usePermissions";
 import { ActivationsPanel } from "@/components/dashboard/ActivationsPanel";
 import { DashboardErrorBoundary } from "@/components/dashboard/DashboardErrorBoundary";
 
@@ -25,6 +26,7 @@ export default function Dashboard() {
   ]);
   const { profile, organization } = useAuth();
   const { modules } = useModules();
+  const { can } = usePermissions();
   const isTelecom = organization?.niche === 'telecom';
   const clientsModuleEnabled = modules.clients;
   const calendarModuleEnabled = modules.calendar !== false;
@@ -85,7 +87,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {commissionsEnabled && (
+          {commissionsEnabled && can('finance', 'commissions', 'view') && (
             <DashboardErrorBoundary><CommissionsWidget /></DashboardErrorBoundary>
           )}
 

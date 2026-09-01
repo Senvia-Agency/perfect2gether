@@ -50,7 +50,7 @@ interface RowData {
 
 export function SalesPerformancePanel() {
   const { user, profile, organization } = useAuth();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, can } = usePermissions();
   const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
   const { selectedMemberId, canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { selectedMonth } = useDashboardPeriod();
@@ -64,6 +64,9 @@ export function SalesPerformancePanel() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const showEnergy = organization?.niche === 'telecom' && modules.energy;
+  // A coluna de Comissao so aparece a quem tem permissao de ver comissoes.
+  // Perfis de apoio (ex.: Back Office) veem os painéis sem os valores de comissao.
+  const showCommission = can('finance', 'commissions', 'view');
   const currentMonthLabel = format(startOfMonth(selectedMonth), "MMMM yyyy", { locale: pt });
   const loading = objLoading || salesLoading;
 
@@ -120,7 +123,7 @@ export function SalesPerformancePanel() {
       <TableHead className="text-xs text-right">NIFs</TableHead>
       {showEnergy && <TableHead className="text-xs text-right">Energia</TableHead>}
       {showEnergy && <TableHead className="text-xs text-right hidden sm:table-cell">Solar</TableHead>}
-      <TableHead className="text-xs text-right">Comissão</TableHead>
+      {showCommission && <TableHead className="text-xs text-right">Comissão</TableHead>}
     </TableRow>
   );
 
@@ -134,7 +137,7 @@ export function SalesPerformancePanel() {
             <TableCell className="text-xs text-right py-1.5">{row.nifs}</TableCell>
             {showEnergy && <TableCell className="text-xs text-right py-1.5">{formatNumber(row.energia)}</TableCell>}
             {showEnergy && <TableCell className="text-xs text-right py-1.5 hidden sm:table-cell">{formatNumber(row.solar)}</TableCell>}
-            <TableCell className="text-xs text-right py-1.5 font-medium text-primary">{formatCurrency(row.comissao)}</TableCell>
+            {showCommission && <TableCell className="text-xs text-right py-1.5 font-medium text-primary">{formatCurrency(row.comissao)}</TableCell>}
           </TableRow>
         ))}
         {showTotals && (
@@ -143,7 +146,7 @@ export function SalesPerformancePanel() {
             <TableCell className="text-xs text-right font-semibold py-1.5">{objTotals.nifs}</TableCell>
             {showEnergy && <TableCell className="text-xs text-right font-semibold py-1.5">{formatNumber(objTotals.energia)}</TableCell>}
             {showEnergy && <TableCell className="text-xs text-right font-semibold py-1.5 hidden sm:table-cell">{formatNumber(objTotals.solar)}</TableCell>}
-            <TableCell className="text-xs text-right font-semibold py-1.5 text-primary">{formatCurrency(objTotals.comissao)}</TableCell>
+            {showCommission && <TableCell className="text-xs text-right font-semibold py-1.5 text-primary">{formatCurrency(objTotals.comissao)}</TableCell>}
           </TableRow>
         )}
       </TableBody>
@@ -160,7 +163,7 @@ export function SalesPerformancePanel() {
             <TableCell className="text-xs text-right py-1.5">{row.nifs}</TableCell>
             {showEnergy && <TableCell className="text-xs text-right py-1.5">{formatNumber(row.energia)}</TableCell>}
             {showEnergy && <TableCell className="text-xs text-right py-1.5 hidden sm:table-cell">{formatNumber(row.solar)}</TableCell>}
-            <TableCell className="text-xs text-right py-1.5 font-medium text-green-500">{formatCurrency(row.comissao)}</TableCell>
+            {showCommission && <TableCell className="text-xs text-right py-1.5 font-medium text-green-500">{formatCurrency(row.comissao)}</TableCell>}
           </TableRow>
         ))}
         {showTotals && (
@@ -169,7 +172,7 @@ export function SalesPerformancePanel() {
             <TableCell className="text-xs text-right font-semibold py-1.5">{salesTotals.nifs}</TableCell>
             {showEnergy && <TableCell className="text-xs text-right font-semibold py-1.5">{formatNumber(salesTotals.energia)}</TableCell>}
             {showEnergy && <TableCell className="text-xs text-right font-semibold py-1.5 hidden sm:table-cell">{formatNumber(salesTotals.solar)}</TableCell>}
-            <TableCell className="text-xs text-right font-semibold py-1.5 text-green-500">{formatCurrency(salesTotals.comissao)}</TableCell>
+            {showCommission && <TableCell className="text-xs text-right font-semibold py-1.5 text-green-500">{formatCurrency(salesTotals.comissao)}</TableCell>}
           </TableRow>
         )}
       </TableBody>
@@ -188,7 +191,7 @@ export function SalesPerformancePanel() {
               <TableCell className={`text-xs text-right py-1.5 ${percentColor(row.nifs, obj.nifs)}`}>{formatPercent(row.nifs, obj.nifs)}</TableCell>
               {showEnergy && <TableCell className={`text-xs text-right py-1.5 ${percentColor(row.energia, obj.energia)}`}>{formatPercent(row.energia, obj.energia)}</TableCell>}
               {showEnergy && <TableCell className={`text-xs text-right py-1.5 hidden sm:table-cell ${percentColor(row.solar, obj.solar)}`}>{formatPercent(row.solar, obj.solar)}</TableCell>}
-              <TableCell className={`text-xs text-right py-1.5 font-medium ${percentColor(row.comissao, obj.comissao)}`}>{formatPercent(row.comissao, obj.comissao)}</TableCell>
+              {showCommission && <TableCell className={`text-xs text-right py-1.5 font-medium ${percentColor(row.comissao, obj.comissao)}`}>{formatPercent(row.comissao, obj.comissao)}</TableCell>}
             </TableRow>
           );
         })}
@@ -198,7 +201,7 @@ export function SalesPerformancePanel() {
             <TableCell className={`text-xs text-right font-semibold py-1.5 ${percentColor(salesTotals.nifs, objTotals.nifs)}`}>{formatPercent(salesTotals.nifs, objTotals.nifs)}</TableCell>
             {showEnergy && <TableCell className={`text-xs text-right font-semibold py-1.5 ${percentColor(salesTotals.energia, objTotals.energia)}`}>{formatPercent(salesTotals.energia, objTotals.energia)}</TableCell>}
             {showEnergy && <TableCell className={`text-xs text-right font-semibold py-1.5 hidden sm:table-cell ${percentColor(salesTotals.solar, objTotals.solar)}`}>{formatPercent(salesTotals.solar, objTotals.solar)}</TableCell>}
-            <TableCell className={`text-xs text-right font-semibold py-1.5 ${percentColor(salesTotals.comissao, objTotals.comissao)}`}>{formatPercent(salesTotals.comissao, objTotals.comissao)}</TableCell>
+            {showCommission && <TableCell className={`text-xs text-right font-semibold py-1.5 ${percentColor(salesTotals.comissao, objTotals.comissao)}`}>{formatPercent(salesTotals.comissao, objTotals.comissao)}</TableCell>}
           </TableRow>
         )}
       </TableBody>

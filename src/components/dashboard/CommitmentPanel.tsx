@@ -38,6 +38,8 @@ export function CommitmentPanel() {
   const { user, profile, organization } = useAuth();
   const { can } = usePermissions();
   const canManageCommitments = can('gestao', 'commitments', 'manage');
+  // Coluna de Comissao apenas para quem tem permissao de a ver.
+  const showCommission = can('finance', 'commissions', 'view');
   const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
   const { selectedMemberId, canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { selectedMonth } = useDashboardPeriod();
@@ -145,7 +147,7 @@ export function CommitmentPanel() {
                   <TableHead className="text-xs text-right">NIFs</TableHead>
                   {showEnergy && <TableHead className="text-xs text-right">Energia (MWh)</TableHead>}
                   {showEnergy && <TableHead className="text-xs text-right hidden sm:table-cell">Solar (kWp)</TableHead>}
-                  <TableHead className="text-xs text-right">Comissão</TableHead>
+                  {showCommission && <TableHead className="text-xs text-right">Comissão</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -155,7 +157,7 @@ export function CommitmentPanel() {
                     <TableCell className="text-xs text-right py-1.5">{row.nifs}</TableCell>
                     {showEnergy && <TableCell className="text-xs text-right py-1.5">{formatNumber(row.energia)}</TableCell>}
                     {showEnergy && <TableCell className="text-xs text-right py-1.5 hidden sm:table-cell">{formatNumber(row.solar)}</TableCell>}
-                    <TableCell className="text-xs text-right py-1.5 font-medium text-green-500">{formatCurrency(row.comissao)}</TableCell>
+                    {showCommission && <TableCell className="text-xs text-right py-1.5 font-medium text-green-500">{formatCurrency(row.comissao)}</TableCell>}
                   </TableRow>
                 ))}
                 {canFilterByTeam && rows.length > 1 && (
@@ -164,7 +166,7 @@ export function CommitmentPanel() {
                     <TableCell className="text-xs text-right font-semibold py-1.5">{totals.nifs}</TableCell>
                     {showEnergy && <TableCell className="text-xs text-right font-semibold py-1.5">{formatNumber(totals.energia)}</TableCell>}
                     {showEnergy && <TableCell className="text-xs text-right font-semibold py-1.5 hidden sm:table-cell">{formatNumber(totals.solar)}</TableCell>}
-                    <TableCell className="text-xs text-right font-semibold py-1.5 text-green-500">{formatCurrency(totals.comissao)}</TableCell>
+                    {showCommission && <TableCell className="text-xs text-right font-semibold py-1.5 text-green-500">{formatCurrency(totals.comissao)}</TableCell>}
                   </TableRow>
                 )}
               </TableBody>
