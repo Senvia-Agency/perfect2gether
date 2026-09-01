@@ -15,6 +15,7 @@ import {
   Package,
   BarChart3,
   Zap,
+  XCircle,
   type LucideIcon
 } from "lucide-react";
 
@@ -26,8 +27,13 @@ export type WidgetType =
   | 'leads_social'
   | 'leads_direct'
   | 'conversion_rate'
+  | 'leads_scheduled'
+  | 'leads_won'
+  | 'leads_lost'
   | 'sales_delivered'
   | 'sales_active'
+  | 'sales_fulfilled'
+  | 'sales_in_progress'
   | 'proposals_open'
   | 'proposals_accepted'
   // Clinic specific
@@ -168,6 +174,48 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetTemplate> = {
     requiredModule: 'sales',
     chartType: 'bar',
     description: 'Vendas pendentes ou em progresso',
+  },
+  leads_scheduled: {
+    type: 'leads_scheduled',
+    title: 'Leads Agendadas',
+    icon: Calendar,
+    defaultVisible: false,
+    chartType: 'bar',
+    description: 'Leads com estado Agendado (quantidade e valor)',
+  },
+  leads_won: {
+    type: 'leads_won',
+    title: 'Leads Ganhas',
+    icon: Target,
+    defaultVisible: false,
+    chartType: 'bar',
+    description: 'Leads com estado Ganho (quantidade e valor)',
+  },
+  leads_lost: {
+    type: 'leads_lost',
+    title: 'Leads Perdidas',
+    icon: XCircle,
+    defaultVisible: false,
+    chartType: 'bar',
+    description: 'Leads com estado Perdido (quantidade e valor)',
+  },
+  sales_fulfilled: {
+    type: 'sales_fulfilled',
+    title: 'Vendas Entregues',
+    icon: Package,
+    defaultVisible: false,
+    requiredModule: 'sales',
+    chartType: 'bar',
+    description: 'Vendas com estado Entregue (quantidade e valor)',
+  },
+  sales_in_progress: {
+    type: 'sales_in_progress',
+    title: 'Vendas Em Progresso',
+    icon: Clock,
+    defaultVisible: false,
+    requiredModule: 'sales',
+    chartType: 'bar',
+    description: 'Vendas com estado Em Progresso (quantidade e valor)',
   },
   proposals_open: {
     type: 'proposals_open',

@@ -221,6 +221,41 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
         };
       }
 
+      // Quantidade + valor por estado. Leads usam o campo 'value'; vendas o 'total_value'.
+      case 'leads_scheduled':
+      case 'leads_won':
+      case 'leads_lost': {
+        const statusByWidget = {
+          leads_scheduled: 'scheduled',
+          leads_won: 'won',
+          leads_lost: 'lost',
+        } as const;
+        const target = statusByWidget[widgetType as keyof typeof statusByWidget];
+        const filtered = leads.filter(l => l.status === target);
+        const totalValue = filtered.reduce((sum, l) => sum + (Number(l.value) || 0), 0);
+
+        return {
+          value: filtered.length.toString(),
+          subtitle: `€${totalValue.toLocaleString('pt-PT')} total`,
+          chartData: generateLast7DaysChart(filtered),
+          isLoading: leadsLoading,
+        };
+      }
+
+      case 'sales_fulfilled':
+      case 'sales_in_progress': {
+        const target = widgetType === 'sales_fulfilled' ? 'fulfilled' : 'in_progress';
+        const filtered = sales.filter(s => s.status === target);
+        const totalValue = filtered.reduce((sum, s) => sum + (s.total_value || 0), 0);
+
+        return {
+          value: filtered.length.toString(),
+          subtitle: `€${totalValue.toLocaleString('pt-PT')} total`,
+          chartData: generateLast7DaysChart(filtered),
+          isLoading: salesLoading,
+        };
+      }
+
       case 'sales_delivered': {
         const delivered = sales.filter(s => s.status === 'delivered');
         const totalValue = delivered.reduce((sum, s) => sum + (s.total_value || 0), 0);
