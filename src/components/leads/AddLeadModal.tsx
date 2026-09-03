@@ -110,8 +110,9 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
   const createCpe = useCreateCpe();
   const uploadAttachment = useUploadLeadAttachment();
   const { data: teamMembers } = useTeamMembers();
-  const { canManageTeam, can } = usePermissions();
+  const { can } = usePermissions();
   const canAddLead = can('leads', 'kanban', 'add');
+  const canAssignLeads = can('leads', 'kanban', 'assign');
   const { organization } = useAuth();
   const { data: fieldSettings } = useLeadFieldsSettings();
 
@@ -649,7 +650,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
                         />
                       ) : null}
 
-                      {canManageTeam && teamMembers && teamMembers.length > 0 && (
+                      {canAssignLeads && teamMembers && teamMembers.length > 0 && (
                         <FormField
                           control={form.control}
                           name="assigned_to"

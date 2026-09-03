@@ -129,7 +129,7 @@ export function LeadDetailsModal({
 }: LeadDetailsModalProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const { canDeleteLeads, canManageTeam, isAdmin, can } = usePermissions();
+  const { canDeleteLeads, isAdmin, can } = usePermissions();
   const canEditLeads = can('leads', 'kanban', 'edit');
   const canAssignLeads = can('leads', 'kanban', 'assign');
   const { organization } = useAuth();
@@ -485,7 +485,7 @@ export function LeadDetailsModal({
                 </Card>
 
                 {/* Assignment Card */}
-                {canAssignLeads && canManageTeam && teamMembers && teamMembers.length > 0 && (
+                {canAssignLeads && teamMembers && teamMembers.length > 0 && (
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
