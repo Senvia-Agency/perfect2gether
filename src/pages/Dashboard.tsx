@@ -26,8 +26,14 @@ export default function Dashboard() {
   ]);
   const { profile, organization } = useAuth();
   const { modules } = useModules();
-  const { can } = usePermissions();
+  const { can, profileName } = usePermissions();
   const isTelecom = organization?.niche === 'telecom';
+  // Perfis de apoio (ex.: Back Office) nao veem o painel de Atividade Comercial
+  // (metas, metricas, ativacoes, compromissos) — so os seus proprios widgets.
+  // Comparacao direta pelo nome do perfil: mais simples e verificavel do que
+  // a permissao gestao.reports, que nao surtiu efeito para o perfil Comercial
+  // em producao (causa ainda por confirmar).
+  const canViewCommercialPanels = profileName !== 'Back Office';
   const clientsModuleEnabled = modules.clients;
   const calendarModuleEnabled = modules.calendar !== false;
   const salesSettings = (organization?.sales_settings as any) || {};
@@ -64,7 +70,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-6">
-          {isTelecom && (
+          {isTelecom && canViewCommercialPanels && (
             <div className="space-y-4">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Atividade Comercial</h2>
               <div className="space-y-4">
