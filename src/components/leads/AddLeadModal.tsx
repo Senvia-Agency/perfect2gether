@@ -31,7 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { Loader2, Zap, UserCircle, X, User, Upload, FileText, Trash2, Paperclip, Building2, Contact, Settings2, StickyNote, Eye, AlertTriangle } from "lucide-react";
+import { Loader2, Zap, UserCircle, X, User, Upload, FileText, Trash2, Paperclip, Building2, Contact, Settings2, StickyNote, Eye, AlertTriangle, Plus } from "lucide-react";
 import { useCreateLead } from "@/hooks/useLeads";
 import { useNifValidation } from "@/hooks/useNifValidation";
 import { useTeamMembers } from "@/hooks/useTeam";
@@ -46,6 +46,7 @@ import { useCreateCpe } from "@/hooks/useCpes";
 import type { LeadTemperature, LeadTipologia } from "@/types";
 import { TIPOLOGIA_LABELS, TIPOLOGIA_STYLES } from "@/types";
 import { getRoleLabel } from "@/lib/roles";
+import { buildLeadCpesPatch } from "@/lib/leadUtils";
 
 const SOURCES = [
   "Entrada Manual",
@@ -120,7 +121,15 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
   const [matchedClient, setMatchedClient] = useState<{ id: string; name: string; email: string | null; phone: string | null; notes: string | null; company: string | null } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [cpeValue, setCpeValue] = useState("");
+  const [cpeValues, setCpeValues] = useState<string[]>([""]);
+
+  const updateCpeValue = (index: number, value: string) => {
+    setCpeValues((prev) => prev.map((v, i) => (i === index ? value : v)));
+  };
+  const addCpeField = () => setCpeValues((prev) => [...prev, ""]);
+  const removeCpeField = (index: number) => {
+    setCpeValues((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : [""]));
+  };
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isTelecom = organization?.niche === 'telecom';
@@ -223,6 +232,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
   };
 
   const onSubmit = async (data: AddLeadFormData) => {
+    const cpes = buildLeadCpesPatch(cpeValues);
     const lead = await createLead.mutateAsync({
       company_nif: data.company_nif || undefined,
       company_name: data.company_name || undefined,
@@ -238,31 +248,33 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
       assigned_to: data.assigned_to && data.assigned_to !== 'unassigned' ? data.assigned_to : undefined,
       tipologia: showEnergy ? data.tipologia as LeadTipologia : undefined,
       consumo_anual: showEnergy && data.consumo_anual ? Number(data.consumo_anual) : undefined,
-      custom_data: cpeValue.trim() ? { cpe: cpeValue.trim() } : undefined,
+      custom_data: cpes ? { cpes } : undefined,
     });
 
-    // Check and automatically create CPE for existing client if it doesn't exist
-    if (matchedClient && cpeValue.trim() && lead?.id) {
-      try {
-        const { data: existingCpe } = await supabase
-          .from('cpes')
-          .select('id')
-          .eq('client_id', matchedClient.id)
-          .eq('serial_number', cpeValue.trim())
-          .maybeSingle();
+    // Check and automatically create a CPE for the existing client for each value that doesn't exist yet
+    if (matchedClient && cpes && lead?.id) {
+      for (const cpe of cpes) {
+        try {
+          const { data: existingCpe } = await supabase
+            .from('cpes')
+            .select('id')
+            .eq('client_id', matchedClient.id)
+            .eq('serial_number', cpe)
+            .maybeSingle();
 
-        if (!existingCpe) {
-          await createCpe.mutateAsync({
-            client_id: matchedClient.id,
-            equipment_type: organization?.niche === 'telecom' ? 'Energia' : 'Equipamento',
-            serial_number: cpeValue.trim(),
-            comercializador: 'Outro',
-            status: 'active',
-            notes: `Criado automaticamente via Lead #${lead.id.slice(0, 8)}`,
-          });
+          if (!existingCpe) {
+            await createCpe.mutateAsync({
+              client_id: matchedClient.id,
+              equipment_type: organization?.niche === 'telecom' ? 'Energia' : 'Equipamento',
+              serial_number: cpe,
+              comercializador: 'Outro',
+              status: 'active',
+              notes: `Criado automaticamente via Lead #${lead.id.slice(0, 8)}`,
+            });
+          }
+        } catch (err) {
+          console.error('Erro ao verificar/criar CPE automático:', err);
         }
-      } catch (err) {
-        console.error('Erro ao verificar/criar CPE automático:', err);
       }
     }
 
@@ -274,7 +286,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
 
     setMatchedClient(null);
     setPendingFiles([]);
-    setCpeValue("");
+    setCpeValues([""]);
     form.reset({
       company_nif: "",
       company_name: "",
@@ -416,13 +428,40 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
                         {(isP2G || isTelecom) && (
                           <div className="mt-4">
                             <label className="text-sm font-medium leading-none">CPE/CUI</label>
-                            <Input
-                              className="mt-2"
-                              placeholder="PT00..."
-                              value={cpeValue}
-                              onChange={(e) => setCpeValue(e.target.value)}
-                              disabled={nifValidation.isDuplicate}
-                            />
+                            <div className="mt-2 space-y-2">
+                              {cpeValues.map((value, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                  <Input
+                                    placeholder="PT00..."
+                                    value={value}
+                                    onChange={(e) => updateCpeValue(index, e.target.value)}
+                                    disabled={nifValidation.isDuplicate}
+                                  />
+                                  {(cpeValues.length > 1 || value) && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-9 w-9 shrink-0 text-muted-foreground"
+                                      onClick={() => removeCpeField(index)}
+                                      disabled={nifValidation.isDuplicate}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={addCpeField}
+                                disabled={nifValidation.isDuplicate}
+                              >
+                                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                                Adicionar CPE/CUI
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </CardContent>

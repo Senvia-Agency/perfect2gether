@@ -75,16 +75,18 @@ import {
   Instagram,
   Twitter,
   Youtube,
-  Globe
+  Globe,
+  Plus,
+  X
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { SendLeadEmailModal } from "./SendLeadEmailModal";
-import { isPlaceholderEmail, displayEmail } from "@/lib/leadUtils";
+import { isPlaceholderEmail, displayEmail, getLeadCpes, buildLeadCpesPatch } from "@/lib/leadUtils";
 
 const TECHNICAL_TRACKING_KEYS = ['fbclid', 'gclid', 'fbc', 'fbp'] as const;
-const HIDDEN_CUSTOM_DATA_KEYS = ['metadata', 'prospect_id', 'source_file_name', 'prospect_source', 'cpe'] as const;
+const HIDDEN_CUSTOM_DATA_KEYS = ['metadata', 'prospect_id', 'source_file_name', 'prospect_source', 'cpe', 'cpes'] as const;
 
 const socialMediaIcons = [
   { key: "facebook", icon: Facebook, label: "Facebook" },
@@ -154,7 +156,7 @@ export function LeadDetailsModal({
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
-  const [editCpe, setEditCpe] = useState<string>("");
+  const [editCpes, setEditCpes] = useState<string[]>([""]);
   const [isEditingCpe, setIsEditingCpe] = useState(false);
   const isP2G = isPerfect2GetherOrg(organization?.id);
   
@@ -268,7 +270,10 @@ export function LeadDetailsModal({
       if (!isEditingName) setEditName(lead.name || "");
       if (!isEditingEmail) setEditEmail(displayEmail(lead.email));
       if (!isEditingPhone) setEditPhone(lead.phone || "");
-      if (!isEditingCpe) setEditCpe((lead.custom_data as Record<string, unknown>)?.cpe as string || "");
+      if (!isEditingCpe) {
+        const cpes = getLeadCpes(lead.custom_data as Record<string, unknown>);
+        setEditCpes(cpes.length ? cpes : [""]);
+      }
     }
   }, [lead, isEditingValue, isEditingConsumo, isEditingNotes, isEditingName, isEditingEmail, isEditingPhone, isEditingCpe, editValue, editConsumo]);
 
@@ -277,6 +282,58 @@ export function LeadDetailsModal({
   const handleFieldSave = (field: keyof Lead, value: string | number | null) => {
     if (!onUpdate) return;
     onUpdate(lead.id, { [field]: value });
+  };
+
+  const updateCpeValue = (index: number, value: string) => {
+    setEditCpes((prev) => prev.map((v, i) => (i === index ? value : v)));
+  };
+  const addCpeField = () => setEditCpes((prev) => [...prev, ""]);
+
+  const saveCpes = async (values: string[] = editCpes) => {
+    const currentCpes = getLeadCpes(lead.custom_data as Record<string, unknown>);
+    const nextCpes = buildLeadCpesPatch(values) ?? [];
+    const changed = currentCpes.length !== nextCpes.length || currentCpes.some((v, i) => v !== nextCpes[i]);
+    if (!changed) return;
+
+    onUpdate?.(lead.id, {
+      custom_data: { ...(lead.custom_data as Record<string, unknown> || {}), cpe: undefined, cpes: nextCpes.length ? nextCpes : undefined },
+    } as Partial<Lead>);
+
+    if (nextCpes.length === 0) return;
+
+    try {
+      const { data: client } = await supabase
+        .from('crm_clients')
+        .select('id')
+        .or(`lead_id.eq.${lead.id}${lead.company_nif ? `,company_nif.eq.${lead.company_nif}` : ''}`)
+        .eq('organization_id', organization?.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (!client) return;
+
+      for (const cpe of nextCpes) {
+        const { data: existingCpe } = await supabase
+          .from('cpes')
+          .select('id')
+          .eq('client_id', client.id)
+          .eq('serial_number', cpe)
+          .maybeSingle();
+
+        if (!existingCpe) {
+          await createCpe.mutateAsync({
+            client_id: client.id,
+            equipment_type: isTelecom ? 'Energia' : 'Equipamento',
+            serial_number: cpe,
+            comercializador: 'Outro',
+            status: 'active',
+            notes: `Criado automaticamente via Lead #${lead.id.slice(0, 8)}`,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao sincronizar CPE com cliente:', err);
+    }
   };
 
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -513,61 +570,44 @@ export function LeadDetailsModal({
                         CPE / CUI
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <Input
-                        type="text"
-                        placeholder="PT00..."
-                        value={editCpe}
-                        onChange={(e) => setEditCpe(e.target.value)}
-                        onFocus={() => setIsEditingCpe(true)}
-                        disabled={!canEditLeads}
-                        onBlur={async () => {
-                          const currentCpe = (lead.custom_data as Record<string, unknown>)?.cpe as string || "";
-                          if (editCpe.trim() !== currentCpe) {
-                            onUpdate?.(lead.id, {
-                              custom_data: { ...(lead.custom_data as Record<string, unknown> || {}), cpe: editCpe.trim() || null },
-                            } as Partial<Lead>);
-
-                            // If this lead matches an existing client, sync the CPE
-                            if (editCpe.trim()) {
-                              try {
-                                // Search for client by lead_id or company_nif
-                                const { data: client } = await supabase
-                                  .from('crm_clients')
-                                  .select('id')
-                                  .or(`lead_id.eq.${lead.id}${lead.company_nif ? `,company_nif.eq.${lead.company_nif}` : ''}`)
-                                  .eq('organization_id', organization?.id)
-                                  .limit(1)
-                                  .maybeSingle();
-
-                                if (client) {
-                                  // Check if CPE exists for client
-                                  const { data: existingCpe } = await supabase
-                                    .from('cpes')
-                                    .select('id')
-                                    .eq('client_id', client.id)
-                                    .eq('serial_number', editCpe.trim())
-                                    .maybeSingle();
-
-                                  if (!existingCpe) {
-                                    await createCpe.mutateAsync({
-                                      client_id: client.id,
-                                      equipment_type: isTelecom ? 'Energia' : 'Equipamento',
-                                      serial_number: editCpe.trim(),
-                                      comercializador: 'Outro',
-                                      status: 'active',
-                                      notes: `Criado automaticamente via Lead #${lead.id.slice(0, 8)}`,
-                                    });
-                                  }
-                                }
-                              } catch (err) {
-                                console.error('Erro ao sincronizar CPE com cliente:', err);
-                              }
-                            }
-                          }
-                          setTimeout(() => setIsEditingCpe(false), 600);
-                        }}
-                      />
+                    <CardContent className="space-y-2">
+                      {editCpes.map((value, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            type="text"
+                            placeholder="PT00..."
+                            value={value}
+                            onChange={(e) => updateCpeValue(index, e.target.value)}
+                            onFocus={() => setIsEditingCpe(true)}
+                            disabled={!canEditLeads}
+                            onBlur={async () => {
+                              await saveCpes();
+                              setTimeout(() => setIsEditingCpe(false), 600);
+                            }}
+                          />
+                          {canEditLeads && (editCpes.length > 1 || value) && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 shrink-0 text-muted-foreground"
+                              onClick={() => {
+                                const next = editCpes.length > 1 ? editCpes.filter((_, i) => i !== index) : [""];
+                                setEditCpes(next);
+                                void saveCpes(next);
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      {canEditLeads && (
+                        <Button type="button" variant="outline" size="sm" onClick={addCpeField}>
+                          <Plus className="h-3.5 w-3.5 mr-1.5" />
+                          Adicionar CPE/CUI
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 )}
