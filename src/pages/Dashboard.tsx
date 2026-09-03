@@ -27,10 +27,6 @@ export default function Dashboard() {
   const { profile, organization } = useAuth();
   const { modules } = useModules();
   const { can } = usePermissions();
-  // Paineis de Atividade Comercial (objetivos, metricas, ativacoes, compromissos):
-  // so para quem tem gestao.reports. Perfis de apoio como o Back Office ficam
-  // apenas com os widgets do seu proprio painel.
-  const canViewCommercialPanels = can('gestao', 'reports', 'view');
   const isTelecom = organization?.niche === 'telecom';
   const clientsModuleEnabled = modules.clients;
   const calendarModuleEnabled = modules.calendar !== false;
@@ -68,7 +64,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-6">
-          {isTelecom && canViewCommercialPanels && (
+          {isTelecom && (
             <div className="space-y-4">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Atividade Comercial</h2>
               <div className="space-y-4">
