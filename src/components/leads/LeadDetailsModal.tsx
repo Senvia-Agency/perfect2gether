@@ -83,7 +83,7 @@ import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { SendLeadEmailModal } from "./SendLeadEmailModal";
-import { isPlaceholderEmail, displayEmail, getLeadCpes, buildLeadCpesPatch } from "@/lib/leadUtils";
+import { isPlaceholderEmail, displayEmail, getLeadCpes, buildLeadCpesPatch , canOwnLeads } from "@/lib/leadUtils";
 
 const TECHNICAL_TRACKING_KEYS = ['fbclid', 'gclid', 'fbc', 'fbp'] as const;
 const HIDDEN_CUSTOM_DATA_KEYS = ['metadata', 'prospect_id', 'source_file_name', 'prospect_source', 'cpe', 'cpes'] as const;
@@ -506,7 +506,7 @@ export function LeadDetailsModal({
                             <span className="text-muted-foreground">Não atribuído</span>
                           </SelectItem>
                           {teamMembers
-                            .filter(m => !m.is_banned && (m.role === 'salesperson' || m.role === 'admin' || m.role === 'viewer'))
+                            .filter(m => !m.is_banned && canOwnLeads(m.profile_name))
                             .map((member) => (
                               <SelectItem key={member.user_id} value={member.user_id}>
                                 {member.full_name} ({getRoleLabel({ role: member.role, profileName: member.profile_name })})

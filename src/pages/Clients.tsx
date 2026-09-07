@@ -19,6 +19,7 @@ import { EditClientModal } from "@/components/clients/EditClientModal";
 import { ClientDetailsDrawer } from "@/components/clients/ClientDetailsDrawer";
 import { ClientFilters, defaultFilters, type ClientFiltersState } from "@/components/clients/ClientFilters";
 import { BulkActionsBar } from "@/components/shared/BulkActionsBar";
+import { TypeSplit } from "@/components/shared/TypeSplit";
 import { AssignTeamMemberModal } from "@/components/shared/AssignTeamMemberModal";
 import type { CrmClient } from "@/types/clients";
 import { formatCurrency } from "@/lib/format";
@@ -391,13 +392,14 @@ export default function Clients() {
                   <div>
                     <p className="text-sm text-muted-foreground">Comissão Total</p>
                     <p className="text-2xl font-bold">{formatCurrency(stats.totalComissao)}</p>
-                    {showEnergy && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {stats.totalMwh.toFixed(1)} MWh · {stats.totalKwp.toFixed(1)} kWp
-                      </p>
-                    )}
                   </div>
                 </div>
+                {showEnergy && (
+                  <TypeSplit
+                    energia={`${stats.totalMwh.toFixed(1)} MWh`}
+                    servicos={`${stats.totalKwp.toFixed(1)} kWp`}
+                  />
+                )}
               </CardContent>
             </Card>
           ) : (

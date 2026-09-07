@@ -46,7 +46,7 @@ import { useCreateCpe } from "@/hooks/useCpes";
 import type { LeadTemperature, LeadTipologia } from "@/types";
 import { TIPOLOGIA_LABELS, TIPOLOGIA_STYLES } from "@/types";
 import { getRoleLabel } from "@/lib/roles";
-import { buildLeadCpesPatch } from "@/lib/leadUtils";
+import { buildLeadCpesPatch , canOwnLeads } from "@/lib/leadUtils";
 
 const SOURCES = [
   "Entrada Manual",
@@ -669,7 +669,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
                                 <SelectContent>
                                   <SelectItem value="unassigned">Não atribuído</SelectItem>
                                   {teamMembers
-                                    .filter(m => !m.is_banned && (m.role === 'salesperson' || m.role === 'admin' || m.role === 'viewer'))
+                                    .filter(m => !m.is_banned && canOwnLeads(m.profile_name))
                                     .map((member) => (
                                       <SelectItem key={member.user_id} value={member.user_id}>
                                         {member.full_name} ({getRoleLabel({ role: member.role, profileName: member.profile_name })})
