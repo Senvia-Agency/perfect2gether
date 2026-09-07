@@ -15,6 +15,10 @@ interface BulkActionsBarProps {
   onExportExcel?: () => void;
   onClearSelection: () => void;
   entityLabel?: string;
+  /** Quando false, esconde "Atribuir Comercial Responsável". Por omissão visível. */
+  canAssign?: boolean;
+  /** Quando false, esconde o menu de exportação. Por omissão visível. */
+  canExport?: boolean;
 }
 
 export function BulkActionsBar({
@@ -24,8 +28,10 @@ export function BulkActionsBar({
   onExportExcel,
   onClearSelection,
   entityLabel = "selecionados",
+  canAssign = true,
+  canExport = true,
 }: BulkActionsBarProps) {
-  const hasExportOptions = onExportCsv || onExportExcel;
+  const hasExportOptions = canExport && (onExportCsv || onExportExcel);
 
   return (
     <AnimatePresence>
@@ -43,16 +49,18 @@ export function BulkActionsBar({
           </div>
           
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onAssignTeamMember}
-              className="flex-1 sm:flex-none"
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Atribuir Comercial Responsável</span>
-              <span className="sm:hidden">Atribuir</span>
-            </Button>
+            {canAssign && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onAssignTeamMember}
+                className="flex-1 sm:flex-none"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Atribuir Comercial Responsável</span>
+                <span className="sm:hidden">Atribuir</span>
+              </Button>
+            )}
             
             {hasExportOptions && (
               <DropdownMenu>

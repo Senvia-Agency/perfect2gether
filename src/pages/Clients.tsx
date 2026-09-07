@@ -50,8 +50,12 @@ export default function Clients() {
   const [showCreateProposal, setShowCreateProposal] = useState(false);
   const [proposalClientId, setProposalClientId] = useState<string | null>(null);
 
-  const { can } = usePermissions();
+  const { can, dataScope } = usePermissions();
   const canAddClient = can('clients', 'list', 'add');
+  // Acoes em massa sobre a base de clientes (atribuir responsavel, exportar)
+  // exigem visibilidade total da base. Perfis com ambito limitado -- Comercial
+  // ('own') e CE ('team') -- deixam de as ter.
+  const canBulkManageClients = dataScope === 'all';
 
   const { data: clients, isLoading } = useClients();
   const deleteClient = useDeleteClient();
@@ -445,6 +449,8 @@ export default function Clients() {
           onExportExcel={handleExportExcel}
           onClearSelection={() => setSelectedIds([])}
           entityLabel="clientes selecionados"
+          canAssign={canBulkManageClients}
+          canExport={canBulkManageClients}
         />
 
         {/* Table */}
