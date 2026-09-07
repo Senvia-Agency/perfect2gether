@@ -393,8 +393,7 @@ export default function Clients() {
                     <p className="text-2xl font-bold">{formatCurrency(stats.totalComissao)}</p>
                     {showEnergy && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {stats.totalMwh.toFixed(1)} MWh
-                        {!isPerfect2Gether && ` · ${stats.totalKwp.toFixed(1)} kWp`}
+                        {stats.totalMwh.toFixed(1)} MWh · {stats.totalKwp.toFixed(1)} kWp
                       </p>
                     )}
                   </div>
