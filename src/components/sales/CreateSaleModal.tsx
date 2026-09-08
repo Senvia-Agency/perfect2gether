@@ -39,6 +39,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFinalStages } from "@/hooks/usePipelineStages";
 import { useUpdateLeadStatus } from "@/hooks/useLeads";
 import { formatCurrency } from "@/lib/format";
+import { calculateExactDuration, formatDurationBreakdown } from "@/lib/date-utils";
 import { getPlanById } from "@/lib/stripe-plans";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
