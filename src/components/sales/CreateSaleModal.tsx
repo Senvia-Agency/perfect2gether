@@ -741,31 +741,41 @@ export function CreateSaleModal({
         );
       }
 
-      // Process CPEs
-      if (proposalCpes.length > 0 && clientId) {
-        for (const proposalCpe of proposalCpes) {
-          if (proposalCpe.existing_cpe_id) {
-            await updateCpe.mutateAsync({
-              id: proposalCpe.existing_cpe_id,
-              comercializador: 'EDP Comercial',
-              fidelizacao_start: proposalCpe.contrato_inicio || proposalCpe.fidelizacao_start || undefined,
-              fidelizacao_end: proposalCpe.contrato_fim || proposalCpe.fidelizacao_end || undefined,
-              notes: proposalCpe.notes || undefined,
-              status: 'active',
-            });
-          } else {
-            await createCpe.mutateAsync({
-              client_id: clientId,
-              equipment_type: proposalCpe.equipment_type,
-              comercializador: 'EDP Comercial',
-              serial_number: proposalCpe.serial_number || undefined,
-              fidelizacao_start: proposalCpe.contrato_inicio || proposalCpe.fidelizacao_start || undefined,
-              fidelizacao_end: proposalCpe.contrato_fim || proposalCpe.fidelizacao_end || undefined,
-              notes: proposalCpe.notes || undefined,
-              status: 'active',
-            });
+      // Process CPEs.
+      // Sincronizar os CPEs do cliente e um efeito secundario: a venda ja esta
+      // criada a este ponto. Se falhar (ex.: sem permissao clients.cpes.add na
+      // RLS de escrita), avisamos mas deixamos o fluxo seguir -- caso contrario
+      // a proposta ficava por aceitar e nada avancava para Vendas, sem erro
+      // visivel, apesar de a venda ja existir.
+      try {
+        if (proposalCpes.length > 0 && clientId) {
+          for (const proposalCpe of proposalCpes) {
+            if (proposalCpe.existing_cpe_id) {
+              await updateCpe.mutateAsync({
+                id: proposalCpe.existing_cpe_id,
+                comercializador: 'EDP Comercial',
+                fidelizacao_start: proposalCpe.contrato_inicio || proposalCpe.fidelizacao_start || undefined,
+                fidelizacao_end: proposalCpe.contrato_fim || proposalCpe.fidelizacao_end || undefined,
+                notes: proposalCpe.notes || undefined,
+                status: 'active',
+              });
+            } else {
+              await createCpe.mutateAsync({
+                client_id: clientId,
+                equipment_type: proposalCpe.equipment_type,
+                comercializador: 'EDP Comercial',
+                serial_number: proposalCpe.serial_number || undefined,
+                fidelizacao_start: proposalCpe.contrato_inicio || proposalCpe.fidelizacao_start || undefined,
+                fidelizacao_end: proposalCpe.contrato_fim || proposalCpe.fidelizacao_end || undefined,
+                notes: proposalCpe.notes || undefined,
+                status: 'active',
+              });
+            }
           }
         }
+      } catch (cpeError) {
+        console.error('Erro ao sincronizar CPEs da venda:', cpeError);
+        toast.warning('Venda criada, mas nao foi possivel sincronizar os CPEs do cliente. Verifique a ficha do cliente.');
       }
 
       // Create draft payments
@@ -787,7 +797,10 @@ export function CreateSaleModal({
       onSaleCreated?.(sale.id);
       onOpenChange(false);
     } catch (error) {
+      // Sem isto o erro so aparecia na consola: o utilizador ficava a olhar para
+      // o modal sem saber que algo falhou nem porque nao avancou para Vendas.
       console.error('Error creating sale:', error);
+      toast.error(`Erro ao criar venda: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
     }
   };
 
