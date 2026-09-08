@@ -37,7 +37,16 @@ interface RowData {
 export function CommitmentPanel() {
   const { user, profile, organization } = useAuth();
   const { can } = usePermissions();
-  const canManageCommitments = can('gestao', 'commitments', 'manage');
+  // O EditCommitmentModal grava sempre o compromisso do proprio utilizador
+  // (useCommitments(user.id)) -- nao existe forma de editar o de outra pessoa.
+  // Por isso qualquer comercial pode definir o seu, sem depender de
+  // gestao.commitments.manage, que e uma permissao de gestao e estava a
+  // esconder o botao a quem so quer inserir o proprio compromisso.
+  const canManageCommitments = true;
+  // Definir o compromisso de OUTRA pessoa continua a exigir a permissao de
+  // gestao e visibilidade de equipa. So nesse caso aparece o seletor de
+  // colaborador no modal.
+  const canManageOthers = can('gestao', 'commitments', 'manage');
   // Coluna de Comissao apenas para quem tem permissao de a ver.
   const showCommission = can('finance', 'commissions', 'view');
   const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
@@ -184,6 +193,11 @@ export function CommitmentPanel() {
           total_solar_kwp: Number(commitment.total_solar_kwp),
           total_comissao: Number(commitment.total_comissao),
         } : null}
+        month={selectedMonth}
+        members={canManageOthers ? allRows.map((r) => ({
+          user_id: r.userId,
+          full_name: r.name.replace(' (eu)', ''),
+        })) : undefined}
       />
     </>
   );

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCommitments, CommitmentTotals } from "@/hooks/useCommitments";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules } from "@/hooks/useModules";
@@ -12,13 +13,26 @@ interface EditCommitmentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   existing: CommitmentTotals | null;
+  /**
+   * Colaboradores que este utilizador pode gerir. Quando tem mais do que um,
+   * aparece um seletor no topo do modal. Vazio ou omitido = so o proprio.
+   */
+  members?: { user_id: string; full_name: string }[];
+  /** Mes a que o compromisso diz respeito (o mesmo que o painel mostra). */
+  month?: Date;
 }
 
-export function EditCommitmentModal({ open, onOpenChange, existing }: EditCommitmentModalProps) {
+export function EditCommitmentModal({ open, onOpenChange, existing, members, month }: EditCommitmentModalProps) {
   const { user, organization } = useAuth();
-  const { saveCommitment } = useCommitments(user?.id);
   const { modules } = useModules();
   const showEnergy = organization?.niche === 'telecom' && modules.energy;
+
+  const canPickMember = (members?.length ?? 0) > 1;
+  const [targetUserId, setTargetUserId] = useState<string>(user?.id || "");
+
+  // Le e grava sempre o compromisso do colaborador selecionado, no mes que o
+  // painel esta a mostrar (nao no mes corrente, que podia ser outro).
+  const { commitment, saveCommitment } = useCommitments(targetUserId, month);
 
   const [totals, setTotals] = useState<CommitmentTotals>({
     total_nifs: 0,
@@ -28,10 +42,16 @@ export function EditCommitmentModal({ open, onOpenChange, existing }: EditCommit
   });
 
   useEffect(() => {
-    if (open) {
-      setTotals(existing || { total_nifs: 0, total_energia_mwh: 0, total_solar_kwp: 0, total_comissao: 0 });
-    }
-  }, [open, existing]);
+    if (open) setTargetUserId(user?.id || "");
+  }, [open, user?.id]);
+
+  useEffect(() => {
+    if (!open) return;
+    // Para o proprio utilizador usamos o valor ja carregado pelo painel; para
+    // outro colaborador usamos o que o hook foi buscar ao mudar de alvo.
+    const source = targetUserId === user?.id ? (commitment ?? existing) : commitment;
+    setTotals(source || { total_nifs: 0, total_energia_mwh: 0, total_solar_kwp: 0, total_comissao: 0 });
+  }, [open, existing, commitment, targetUserId, user?.id]);
 
   const handleSave = () => {
     saveCommitment.mutate(totals, {
@@ -47,6 +67,23 @@ export function EditCommitmentModal({ open, onOpenChange, existing }: EditCommit
         </DialogHeader>
 
         <div className="px-4 md:px-6 pb-4 space-y-4">
+          {canPickMember && (
+            <div>
+              <Label className="text-xs">Colaborador</Label>
+              <Select value={targetUserId} onValueChange={setTargetUserId}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Escolher colaborador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {members!.map((m) => (
+                    <SelectItem key={m.user_id} value={m.user_id}>
+                      {m.full_name}{m.user_id === user?.id ? " (eu)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label className="text-xs">Nº de NIFs</Label>
             <Input

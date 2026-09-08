@@ -68,14 +68,16 @@ export function useCommitments(targetUserId?: string | null, referenceDate?: Dat
 
   const saveCommitment = useMutation({
     mutationFn: async (totals: CommitmentTotals) => {
-      if (!orgId || !user?.id) throw new Error("Sem organização/utilizador");
+      if (!orgId || !effectiveUserId) throw new Error("Sem organização/utilizador");
 
       const { error } = await supabase
         .from("monthly_commitments")
         .upsert(
           {
             organization_id: orgId,
-            user_id: user.id,
+            // Grava no utilizador alvo, nao no autenticado: sem isto um admin
+            // que escolhesse outra pessoa acabava por gravar no proprio registo.
+            user_id: effectiveUserId,
             month: currentMonth,
             total_nifs: totals.total_nifs,
             total_energia_mwh: totals.total_energia_mwh,
