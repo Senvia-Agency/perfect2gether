@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { RequestAccessError, requireUser, requireOrganizationMember, requireIntegrationSettings } from '../_shared/organization-request-auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,6 +25,7 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     })
 
+    const userId = await requireUser(supabase, req)
     const { organization_id } = await req.json()
     if (!organization_id) {
       return new Response(JSON.stringify({ error: 'organization_id é obrigatório' }), {
@@ -31,6 +33,9 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    const profileId = await requireOrganizationMember(supabase, { userId, organizationId: organization_id })
+    await requireIntegrationSettings(supabase, { userId, organizationId: organization_id, profileId })
 
     const { data: org, error: orgError } = await supabase
       .from('organizations')
@@ -106,8 +111,8 @@ Deno.serve(async (req) => {
     })
   } catch (err) {
     console.error('keyinvoice-auth error:', err)
-    return new Response(JSON.stringify({ error: 'Erro interno do servidor' }), {
-      status: 500,
+    return new Response(JSON.stringify({ error: err instanceof RequestAccessError ? err.message : 'Erro interno do servidor' }), {
+      status: err instanceof RequestAccessError ? err.status : 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }

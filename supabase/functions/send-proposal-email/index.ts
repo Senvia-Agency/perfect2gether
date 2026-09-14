@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { RequestAccessError, requireUser, requireOrganizationMember } from "../_shared/organization-request-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -160,7 +161,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       auth: { persistSession: false },
     });
 
+    const userId = await requireUser(supabaseClient, req);
     const data: ProposalEmailRequest = await req.json();
+
+    await requireOrganizationMember(supabaseClient, { userId, organizationId: data.organizationId });
 
     if (!data.organizationId) {
       throw new Error("Organization ID is required");
@@ -236,12 +240,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in send-proposal-email:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Erro interno do servidor" }),
       {
-        status: 500,
+        status: error instanceof RequestAccessError ? error.status : 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
