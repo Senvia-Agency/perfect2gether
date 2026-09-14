@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     );
 
     // Get job
-    const { data: job, error: jobError } = await serviceSupabase
+    const { data: job, error: jobError } = await supabase
       .from("prospect_generation_jobs")
       .select("*")
       .eq("id", jobId)
