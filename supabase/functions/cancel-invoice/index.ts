@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { hasInvoiceScope } from '../_shared/invoice-scope.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -118,6 +119,14 @@ Deno.serve(async (req) => {
       })
     }
 
+    if (!await hasInvoiceScope(supabase, {
+      organization_id, sale_id, payment_id, document_id: invoicexpress_id, document_type,
+    })) {
+      return new Response(JSON.stringify({ error: 'Documento ou associação sem acesso nesta organização' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // Fetch org credentials
     const { data: org } = await supabase
       .from('organizations')
@@ -220,6 +229,8 @@ Deno.serve(async (req) => {
           invoicexpress_id: null,
         })
         .eq('id', payment_id)
+        .eq('organization_id', organization_id)
+        .eq('invoicexpress_id', invoicexpress_id)
     }
     
     if (sale_id) {
@@ -231,6 +242,8 @@ Deno.serve(async (req) => {
           invoice_reference: null,
         })
         .eq('id', sale_id)
+        .eq('organization_id', organization_id)
+        .eq('invoicexpress_id', invoicexpress_id)
     }
 
     return new Response(JSON.stringify({ success: true }), {

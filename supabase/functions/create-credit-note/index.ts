@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { hasInvoiceScope } from '../_shared/invoice-scope.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -115,6 +116,15 @@ Deno.serve(async (req) => {
       })
     }
 
+    if (!await hasInvoiceScope(supabase, {
+      organization_id, sale_id, payment_id,
+      document_id: original_document_id, document_type: original_document_type,
+    })) {
+      return new Response(JSON.stringify({ error: 'Documento ou associação sem acesso nesta organização' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // Fetch org credentials
     const { data: org } = await supabase
       .from('organizations')
@@ -221,6 +231,7 @@ Deno.serve(async (req) => {
             credit_note_reference: creditNoteReference,
           })
           .eq('id', payment_id)
+          .eq('organization_id', organization_id)
       }
       
       if (sale_id) {
@@ -231,6 +242,7 @@ Deno.serve(async (req) => {
             credit_note_reference: creditNoteReference,
           })
           .eq('id', sale_id)
+          .eq('organization_id', organization_id)
       }
 
       // Fetch client_name and total from invoices table directly
@@ -494,6 +506,7 @@ Deno.serve(async (req) => {
           credit_note_reference: creditNoteReference,
         })
         .eq('id', payment_id)
+        .eq('organization_id', organization_id)
     }
     
     if (sale_id) {
@@ -504,6 +517,7 @@ Deno.serve(async (req) => {
           credit_note_reference: creditNoteReference,
         })
         .eq('id', sale_id)
+        .eq('organization_id', organization_id)
     }
 
     // Insert into credit_notes table for Finance visibility
