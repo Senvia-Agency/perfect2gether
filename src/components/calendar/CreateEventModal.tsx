@@ -36,7 +36,7 @@ interface CreateEventModalProps {
 
 export function CreateEventModal({ open, onOpenChange, selectedDate, event, preselectedLeadId, onSuccess }: CreateEventModalProps) {
   const { data: leads = [] } = useLeads();
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent();
   const sendTemplateEmail = useSendTemplateEmail();
@@ -86,7 +86,10 @@ export function CreateEventModal({ open, onOpenChange, selectedDate, event, pres
   const [reminderMinutes, setReminderMinutes] = useState<string>('');
   const [endTimeManuallySet, setEndTimeManuallySet] = useState(false);
   const [meetingLink, setMeetingLink] = useState('');
-  const [sendEmail, setSendEmail] = useState(false);
+  // New meeting/call events should notify the selected lead by default.
+  // Keep this disabled when editing an existing event to avoid resending a
+  // confirmation merely because another field was changed.
+  const [sendEmail, setSendEmail] = useState(true);
 
   const isEditing = !!event;
 
@@ -140,7 +143,7 @@ export function CreateEventModal({ open, onOpenChange, selectedDate, event, pres
       setEndTimeManuallySet(false);
       setReminderMinutes('');
       setMeetingLink('');
-      setSendEmail(false);
+      setSendEmail(true);
     }
     
     if (preselectedLeadId && open && !event) {
@@ -162,7 +165,7 @@ export function CreateEventModal({ open, onOpenChange, selectedDate, event, pres
     setReminderMinutes('');
     setEndTimeManuallySet(false);
     setMeetingLink('');
-    setSendEmail(false);
+    setSendEmail(true);
   };
 
   const buildMeetingEmailHtml = (leadName: string, dateStr: string, timeStr: string, link: string, orgName: string) => {
@@ -221,6 +224,9 @@ export function CreateEventModal({ open, onOpenChange, selectedDate, event, pres
       end_time: endDateTime,
       all_day: allDay,
       lead_id: leadId || undefined,
+      // A marcação segue o comercial responsável pela lead. Se a lead ainda
+      // não tiver responsável, mantém-se na agenda de quem a criou.
+      user_id: selectedLead?.assigned_to || user?.id,
       meeting_link: meetingLink || undefined,
       reminder_minutes: reminderMinutes
         ? parseInt(reminderMinutes)

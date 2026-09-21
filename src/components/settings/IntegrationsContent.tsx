@@ -104,6 +104,7 @@ function IntegrationCard({
 export const IntegrationsContent = (rawProps: IntegrationsContentProps) => {
   const { can } = usePermissions();
   const canEdit = can('settings', 'general', 'edit');
+  const functionsUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   const props = { ...rawProps, canEdit };
   const [active, setActive] = useState<IntegrationKey | null>(null);
   const { data: webhooks = [] } = useOrganizationWebhooks();
@@ -389,7 +390,7 @@ function InboundWebhookSection() {
   useState(() => { fetchToken(); });
 
   const webhookUrl = webhookToken
-    ? `https://zppcobirzgpfcrnxznwe.supabase.co/functions/v1/submit-lead?mode=webhook&token=${webhookToken}`
+    ? `${functionsUrl}/submit-lead?mode=webhook&token=${webhookToken}`
     : '';
 
   const handleCopy = () => {
@@ -547,8 +548,8 @@ function BrevoForm({ brevoApiKey, setBrevoApiKey, brevoSenderEmail, setBrevoSend
       <div className="space-y-2">
         <Label>Webhook URL (Tracking)</Label>
         <div className="flex items-center gap-2">
-          <Input readOnly value="https://zppcobirzgpfcrnxznwe.supabase.co/functions/v1/brevo-webhook" className="text-xs font-mono bg-muted" />
-          <Button type="button" variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText("https://zppcobirzgpfcrnxznwe.supabase.co/functions/v1/brevo-webhook"); }}>
+          <Input readOnly value={`${functionsUrl}/brevo-webhook`} className="text-xs font-mono bg-muted" />
+          <Button type="button" variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(`${functionsUrl}/brevo-webhook`); }}>
             Copiar
           </Button>
         </div>

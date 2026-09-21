@@ -6,8 +6,9 @@ import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useClients } from "@/hooks/useClients";
 import { useEcommerceStats } from "@/hooks/ecommerce/useEcommerceStats";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
+import { useDashboardPeriod } from "@/stores/useDashboardPeriod";
 import { WidgetType } from "@/lib/dashboard-templates";
-import { startOfDay, startOfWeek, endOfWeek, isToday, isThisWeek, subDays, format } from "date-fns";
+import { addDays, endOfMonth, format, isThisWeek, isToday, startOfMonth, subMonths } from "date-fns";
 
 export interface WidgetData {
   value: string;
@@ -29,38 +30,51 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
   const { data: clients = [], isLoading: clientsLoading } = useClients();
   const ecommerceStats = useEcommerceStats();
   const { data: stages = [] } = usePipelineStages();
+  const { selectedMonth } = useDashboardPeriod();
 
   return useMemo(() => {
-    const today = startOfDay(new Date());
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+    const selectedMonthStart = startOfMonth(selectedMonth);
+    const selectedMonthEnd = endOfMonth(selectedMonth);
+    const selectedMonthLabel = format(selectedMonthStart, 'MMMM yyyy');
+
+    const isInSelectedMonth = (value?: string | null) => {
+      if (!value) return false;
+      const date = new Date(value);
+      return !Number.isNaN(date.getTime()) && date >= selectedMonthStart && date <= selectedMonthEnd;
+    };
+
+    const periodLeads = leads.filter(lead => isInSelectedMonth(lead.created_at));
+    const periodProposals = proposals.filter(proposal => isInSelectedMonth(proposal.created_at));
+    const periodSales = sales.filter(sale => isInSelectedMonth(sale.sale_date || sale.created_at));
 
     // Calculate lead trends (last 7 days)
     const calculateLeadTrend = () => {
-      const last7Days = leads.filter(l => 
-        new Date(l.created_at || '') >= subDays(today, 7)
-      ).length;
-      const prev7Days = leads.filter(l => {
+      const previousMonth = subMonths(selectedMonthStart, 1);
+      const previousMonthStart = startOfMonth(previousMonth);
+      const previousMonthEnd = endOfMonth(previousMonth);
+      const lastMonth = leads.filter(l => {
         const date = new Date(l.created_at || '');
-        return date >= subDays(today, 14) && date < subDays(today, 7);
+        return !Number.isNaN(date.getTime()) && date >= previousMonthStart && date <= previousMonthEnd;
       }).length;
+      const last7Days = periodLeads.length;
       
-      if (prev7Days === 0) return { value: 0, isPositive: true };
-      const change = Math.round(((last7Days - prev7Days) / prev7Days) * 100);
+      if (lastMonth === 0) return { value: 0, isPositive: true };
+      const change = Math.round(((last7Days - lastMonth) / lastMonth) * 100);
       return { value: Math.abs(change), isPositive: change >= 0 };
     };
 
-    // Generate chart data for last 7 days
-    const generateLast7DaysChart = (items: Array<{ created_at?: string | null }>) => {
+    // Four weekly buckets for the month selected in the dashboard filter.
+    const generateLast7DaysChart = (items: Array<{ created_at?: string | null; sale_date?: string | null }>) => {
       const data: Array<{ name: string; value: number }> = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = subDays(today, i);
+      for (let i = 0; i < 4; i++) {
+        const date = addDays(selectedMonthStart, i * 7);
+        const bucketEnd = i === 3 ? selectedMonthEnd : addDays(date, 6);
         const dayItems = items.filter(item => {
-          const itemDate = new Date(item.created_at || '');
-          return format(itemDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+          const itemDate = new Date(item.sale_date || item.created_at || '');
+          return !Number.isNaN(itemDate.getTime()) && itemDate >= date && itemDate <= bucketEnd;
         });
         data.push({
-          name: format(date, 'EEE'),
+          name: format(date, 'd MMM'),
           value: dayItems.length,
         });
       }
@@ -71,31 +85,27 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
       case 'leads_total': {
         const trend = calculateLeadTrend();
         return {
-          value: leads.length.toString(),
+          value: periodLeads.length.toString(),
           subtitle: 'leads captados',
           trend,
-          chartData: generateLast7DaysChart(leads),
+          chartData: generateLast7DaysChart(periodLeads),
           isLoading: leadsLoading,
         };
       }
 
       case 'leads_trend': {
-        const thisWeek = leads.filter(l => {
-          const date = new Date(l.created_at || '');
-          return date >= weekStart && date <= weekEnd;
-        }).length;
         const trend = calculateLeadTrend();
         return {
-          value: thisWeek.toString(),
-          subtitle: 'esta semana',
+          value: periodLeads.length.toString(),
+          subtitle: selectedMonthLabel,
           trend,
-          chartData: generateLast7DaysChart(leads),
+          chartData: generateLast7DaysChart(periodLeads),
           isLoading: leadsLoading,
         };
       }
 
       case 'leads_by_source': {
-        const sourceGroups = leads.reduce((acc, lead) => {
+        const sourceGroups = periodLeads.reduce((acc, lead) => {
           const source = lead.source || 'Directo';
           acc[source] = (acc[source] || 0) + 1;
           return acc;
@@ -116,27 +126,12 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
 
       case 'leads_social': {
         const SOCIAL_SOURCES = ['instagram', 'facebook', 'linkedin', 'tiktok', 'twitter', 'youtube', 'social'];
-        const socialLeads = leads.filter(l => {
+        const socialLeads = periodLeads.filter(l => {
           const source = (l.source || '').toLowerCase();
           return SOCIAL_SOURCES.some(s => source.includes(s));
         });
 
         // Calculate trend for social leads
-        const last7Days = socialLeads.filter(l => 
-          new Date(l.created_at || '') >= subDays(today, 7)
-        ).length;
-        const prev7Days = socialLeads.filter(l => {
-          const date = new Date(l.created_at || '');
-          return date >= subDays(today, 14) && date < subDays(today, 7);
-        }).length;
-        
-        const socialTrend = prev7Days === 0 
-          ? { value: 0, isPositive: true }
-          : { 
-              value: Math.abs(Math.round(((last7Days - prev7Days) / prev7Days) * 100)),
-              isPositive: (last7Days - prev7Days) >= 0 
-            };
-
         const sourceGroups = socialLeads.reduce((acc, lead) => {
           const source = lead.source || 'Redes Sociais';
           acc[source] = (acc[source] || 0) + 1;
@@ -151,7 +146,6 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
         return {
           value: socialLeads.length.toString(),
           subtitle: 'via redes sociais',
-          trend: socialTrend,
           chartData,
           isLoading: leadsLoading,
         };
@@ -159,28 +153,13 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
 
       case 'leads_direct': {
         const SOCIAL_SOURCES = ['instagram', 'facebook', 'linkedin', 'tiktok', 'twitter', 'youtube', 'social'];
-        const directLeads = leads.filter(l => {
+        const directLeads = periodLeads.filter(l => {
           const source = (l.source || '').toLowerCase();
           // Direto = sem fonte OU não é rede social
           return !source || !SOCIAL_SOURCES.some(s => source.includes(s));
         });
 
         // Calculate trend for direct leads
-        const directLast7Days = directLeads.filter(l => 
-          new Date(l.created_at || '') >= subDays(today, 7)
-        ).length;
-        const directPrev7Days = directLeads.filter(l => {
-          const date = new Date(l.created_at || '');
-          return date >= subDays(today, 14) && date < subDays(today, 7);
-        }).length;
-        
-        const directTrend = directPrev7Days === 0 
-          ? { value: 0, isPositive: true }
-          : { 
-              value: Math.abs(Math.round(((directLast7Days - directPrev7Days) / directPrev7Days) * 100)),
-              isPositive: (directLast7Days - directPrev7Days) >= 0 
-            };
-
         const sourceGroups = directLeads.reduce((acc, lead) => {
           const source = lead.source || 'Directo';
           acc[source] = (acc[source] || 0) + 1;
@@ -195,7 +174,6 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
         return {
           value: directLeads.length.toString(),
           subtitle: 'canais diretos',
-          trend: directTrend,
           chartData,
           isLoading: leadsLoading,
         };
@@ -204,18 +182,18 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
       case 'conversion_rate': {
         // Use dynamic pipeline stages to find "won" leads
         const wonKey = stages.find(s => s.is_final_positive)?.key;
-        const convertedLeads = leads.filter(l => {
+        const convertedLeads = periodLeads.filter(l => {
           if (wonKey && l.status === wonKey) return true;
           const status = l.status?.toLowerCase() || '';
           return status === 'won' || status === 'converted' || status.includes('ganho') || status.includes('fechado');
         }).length;
-        const rate = leads.length > 0 
-          ? Math.round((convertedLeads / leads.length) * 100) 
+        const rate = periodLeads.length > 0
+          ? Math.round((convertedLeads / periodLeads.length) * 100)
           : 0;
 
         return {
           value: `${rate}%`,
-          subtitle: `${convertedLeads} de ${leads.length} leads`,
+          subtitle: `${convertedLeads} de ${periodLeads.length} leads`,
           progress: rate,
           isLoading: leadsLoading,
         };
@@ -231,7 +209,7 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
           leads_lost: 'lost',
         } as const;
         const target = statusByWidget[widgetType as keyof typeof statusByWidget];
-        const filtered = leads.filter(l => l.status === target);
+        const filtered = periodLeads.filter(l => l.status === target);
         const totalValue = filtered.reduce((sum, l) => sum + (Number(l.value) || 0), 0);
 
         return {
@@ -245,7 +223,7 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
       case 'sales_fulfilled':
       case 'sales_in_progress': {
         const target = widgetType === 'sales_fulfilled' ? 'fulfilled' : 'in_progress';
-        const filtered = sales.filter(s => s.status === target);
+        const filtered = periodSales.filter(s => s.status === target);
         const totalValue = filtered.reduce((sum, s) => sum + (s.total_value || 0), 0);
 
         return {
@@ -257,7 +235,7 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
       }
 
       case 'sales_delivered': {
-        const delivered = sales.filter(s => s.status === 'delivered');
+        const delivered = periodSales.filter(s => s.status === 'delivered');
         const totalValue = delivered.reduce((sum, s) => sum + (s.total_value || 0), 0);
 
         return {
@@ -283,7 +261,7 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
       }
 
       case 'proposals_open': {
-        const open = proposals.filter(p => 
+        const open = periodProposals.filter(p =>
           p.status === 'draft' || p.status === 'sent' || p.status === 'negotiating'
         );
         const totalValue = open.reduce((sum, p) => sum + (p.total_value || 0), 0);
@@ -296,7 +274,7 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
       }
 
       case 'proposals_accepted': {
-        const accepted = proposals.filter(p => p.status === 'accepted');
+        const accepted = periodProposals.filter(p => p.status === 'accepted');
         const totalValue = accepted.reduce((sum, p) => sum + (p.total_value || 0), 0);
 
         return {
@@ -333,10 +311,10 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
 
       case 'treatments_completed':
       case 'completed_projects': {
-        const completed = sales.filter(s => s.status === 'delivered' || s.status === 'fulfilled');
+        const completed = periodSales.filter(s => s.status === 'delivered' || s.status === 'fulfilled');
         return {
           value: completed.length.toString(),
-          subtitle: 'este mês',
+          subtitle: selectedMonthLabel,
           chartData: generateLast7DaysChart(completed),
           isLoading: salesLoading,
         };
@@ -388,7 +366,7 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
       }
 
       case 'deals_closing': {
-        const closing = proposals.filter(p => p.status === 'sent');
+        const closing = periodProposals.filter(p => p.status === 'sent');
         return {
           value: closing.length.toString(),
           subtitle: 'em negociação',
@@ -406,16 +384,12 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
       }
 
       case 'monthly_commissions': {
-        const thisMonth = sales.filter(s => {
-          const date = new Date(s.created_at || '');
-          return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
-        });
-        const total = thisMonth.reduce((sum, s) => sum + (s.total_value || 0), 0);
+        const total = periodSales.reduce((sum, s) => sum + (Number(s.comissao) || 0), 0);
         
         return {
           value: `€${total.toLocaleString('pt-PT')}`,
-          subtitle: 'este mês',
-          chartData: generateLast7DaysChart(thisMonth),
+          subtitle: selectedMonthLabel,
+          chartData: generateLast7DaysChart(periodSales),
           isLoading: salesLoading,
         };
       }
@@ -451,5 +425,5 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
           isLoading: false,
         };
     }
-  }, [widgetType, leads, sales, proposals, events, clients, ecommerceStats, leadsLoading, salesLoading, proposalsLoading, eventsLoading, clientsLoading]);
+  }, [widgetType, leads, sales, proposals, events, clients, ecommerceStats, leadsLoading, salesLoading, proposalsLoading, eventsLoading, clientsLoading, selectedMonth]);
 }

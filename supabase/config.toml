@@ -97,10 +97,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.process-automation]
-verify_jwt = false
+verify_jwt = true
 
 [functions.process-automation-queue]
-verify_jwt = false
+verify_jwt = true
 
 [functions.check-trial-status]
 verify_jwt = false

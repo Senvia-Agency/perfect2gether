@@ -76,6 +76,7 @@ export default function Leads() {
   const [isEventDetailsModalOpen, setIsEventDetailsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [pendingLead, setPendingLead] = useState<Lead | null>(null);
+  const [pendingEventStatus, setPendingEventStatus] = useState<string | null>(null);
   
   // Lost lead dialog state
   const [isLostDialogOpen, setIsLostDialogOpen] = useState(false);
@@ -244,6 +245,7 @@ export default function Leads() {
       } else {
         // Open create event modal
         setPendingLead(lead || null);
+        setPendingEventStatus(newStatus);
         setIsCreateEventModalOpen(true);
       }
       return;
@@ -396,9 +398,15 @@ export default function Leads() {
   };
 
   const handleEventCreated = () => {
-    // Status já é atualizado automaticamente pelo useCreateEvent hook
-    // Apenas limpar os estados locais
+    // Creating a calendar event does not change the lead by itself. Keep the
+    // lead in the exact scheduling stage chosen by the user after the event is
+    // successfully saved.
+    if (pendingLead && pendingEventStatus) {
+      updateStatus.mutate({ leadId: pendingLead.id, status: pendingEventStatus });
+    }
+
     setPendingLead(null);
+    setPendingEventStatus(null);
     setSelectedEvent(null);
     setIsCreateEventModalOpen(false);
   };
@@ -795,6 +803,7 @@ export default function Leads() {
             setIsCreateEventModalOpen(open);
             if (!open) {
               setPendingLead(null);
+              setPendingEventStatus(null);
               setSelectedEvent(null);
             }
           }}

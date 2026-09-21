@@ -677,6 +677,13 @@ export function CreateSaleModal({
       return;
     }
 
+    // Em contratos de energia da P2G, o código EDP identifica a proposta
+    // adjudicada e não pode ficar em branco ao criar a venda.
+    if (isTelecom && proposalType !== 'servicos' && !edpProposalNumber.trim()) {
+      toast.error("O código da proposta EDP é obrigatório para contratos de energia.");
+      return;
+    }
+
     try {
       // For plan sales, force recurring (no plan selection needed, value comes from Stripe)
       const isPlanRecurring = isPlanSale;
@@ -698,6 +705,10 @@ export function CreateSaleModal({
       const sale = await createSale.mutateAsync({
         client_id: clientId || undefined,
         proposal_id: proposalId || undefined,
+        // Preserva o responsável da lead quando a venda nasce de uma proposta.
+        // Sem esta ligação, o comercial atribuído deixa de ver a venda criada
+        // por um Back Office ou administrador.
+        lead_id: prefillProposal?.lead_id || proposals?.find(p => p.id === proposalId)?.lead_id || undefined,
         status: saleStatus,
         total_value: total,
         subtotal: subtotal,

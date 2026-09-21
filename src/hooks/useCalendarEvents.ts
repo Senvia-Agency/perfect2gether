@@ -15,6 +15,7 @@ interface CreateEventParams {
   lead_id?: string;
   reminder_minutes?: number | null;
   meeting_link?: string;
+  user_id?: string;
 }
 
 interface UpdateEventParams {
@@ -109,7 +110,7 @@ export function useCreateEvent() {
         .from('calendar_events')
         .insert({
           ...params,
-          user_id: user.id,
+          user_id: params.user_id || user.id,
           organization_id: organization.id,
         })
         .select()

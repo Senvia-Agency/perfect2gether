@@ -101,7 +101,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const [pendingActivationDate, setPendingActivationDate] = useState("");
 
   const { organization } = useAuth();
-  const { isAdmin, can } = usePermissions();
+  const { isAdmin, can, profileName } = usePermissions();
   const canEditSale = can('sales', 'sales', 'edit');
   const canIssueInvoice = can('finance', 'invoices', 'issue');
   const canCancelInvoice = can('finance', 'invoices', 'cancel');
@@ -114,6 +114,9 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const isFulfilledAndLocked = lockFulfilledSales && sale?.status === 'fulfilled' && !isAdmin;
   const isCancelledAndLocked = sale?.status === 'cancelled' && !isAdmin;
   const isLocked = isDeliveredAndLocked || isFulfilledAndLocked || isCancelledAndLocked;
+  // O acompanhamento do estado das vendas pertence ao Back Office. Os admins
+  // mantem acesso para suportar excecoes operacionais.
+  const canChangeStatus = isAdmin || profileName === 'Back Office';
 
   const { data: saleItems = [] } = useSaleItems(sale?.id);
   const { data: products } = useProducts();
@@ -177,6 +180,10 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   if (!sale) return null;
 
   const handleStatusChange = (newStatus: SaleStatus) => {
+    if (!canChangeStatus) {
+      toast.error('Apenas o Back Office pode alterar o estado das vendas.');
+      return;
+    }
     if (isTelecom) {
       if (newStatus === 'delivered') {
         setPendingStatus('delivered');
@@ -343,7 +350,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Estado</p>
-                          <Select value={status} onValueChange={handleStatusChange} disabled={isLocked}>
+                          <Select value={status} onValueChange={handleStatusChange} disabled={isLocked || !canChangeStatus}>
                             <SelectTrigger className={cn('w-full h-8 text-xs border mt-0.5', SALE_STATUS_COLORS[status])}>
                               <SelectValue />
                             </SelectTrigger>
@@ -376,6 +383,11 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                       {isLocked && (
                         <p className="text-xs text-muted-foreground mt-3">
                           Esta venda está {isDeliveredAndLocked ? 'concluída' : isCancelledAndLocked ? 'cancelada' : 'entregue'} e não pode ser alterada.
+                        </p>
+                      )}
+                      {!isLocked && !canChangeStatus && (
+                        <p className="text-xs text-muted-foreground mt-3">
+                          O estado é gerido pelo Back Office.
                         </p>
                       )}
                     </CardContent>

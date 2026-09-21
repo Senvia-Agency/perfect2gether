@@ -25,7 +25,6 @@ import type { SaleWithDetails, SaleStatus } from "@/types/sales";
 import { SALE_STATUS_LABELS, SALE_STATUS_COLORS, SALE_STATUSES } from "@/types/sales";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useTelecomSaleMetrics } from "@/hooks/useTelecomSaleMetrics";
 import { useModules } from "@/hooks/useModules";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -47,7 +46,6 @@ export default function Sales() {
     isSuperAdmin,
   });
   const { modules } = useModules();
-  const { data: telecomMetrics } = useTelecomSaleMetrics();
   const [search, setSearch] = usePersistedState("sales-search-v1", "");
   const [statusFilter, setStatusFilter] = usePersistedState<SaleStatus | "all">("sales-status-v1", "all");
   const [typeFilter, setTypeFilter] = usePersistedState<'all' | 'energia' | 'servicos'>('sales-type-v1', 'all');
@@ -303,9 +301,7 @@ export default function Sales() {
             {isTelecom && modules.energy && (
               <TypeSplit
                 energia={typeStats.total.energiaCount}
-                energiaUnit={`${formatCurrency(typeStats.total.energiaValue)}${telecomMetrics ? ` · ${telecomMetrics.totalMWh.toFixed(1)} MWh` : ''}`}
                 servicos={typeStats.total.servicosCount}
-                servicosUnit={`${formatCurrency(typeStats.total.servicosValue)}${telecomMetrics ? ` · ${telecomMetrics.totalKWp.toFixed(1)} kWp` : ''}`}
               />
             )}
           </CardContent>
@@ -322,9 +318,7 @@ export default function Sales() {
             {isTelecom && modules.energy && (
               <TypeSplit
                 energia={typeStats.fulfilled.energiaCount}
-                energiaUnit={formatCurrency(typeStats.fulfilled.energiaValue)}
                 servicos={typeStats.fulfilled.servicosCount}
-                servicosUnit={formatCurrency(typeStats.fulfilled.servicosValue)}
               />
             )}
           </CardContent>
@@ -357,9 +351,7 @@ export default function Sales() {
             {isTelecom && modules.energy && (
               <TypeSplit
                 energia={typeStats.delivered.energiaCount}
-                energiaUnit={`${formatCurrency(typeStats.delivered.energiaValue)}${telecomMetrics ? ` · ${telecomMetrics.deliveredMWh.toFixed(1)} MWh` : ''}`}
                 servicos={typeStats.delivered.servicosCount}
-                servicosUnit={`${formatCurrency(typeStats.delivered.servicosValue)}${telecomMetrics ? ` · ${telecomMetrics.deliveredKWp.toFixed(1)} kWp` : ''}`}
               />
             )}
           </CardContent>
