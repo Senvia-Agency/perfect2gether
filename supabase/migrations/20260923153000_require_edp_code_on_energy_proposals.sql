@@ -6,12 +6,21 @@ ALTER TABLE public.proposals
   ADD COLUMN IF NOT EXISTS edp_proposal_number text;
 
 -- Preserve data already captured on sales created from an older proposal.
+-- This is a system backfill. The sales-team lock trigger (installed by the
+-- preceding migration) must not block it merely because the proposal was
+-- already converted to a sale.
+ALTER TABLE public.proposals
+  DISABLE TRIGGER trg_lock_converted_proposal_for_salespeople;
+
 UPDATE public.proposals p
 SET edp_proposal_number = s.edp_proposal_number
 FROM public.sales s
 WHERE s.proposal_id = p.id
   AND nullif(btrim(coalesce(p.edp_proposal_number, '')), '') IS NULL
   AND nullif(btrim(coalesce(s.edp_proposal_number, '')), '') IS NOT NULL;
+
+ALTER TABLE public.proposals
+  ENABLE TRIGGER trg_lock_converted_proposal_for_salespeople;
 
 CREATE OR REPLACE FUNCTION public.enforce_p2g_energy_proposal_edp_code()
 RETURNS trigger
