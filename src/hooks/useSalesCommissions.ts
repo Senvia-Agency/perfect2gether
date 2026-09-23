@@ -32,7 +32,7 @@ export function useSalesCommissions() {
   const monthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
 
   return useQuery({
-    queryKey: ["sales-commissions", orgId, monthStart, commissionsEnabled],
+    queryKey: ["sales-commissions", orgId, monthStart, commissionsEnabled, "concluded-sales-only"],
     queryFn: async (): Promise<CommissionEntry[]> => {
       if (!orgId || !commissionsEnabled) return [];
 
@@ -43,7 +43,7 @@ export function useSalesCommissions() {
         .eq("organization_id", orgId)
         .gte("sale_date", monthStart)
         .lte("sale_date", monthEnd)
-        .in("status", ["fulfilled", "delivered"]);
+        .eq("status", "delivered");
 
       if (salesError) throw salesError;
 

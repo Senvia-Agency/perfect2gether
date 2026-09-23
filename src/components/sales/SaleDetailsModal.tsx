@@ -128,6 +128,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
     if (!hasEnergyConfig || rawProposalCpes.length === 0) return rawProposalCpes;
     return rawProposalCpes.map(cpe => {
       if (cpe.commission_group_id) return cpe;
+      if (cpe.comissao != null && Number(cpe.comissao) === 0) return cpe;
       if (!cpe.margem || !cpe.consumo_anual) return cpe;
       const margem = Number(cpe.margem);
       if (margem <= 0) return cpe;
@@ -260,11 +261,14 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
       ? proposalCpes.reduce((sum, cpe) => sum + (Number(cpe.consumo_anual) || 0), 0)
       : null
   );
-  const displayComissao = sale.comissao ?? (
-    proposalCpes.some((cpe) => cpe.comissao != null)
-      ? proposalCpes.reduce((sum, cpe) => sum + (Number(cpe.comissao) || 0), 0)
-      : null
-  );
+  const displayComissao = sale.proposal_type === 'energia' && rawProposalCpes.length > 0
+    ? rawProposalCpes.reduce((sum, cpe) => sum + (Number(cpe.comissao) || 0), 0)
+    : sale.display_commission ?? sale.comissao ?? (
+        rawProposalCpes.some((cpe) => cpe.comissao != null)
+          ? rawProposalCpes.reduce((sum, cpe) => sum + (Number(cpe.comissao) || 0), 0)
+          : null
+      );
+  const summaryValue = isTelecom ? Number(displayComissao ?? 0) : Number(sale.total_value || 0);
   const displayDbl = sale.dbl ?? proposalCpes.find((cpe) => cpe.dbl != null)?.dbl ?? null;
   const displayAnosContrato = sale.anos_contrato ?? proposalCpes.find((cpe) => cpe.duracao_contrato != null)?.duracao_contrato ?? null;
   const displayContratoInicio = proposalCpes
@@ -307,10 +311,10 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
               <div className="lg:hidden mb-4">
                 <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
                   <p className="text-sm text-muted-foreground">
-                    {hasInvoiceXpress ? 'Valor Total (s/ IVA)' : 'Valor Total'}
+                    {isTelecom ? 'Comissão Total' : hasInvoiceXpress ? 'Valor Total (s/ IVA)' : 'Valor Total'}
                   </p>
-                  <p className="text-2xl font-bold text-primary">{formatCurrency(sale.total_value)}</p>
-                  {hasInvoiceXpress && (
+                  <p className="text-2xl font-bold text-primary">{formatCurrency(summaryValue)}</p>
+                  {hasInvoiceXpress && !isTelecom && (
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-primary/10">
                       <span className="text-xs text-muted-foreground">IVA: {formatCurrency(vatCalc.totalVat)}</span>
                       <span className="text-sm font-semibold">c/ IVA: {formatCurrency(vatCalc.totalWithVat)}</span>
@@ -836,10 +840,10 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                     <div className="hidden lg:block">
                       <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
                         <p className="text-sm text-muted-foreground">
-                          {hasInvoiceXpress ? 'Valor Total (s/ IVA)' : 'Valor Total'}
+                          {isTelecom ? 'Comissão Total' : hasInvoiceXpress ? 'Valor Total (s/ IVA)' : 'Valor Total'}
                         </p>
-                        <p className="text-2xl font-bold text-primary">{formatCurrency(sale.total_value)}</p>
-                        {hasInvoiceXpress && (
+                        <p className="text-2xl font-bold text-primary">{formatCurrency(summaryValue)}</p>
+                        {hasInvoiceXpress && !isTelecom && (
                           <div className="flex items-center justify-between mt-2 pt-2 border-t border-primary/10">
                             <span className="text-xs text-muted-foreground">IVA: {formatCurrency(vatCalc.totalVat)}</span>
                             <span className="text-sm font-semibold">c/ IVA: {formatCurrency(vatCalc.totalWithVat)}</span>

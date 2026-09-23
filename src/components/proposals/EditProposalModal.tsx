@@ -165,7 +165,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
           
           // Recalculate commission using current tier rules (runtime derivation)
           let comissao = cpe.comissao?.toString() || '';
-          if (!cpe.commission_group_id && hasEnergyConfigRef.current && margem) {
+          if (!cpe.commission_group_id && cpe.comissao !== 0 && hasEnergyConfigRef.current && margem) {
             const margemNum = parseFloat(margem);
             if (margemNum > 0) {
               const calc = calcRef.current(margemNum, getVolumeTier(parseFloat(consumoAnual) || 0));
@@ -432,7 +432,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
         : (cpeServiceSummary.kwp || null),
       service_type: proposalType === 'energia' ? cpeServiceSummary.service_type || null : null,
       modalidade: proposalType === 'energia' ? cpeServiceSummary.modalidade || null : null,
-      comissao: totalComissao || null,
+      comissao: totalComissao,
       servicos_produtos: proposalType === 'servicos' ? servicosProdutos : null,
       servicos_details: proposalType === 'servicos' && Object.keys(servicosDetails).length > 0 ? servicosDetails : null,
     });
@@ -454,7 +454,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
           duracao_contrato: cpe.duracao_contrato ? parseFloat(cpe.duracao_contrato.toString()) : null,
           dbl: cpe.dbl ? parseFloat(cpe.dbl) : null,
           margem: cpe.margem ? parseFloat(cpe.margem) : null,
-          comissao: cpe.comissao ? parseFloat(cpe.comissao) : null,
+          comissao: cpe.comissao !== '' ? parseFloat(cpe.comissao) : null,
           commission_group_key: cpe.commission_group_key || null,
           contrato_inicio: cpe.contrato_inicio || null,
           contrato_fim: cpe.contrato_fim || null,

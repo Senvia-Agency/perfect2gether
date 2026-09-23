@@ -32,6 +32,8 @@ import { toast } from "sonner";
 
 // Vendas legadas sem proposal_type contam como energia (igual ao backfill da BD).
 const isEnergiaSale = (s: SaleWithDetails) => (s.proposal_type ?? 'energia') === 'energia';
+const displayedSaleValue = (sale: SaleWithDetails, isTelecom: boolean) =>
+  isTelecom ? Number(sale.display_commission ?? sale.comissao ?? 0) : Number(sale.total_value || 0);
 
 export default function Sales() {
   // Subscribe to realtime updates
@@ -57,10 +59,6 @@ export default function Sales() {
   const [saleToEdit, setSaleToEdit] = useState<SaleWithDetails | null>(null);
   const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
-
-  if (!canAccessSalesWorkspace) {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   // Reactively open sale details when pendingSaleId matches a sale in cache
   useEffect(() => {
@@ -127,23 +125,23 @@ export default function Sales() {
 
     return {
       total: filteredSales.length,
-      totalValue: filteredSales.reduce((acc, s) => acc + (s.total_value || 0), 0),
+      totalValue: filteredSales.reduce((acc, s) => acc + displayedSaleValue(s, isTelecom), 0),
       delivered: delivered.length,
-      deliveredValue: delivered.reduce((acc, s) => acc + (s.total_value || 0), 0),
+      deliveredValue: delivered.reduce((acc, s) => acc + displayedSaleValue(s, isTelecom), 0),
       inProgress: inProgress.length,
       fulfilled: fulfilled.length,
-      fulfilledValue: fulfilled.reduce((acc, s) => acc + (s.total_value || 0), 0),
+      fulfilledValue: fulfilled.reduce((acc, s) => acc + displayedSaleValue(s, isTelecom), 0),
       cancelled: cancelled.length,
-      cancelledValue: cancelled.reduce((acc, s) => acc + (s.total_value || 0), 0),
+      cancelledValue: cancelled.reduce((acc, s) => acc + displayedSaleValue(s, isTelecom), 0),
     };
-  }, [filteredSales]);
+  }, [filteredSales, isTelecom]);
 
   // Breakdown Energia / Servicos por card (respeita os filtros ativos)
   const typeStats = useMemo(() => {
     const byType = (list: SaleWithDetails[]) => {
       const energia = list.filter(isEnergiaSale);
       const servicos = list.filter((s) => !isEnergiaSale(s));
-      const sum = (l: SaleWithDetails[]) => l.reduce((acc, s) => acc + (s.total_value || 0), 0);
+      const sum = (l: SaleWithDetails[]) => l.reduce((acc, s) => acc + displayedSaleValue(s, isTelecom), 0);
       return {
         energiaCount: energia.length,
         energiaValue: sum(energia),
@@ -158,7 +156,7 @@ export default function Sales() {
       delivered: byType(filteredSales.filter((s) => s.status === 'delivered')),
       cancelled: byType(filteredSales.filter((s) => s.status === 'cancelled')),
     };
-  }, [filteredSales]);
+  }, [filteredSales, isTelecom]);
 
   const handleExportPerfect2Gether = async () => {
     if (!isPerfect2Gether) return;
@@ -260,6 +258,10 @@ export default function Sales() {
   };
 
 
+  if (!canAccessSalesWorkspace) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
         {/* Header */}
@@ -307,7 +309,7 @@ export default function Sales() {
               <span className="text-xs text-muted-foreground">Total Vendas</span>
             </div>
             <p className="text-2xl font-bold">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(stats.totalValue)}</p>
+            <p className="text-xs text-muted-foreground">{isTelecom ? 'Comissão: ' : ''}{formatCurrency(stats.totalValue)}</p>
             {isTelecom && modules.energy && (
               <TypeSplit
                 energia={typeStats.total.energiaCount}
@@ -324,7 +326,7 @@ export default function Sales() {
               <span className="text-xs text-muted-foreground">Entregues</span>
             </div>
             <p className="text-2xl font-bold text-purple-500">{stats.fulfilled}</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(stats.fulfilledValue)}</p>
+            <p className="text-xs text-muted-foreground">{isTelecom ? 'Comissão: ' : ''}{formatCurrency(stats.fulfilledValue)}</p>
             {isTelecom && modules.energy && (
               <TypeSplit
                 energia={typeStats.fulfilled.energiaCount}
@@ -357,7 +359,7 @@ export default function Sales() {
               <span className="text-xs text-muted-foreground">Concluídas</span>
             </div>
             <p className="text-2xl font-bold text-green-500">{stats.delivered}</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(stats.deliveredValue)}</p>
+            <p className="text-xs text-muted-foreground">{isTelecom ? 'Comissão: ' : ''}{formatCurrency(stats.deliveredValue)}</p>
             {isTelecom && modules.energy && (
               <TypeSplit
                 energia={typeStats.delivered.energiaCount}
@@ -374,7 +376,7 @@ export default function Sales() {
               <span className="text-xs text-muted-foreground">Canceladas</span>
             </div>
             <p className="text-2xl font-bold text-red-500">{stats.cancelled}</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(stats.cancelledValue)}</p>
+            <p className="text-xs text-muted-foreground">{isTelecom ? 'Comissão: ' : ''}{formatCurrency(stats.cancelledValue)}</p>
             {isTelecom && modules.energy && (
               <TypeSplit
                 energia={typeStats.cancelled.energiaCount}
@@ -488,7 +490,8 @@ export default function Sales() {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-lg font-semibold">{formatCurrency(sale.total_value)}</p>
+                    <p className="text-lg font-semibold">{formatCurrency(displayedSaleValue(sale, isTelecom))}</p>
+                    {isTelecom && <p className="text-xs text-muted-foreground">Comissão</p>}
                     {sale.proposal && (
                       <p className="text-xs text-muted-foreground">Via proposta</p>
                     )}

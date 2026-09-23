@@ -64,6 +64,7 @@ interface ProposalDetailsModalProps {
 }
 
 export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalDetailsModalProps) {
+  const { organization } = useAuth();
   const { data: proposalProducts = [] } = useProposalProducts(proposal?.id);
   const { data: proposalCpes = [] } = useProposalCpes(proposal?.id);
   const { data: orgData } = useOrganization();
@@ -98,6 +99,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
     if (!hasEnergyConfig || proposalCpes.length === 0) return proposalCpes;
     return proposalCpes.map(cpe => {
       if (cpe.commission_group_id) return cpe;
+      if (cpe.comissao != null && Number(cpe.comissao) === 0) return cpe;
       if (!cpe.margem || !cpe.consumo_anual) return cpe;
       const margem = Number(cpe.margem);
       if (margem <= 0) return cpe;
@@ -369,8 +371,6 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
       },
     });
   };
-
-  const { organization } = useAuth();
 
   const handleSendEmail = () => {
     if (!proposal.client?.email || !organization?.id) return;

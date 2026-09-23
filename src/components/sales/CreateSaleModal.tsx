@@ -167,6 +167,7 @@ export function CreateSaleModal({
       // already the business value for the whole group and must not be copied
       // to each selected CPE when a sale is created.
       if (cpe.commission_group_id) return cpe;
+      if (cpe.comissao != null && Number(cpe.comissao) === 0) return cpe;
       if (!cpe.margem || !cpe.consumo_anual) return cpe;
       const margem = Number(cpe.margem);
       if (margem <= 0) return cpe;
@@ -510,6 +511,9 @@ export function CreateSaleModal({
 
   const discountValue = parseFloat(discount) || 0;
   const total = Math.max(0, subtotal - discountValue);
+  const displayedCommissionTotal = proposalType === 'energia' && proposalCpes.length > 0
+    ? energyCommissionTotal
+    : Number(comissao) || 0;
 
   // VAT calculation
   const vatCalc = useVatCalculation({
@@ -739,7 +743,7 @@ export function CreateSaleModal({
           anos_contrato: parseFloat(anosContrato) || undefined,
           modelo_servico: modeloServico || undefined,
           kwp: parseFloat(kwp) || undefined,
-          comissao: parseFloat(comissao) || undefined,
+          comissao: comissao.trim() !== '' ? parseFloat(comissao) : undefined,
           negotiation_type: negotiationType || undefined,
           servicos_produtos: servicosProdutos.length > 0 ? servicosProdutos : undefined,
           servicos_details: Object.keys(servicosDetails).length > 0 ? servicosDetails : undefined,
@@ -1455,6 +1459,13 @@ export function CreateSaleModal({
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 pt-0 space-y-3">
+                      {isTelecom ? (
+                        <div className="flex justify-between text-lg font-semibold">
+                          <span>Comissão Total</span>
+                          <span className="text-primary">{formatCurrency(displayedCommissionTotal)}</span>
+                        </div>
+                      ) : (
+                      <>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
                         <span className="font-medium">{formatCurrency(subtotal)}</span>
@@ -1495,6 +1506,8 @@ export function CreateSaleModal({
                           <span className="text-muted-foreground font-medium">Total c/ IVA</span>
                           <span className="font-semibold">{formatCurrency(vatCalc.totalWithVat)}</span>
                         </div>
+                      )}
+                      </>
                       )}
                     </CardContent>
                   </Card>

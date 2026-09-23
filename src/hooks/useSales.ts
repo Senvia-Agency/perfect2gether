@@ -19,7 +19,7 @@ export function useSales() {
         .select(`
           *,
           lead:leads(name, email, phone, assigned_to),
-          proposal:proposals(id, code, proposal_date),
+          proposal:proposals(id, code, proposal_date, comissao),
           client:crm_clients(id, name, code, email, phone, company, nif, address_line1, address_line2, city, postal_code, country)
         `)
         .eq("organization_id", organization.id)
@@ -35,6 +35,30 @@ export function useSales() {
           (sale.created_by && effectiveUserIds.includes(sale.created_by)) || 
           (sale.lead?.assigned_to && effectiveUserIds.includes(sale.lead.assigned_to))
         );
+      }
+
+      if (organization.niche === 'telecom') {
+        const proposalIds = [...new Set(result.map(sale => sale.proposal_id).filter(Boolean))] as string[];
+        const commissionByProposal = new Map<string, number>();
+        if (proposalIds.length > 0) {
+          const { data: cpes, error: cpesError } = await supabase
+            .from('proposal_cpes')
+            .select('proposal_id, comissao')
+            .in('proposal_id', proposalIds);
+          if (cpesError) throw cpesError;
+          for (const cpe of cpes || []) {
+            commissionByProposal.set(
+              cpe.proposal_id,
+              (commissionByProposal.get(cpe.proposal_id) || 0) + (Number(cpe.comissao) || 0),
+            );
+          }
+        }
+        result = result.map(sale => ({
+          ...sale,
+          display_commission: sale.proposal_type === 'energia' && sale.proposal_id && commissionByProposal.has(sale.proposal_id)
+            ? commissionByProposal.get(sale.proposal_id)!
+            : Number(sale.comissao ?? sale.proposal?.comissao ?? 0),
+        }));
       }
       
       return result;
@@ -113,7 +137,7 @@ export function useCreateSale() {
           anos_contrato: data.anos_contrato || null,
           modelo_servico: data.modelo_servico || null,
           kwp: data.kwp || null,
-          comissao: data.comissao || null,
+          comissao: data.comissao ?? null,
           negotiation_type: data.negotiation_type || null,
           servicos_produtos: data.servicos_produtos || null,
           servicos_details: data.servicos_details || null,

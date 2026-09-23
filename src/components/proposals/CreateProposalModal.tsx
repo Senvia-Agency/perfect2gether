@@ -345,7 +345,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
       service_type: proposalType === 'energia' ? cpeServiceSummary.service_type : undefined,
       modalidade: proposalType === 'energia' ? cpeServiceSummary.modalidade : undefined,
       modelo_servico: proposalType === 'servicos' ? modeloServico : undefined,
-      comissao: totalComissao || undefined,
+      comissao: totalComissao,
       servicos_produtos: proposalType === 'servicos' && servicosProdutos.length > 0 ? servicosProdutos : undefined,
       servicos_details: proposalType === 'servicos' && Object.keys(servicosDetails).length > 0 ? servicosDetails : undefined,
       }, {
@@ -367,7 +367,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
                 duracao_contrato: cpe.duracao_contrato ? parseFloat(cpe.duracao_contrato) : null,
                 dbl: cpe.dbl ? parseFloat(cpe.dbl) : null,
                 margem: cpe.margem ? parseFloat(cpe.margem) : null,
-                comissao: cpe.comissao ? parseFloat(cpe.comissao) : null,
+                comissao: cpe.comissao !== '' ? parseFloat(cpe.comissao) : null,
                 commission_group_key: cpe.commission_group_key || null,
                 contrato_inicio: cpe.contrato_inicio || null,
                 contrato_fim: cpe.contrato_fim || null,

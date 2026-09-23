@@ -197,7 +197,7 @@ export function EditSaleModal({
       : null;
 
     let comissaoCalculada = cpe.comissao ?? null;
-    if (hasEnergyConfigRef.current && margemCalculada !== null) {
+    if (cpe.comissao !== 0 && hasEnergyConfigRef.current && margemCalculada !== null) {
       const calculated = calcCommissionRef.current(margemCalculada, getVolumeTier(consumo));
       if (calculated !== null) comissaoCalculada = Number(calculated.toFixed(2));
     }
@@ -218,7 +218,7 @@ export function EditSaleModal({
 
         // Recalculate commission using current tier rules
         let comissao = cpe.comissao;
-        if (!cpe.commission_group_id && hasEnergyConfigRef.current && cpe.margem && cpe.consumo_anual) {
+        if (!cpe.commission_group_id && cpe.comissao !== 0 && hasEnergyConfigRef.current && cpe.margem && cpe.consumo_anual) {
           const margem = Number(cpe.margem);
           if (margem > 0) {
             const calc = calcCommissionRef.current(margem, getVolumeTier(Number(cpe.consumo_anual) || 0));
@@ -273,17 +273,6 @@ export function EditSaleModal({
       setOriginalItemIds([]);
     }
   }, [open, existingItems]);
-
-  // Sync manualTotalValue when editable CPEs or comissao change (telecom sales)
-  useEffect(() => {
-    if (!open || !sale || !isTelecom) return;
-    if (sale.proposal_type === 'energia' && editableCpes.length > 0) {
-      const comissaoTotal = editableCpes.reduce((sum, cpe) => sum + (cpe.comissao || 0), 0);
-      setManualTotalValue(comissaoTotal.toString());
-    } else if (sale.proposal_type === 'servicos' && comissao) {
-      setManualTotalValue(comissao);
-    }
-  }, [open, sale, isTelecom, editableCpes, comissao]);
 
   // Auto-recalculate commission when relevant fields change (servicos only)
   useEffect(() => {
@@ -366,6 +355,9 @@ export function EditSaleModal({
   const subtotal = hasItems ? itemsSubtotal : parseFloat(manualTotalValue) || 0;
   const discountValue = parseFloat(discount) || 0;
   const total = hasItems ? Math.max(0, subtotal - discountValue) : subtotal;
+  const displayedCommissionTotal = sale?.proposal_type === 'energia' && editableCpes.length > 0
+    ? editableCpes.reduce((sum, cpe) => sum + (Number(cpe.comissao) || 0), 0)
+    : Number(comissao) || 0;
 
   // VAT calculation
   const vatCalc = useVatCalculation({
@@ -462,7 +454,7 @@ export function EditSaleModal({
           margem: parseFloat(margem) || null,
           dbl: parseFloat(dbl) || null,
           anos_contrato: parseFloat(anosContrato) || null,
-          comissao: parseFloat(comissao) || null,
+          comissao: comissao.trim() !== '' ? parseFloat(comissao) : null,
           modelo_servico: (modeloServico as ModeloServico) || null,
           kwp: parseFloat(kwp) || null,
           servicos_produtos: servicosProdutos.length > 0 ? servicosProdutos : null,
@@ -1132,6 +1124,13 @@ export function EditSaleModal({
                           </CardTitle>
                         </CardHeader>
                          <CardContent className="p-4 pt-0 space-y-3">
+                          {isTelecom ? (
+                            <div className="flex justify-between text-lg font-semibold">
+                              <span>Comissão Total</span>
+                              <span className="text-primary">{formatCurrency(displayedCommissionTotal)}</span>
+                            </div>
+                          ) : (
+                          <>
                           {!hasItems ? (
                             <div className="space-y-1.5">
                               <Label className="text-sm text-muted-foreground">Valor Total</Label>
@@ -1191,6 +1190,8 @@ export function EditSaleModal({
                               <span className="text-muted-foreground font-medium">Total c/ IVA</span>
                               <span className="font-semibold">{formatCurrency(vatCalc.totalWithVat)}</span>
                             </div>
+                          )}
+                          </>
                           )}
                         </CardContent>
                       </Card>

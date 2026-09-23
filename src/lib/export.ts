@@ -173,8 +173,9 @@ export function mapPerfect2GetherSalesForExport(
     const consultantId = sale.lead?.assigned_to || sale.created_by || '';
     const consultantName = consultantId ? deps.consultantsById.get(consultantId) || '—' : '—';
     const leadSource = sale.lead_id ? deps.leadSourcesById.get(sale.lead_id) || '' : '';
-    const commissionValue = cpes.reduce((sum, cpe) => sum + Number(cpe.comissao || 0), 0)
-      || Number(sale.comissao || proposal?.comissao || 0);
+    const commissionValue = cpes.length > 0
+      ? cpes.reduce((sum, cpe) => sum + Number(cpe.comissao || 0), 0)
+      : Number(sale.comissao ?? proposal?.comissao ?? 0);
     const paidAmount = (deps.paymentsBySaleId.get(sale.id) || [])
       .filter((payment) => payment.status === 'paid')
       .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);

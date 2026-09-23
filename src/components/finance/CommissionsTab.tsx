@@ -47,7 +47,7 @@ export function CommissionsTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
-  const { data, isLoading } = useLiveCommissions(selectedMonth, effectiveUserIds);
+  const { data, isLoading, isError, refetch } = useLiveCommissions(selectedMonth, effectiveUserIds);
 
   const toggleExpand = (id: string) => {
     setExpandedItems(prev => {
@@ -64,6 +64,17 @@ export function CommissionsTab() {
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+          <p className="text-sm text-destructive">Não foi possível carregar as comissões. Os valores não estão disponíveis.</p>
+          <button type="button" className="text-sm text-primary underline" onClick={() => void refetch()}>Tentar novamente</button>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -115,7 +126,7 @@ export function CommissionsTab() {
             <FileX className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium mb-1">Sem dados de comissão</h3>
             <p className="text-sm text-muted-foreground max-w-md">
-              Nenhuma venda concluída com data de ativação neste mês (Angariação / Angariação Indexado).
+              Nenhuma comissão de venda concluída neste mês.
             </p>
           </CardContent>
         </Card>

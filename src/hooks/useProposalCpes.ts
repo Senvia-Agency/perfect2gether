@@ -154,6 +154,9 @@ export function useCreateProposalCpe() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['proposal_cpes', variables.proposal_id] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics-proposal-cpes'] });
+      queryClient.invalidateQueries({ queryKey: ['commissions-live'] });
     },
     onError: () => {
       toast({ title: 'Erro', description: 'Não foi possível adicionar o CPE.', variant: 'destructive' });
@@ -177,6 +180,9 @@ export function useCreateProposalCpesBatch() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['proposal_cpes', variables.proposalId] });
       queryClient.invalidateQueries({ queryKey: ['proposal_cpe_commission_groups', variables.proposalId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics-proposal-cpes'] });
+      queryClient.invalidateQueries({ queryKey: ['commissions-live'] });
     },
     onError: () => {
       toast({ title: 'Erro', description: 'Não foi possível guardar os CPEs da proposta.', variant: 'destructive' });
@@ -200,6 +206,9 @@ export function useDeleteProposalCpe() {
     },
     onSuccess: (proposalId) => {
       queryClient.invalidateQueries({ queryKey: ['proposal_cpes', proposalId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics-proposal-cpes'] });
+      queryClient.invalidateQueries({ queryKey: ['commissions-live'] });
     },
     onError: () => {
       toast({ title: 'Erro', description: 'Não foi possível remover o CPE.', variant: 'destructive' });
@@ -224,6 +233,9 @@ export function useUpdateProposalCpes() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['proposal_cpes', variables.proposalId] });
       queryClient.invalidateQueries({ queryKey: ['proposal_cpe_commission_groups', variables.proposalId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics-proposal-cpes'] });
+      queryClient.invalidateQueries({ queryKey: ['commissions-live'] });
       toast({ title: 'CPEs atualizados', description: 'Os CPEs da proposta foram atualizados.' });
     },
     onError: () => {

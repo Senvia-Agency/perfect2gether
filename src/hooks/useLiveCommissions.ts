@@ -35,6 +35,7 @@ export interface CpeDetail {
   duracao_contrato: number;
   margem: number;
   comissao_indicativa: number;
+  commission_recorded: boolean;
   comissao_final: number;
   commission_group_id: string | null;
   negotiation_type: string;
@@ -85,7 +86,7 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
   };
 
   return useQuery<LiveCommissionsData>({
-    queryKey: ['commissions-live', organizationId, selectedMonth, members?.length, energyConfig?.bands?.length],
+    queryKey: ['commissions-live', organizationId, selectedMonth, 'concluded-sales-only', effectiveUserIds, members, energyConfig],
     queryFn: async (): Promise<LiveCommissionsData> => {
       const emptyResult: LiveCommissionsData = { commercials: [], globalMwh: 0, globalTier: 'low', totalCommission: 0, globalEnergyCommission: 0, globalServicosCommission: 0, globalServicosKwp: 0 };
       if (!organizationId) return emptyResult;
@@ -93,14 +94,13 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
       const monthStart = selectedMonth;
       const monthEnd = format(endOfMonth(new Date(selectedMonth)), 'yyyy-MM-dd');
 
-      // Commissions become payable when the sale is concluded. Activation can
-      // be scheduled for a future date (or be absent), so filtering by it
-      // hides valid commissions from the Finance workspace.
+      // Only concluded sales earn a commission. Activation may be scheduled
+      // later, so the financial period follows the sale date.
       const { data: sales, error: salesError } = await supabase
         .from('sales')
         .select('id, code, lead_id, client_id, sale_date, activation_date, status, proposal_id')
         .eq('organization_id', organizationId)
-        .in('status', ['delivered', 'fulfilled'])
+        .eq('status', 'delivered')
         .gte('sale_date', monthStart)
         .lte('sale_date', monthEnd);
 
@@ -109,12 +109,14 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
 
       // Get client assigned_to
       const clientIds = [...new Set(sales.map(s => s.client_id).filter(Boolean))] as string[];
-      const { data: clients } = clientIds.length > 0
+      const clientsResult = clientIds.length > 0
         ? await supabase
             .from('crm_clients')
             .select('id, assigned_to, name, company')
             .in('id', clientIds)
-        : { data: [] };
+        : { data: [], error: null };
+      if (clientsResult.error) throw clientsResult.error;
+      const clients = clientsResult.data;
 
       const clientMap = new Map((clients || []).map(c => [c.id, c.assigned_to]));
       const clientNameMap = new Map((clients || []).map(c => [c.id, c.name || c.company || null]));
@@ -123,10 +125,12 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
       const proposalIds = [...new Set(sales.map(s => s.proposal_id).filter(Boolean))] as string[];
       if (!proposalIds.length) return emptyResult;
 
-      const { data: proposals } = await supabase
+      const { data: proposals, error: proposalsError } = await supabase
         .from('proposals')
         .select('id, negotiation_type, servicos_produtos, servicos_details, proposal_type')
         .in('id', proposalIds);
+
+      if (proposalsError) throw proposalsError;
 
       if (!proposals?.length) return emptyResult;
 
@@ -156,10 +160,12 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
         }
       }
 
-      const { data: cpes } = await supabase
+      const { data: cpes, error: cpesError } = await supabase
         .from('proposal_cpes')
         .select('id, proposal_id, consumo_anual, dbl, duracao_contrato, margem, comissao, commission_group_id, serial_number, contrato_inicio, contrato_fim')
         .in('proposal_id', validProposalIds);
+
+      if (cpesError) throw cpesError;
 
       if (!cpes?.length) return emptyResult;
 
@@ -218,6 +224,7 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
           duracao_contrato: cpe.duracao_contrato || 0,
           margem: cpe.margem || 0,
           comissao_indicativa: cpe.comissao || 0,
+          commission_recorded: cpe.comissao != null,
           comissao_final: 0,
           commission_group_id: cpe.commission_group_id,
           negotiation_type: proposalNegotiationMap.get(cpe.proposal_id) || '',
@@ -245,7 +252,11 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
         let servicosFinal = 0;
         for (const cpe of entry.cpes) {
           const multiplier = NEGOTIATION_MULTIPLIER[cpe.negotiation_type] ?? 1;
-          if (cpe.commission_group_id) {
+          if (cpe.commission_recorded && cpe.comissao_indicativa === 0) {
+            // An explicitly stored zero must never become a payable commission
+            // merely because the current commission matrix yields a value.
+            cpe.comissao_final = 0;
+          } else if (cpe.commission_group_id) {
             cpe.comissao_final = cpe.comissao_indicativa * multiplier;
           } else if (energyConfig && energyConfig.bands.length > 0) {
             const final_ = calculateEnergyCommissionPure(cpe.margem, energyConfig, entry.tier);

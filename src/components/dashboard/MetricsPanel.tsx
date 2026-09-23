@@ -73,13 +73,13 @@ export function MetricsPanel() {
   const monthStart = format(startOfMonth(selectedMonth), "yyyy-MM-dd");
   const monthEndStr = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
 
-  const { data: proposalsRaw = [], isLoading: proposalsLoading } = useQuery({
+  const { data: proposalsRaw = [], isLoading: proposalsLoading, isError: proposalsError } = useQuery({
     queryKey: ["metrics-proposals-ops", orgId, monthStart],
     queryFn: async () => {
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("proposals")
-        .select("created_by, proposal_type, kwp, client_id")
+        .select("id, created_by, proposal_type, kwp, consumo_anual, comissao, servicos_details, client_id")
         .eq("organization_id", orgId)
         .gte("proposal_date", monthStart)
         .lte("proposal_date", monthEndStr)
@@ -98,7 +98,32 @@ export function MetricsPanel() {
     return Array.from(ids);
   }, [proposalsRaw]);
 
-  const { data: clientNifMap = new Map<string, string | null>(), isLoading: nifsLoading } = useQuery({
+  const proposalIds = useMemo(() => proposalsRaw.map(proposal => proposal.id), [proposalsRaw]);
+
+  const { data: proposalCpeTotals = new Map<string, { count: number; consumo: number; comissao: number; kwp: number }>(), isLoading: cpesLoading, isError: cpesError } = useQuery({
+    queryKey: ["metrics-proposal-cpes", orgId, monthStart, proposalIds],
+    queryFn: async () => {
+      const totals = new Map<string, { count: number; consumo: number; comissao: number; kwp: number }>();
+      if (proposalIds.length === 0) return totals;
+      const { data, error } = await supabase
+        .from("proposal_cpes")
+        .select("proposal_id, consumo_anual, comissao, kwp")
+        .in("proposal_id", proposalIds);
+      if (error) throw error;
+      for (const cpe of data || []) {
+        const total = totals.get(cpe.proposal_id) || { count: 0, consumo: 0, comissao: 0, kwp: 0 };
+        total.count += 1;
+        total.consumo += Number(cpe.consumo_anual) || 0;
+        total.comissao += Number(cpe.comissao) || 0;
+        total.kwp += Number(cpe.kwp) || 0;
+        totals.set(cpe.proposal_id, total);
+      }
+      return totals;
+    },
+    enabled: !!orgId && proposalIds.length > 0,
+  });
+
+  const { data: clientNifMap = new Map<string, string | null>(), isLoading: nifsLoading, isError: nifsError } = useQuery({
     queryKey: ["metrics-client-nifs", proposalClientIds],
     queryFn: async () => {
       if (proposalClientIds.length === 0) return new Map<string, string | null>();
@@ -116,88 +141,8 @@ export function MetricsPanel() {
     enabled: proposalClientIds.length > 0,
   });
 
-  const { data: salesAggregated = [], isLoading: salesLoading } = useQuery({
-    queryKey: ["metrics-sales-ops-v2", orgId, monthStart],
-    queryFn: async () => {
-      if (!orgId) return [];
-      const { data: sales, error } = await supabase
-        .from("sales")
-        .select("id, created_by, proposal_id, client_id")
-        .eq("organization_id", orgId)
-        .gte("sale_date", monthStart)
-        .lte("sale_date", monthEndStr)
-        .in("status", ["delivered", "fulfilled"]);
-      if (error) throw error;
-      if (!sales?.length) return [];
-
-      const proposalIds = [...new Set(sales.map(s => s.proposal_id).filter(Boolean))] as string[];
-      const clientIds = [...new Set(sales.map(s => s.client_id).filter(Boolean))] as string[];
-
-      const { data: clients } = clientIds.length > 0
-        ? await supabase
-            .from("crm_clients")
-            .select("id, assigned_to")
-            .in("id", clientIds)
-        : { data: [] };
-      const clientAssigneeById = new Map((clients || []).map(client => [client.id, client.assigned_to]));
-
-      let cpesByProposal = new Map<string, { consumo: number; comissao: number }>();
-      if (proposalIds.length > 0) {
-        const { data: cpes } = await supabase
-          .from("proposal_cpes")
-          .select("proposal_id, consumo_anual, comissao")
-          .in("proposal_id", proposalIds);
-        if (cpes) {
-          for (const cpe of cpes) {
-            const existing = cpesByProposal.get(cpe.proposal_id) || { consumo: 0, comissao: 0 };
-            existing.consumo += Number(cpe.consumo_anual || 0);
-            existing.comissao += Number(cpe.comissao || 0);
-            cpesByProposal.set(cpe.proposal_id, existing);
-          }
-        }
-      }
-
-      let kwpByProposal = new Map<string, number>();
-      const proposalAuthorById = new Map<string, string | null>();
-      if (proposalIds.length > 0) {
-        const { data: proposals } = await supabase
-          .from("proposals")
-          .select("id, created_by, servicos_details")
-          .in("id", proposalIds);
-        if (proposals) {
-          for (const p of proposals) {
-            proposalAuthorById.set(p.id, p.created_by);
-            let totalKwp = 0;
-            const details = p.servicos_details as Record<string, { kwp?: number }> | null;
-            if (details && typeof details === "object") {
-              for (const prod of Object.values(details)) {
-                totalKwp += prod?.kwp || 0;
-              }
-            }
-            kwpByProposal.set(p.id, totalKwp);
-          }
-        }
-      }
-
-      return sales.map(s => {
-        const cpeData = s.proposal_id ? cpesByProposal.get(s.proposal_id) : null;
-        return {
-          // A sale can be converted by Back Office. Attribute results to the
-          // commercial assigned to the client, then the proposal author, not
-          // merely to the person who performed the conversion.
-          owner_id: (s.client_id ? clientAssigneeById.get(s.client_id) : null)
-            || (s.proposal_id ? proposalAuthorById.get(s.proposal_id) : null)
-            || s.created_by,
-          consumo_anual: cpeData?.consumo ?? 0,
-          kwp: s.proposal_id ? (kwpByProposal.get(s.proposal_id) || 0) : 0,
-          comissao: cpeData?.comissao ?? 0,
-        };
-      });
-    },
-    enabled: !!orgId,
-  });
-
-  const loading = metricsLoading || proposalsLoading || salesLoading || nifsLoading;
+  const loading = metricsLoading || proposalsLoading || cpesLoading || nifsLoading;
+  const dataError = proposalsError || cpesError || nifsError;
 
   const allMemberList = members.length > 0 ? members : (user?.id ? [{ user_id: user.id, full_name: profile?.full_name || "Eu" }] : []);
 
@@ -217,27 +162,32 @@ export function MetricsPanel() {
 
   const ritmoRows: RitmoRow[] = useMemo(() => {
     return filteredMembers.map((m) => {
-      const userProposals = proposalsRaw.filter((p: any) => p.created_by === m.user_id);
+      const userProposals = proposalsRaw.filter(p => p.created_by === m.user_id);
       
       const energiaKeys = new Set<string>();
       const solarKeys = new Set<string>();
+      let energia = 0, solar = 0, comissao = 0;
       for (const p of userProposals) {
+        const cpeTotals = proposalCpeTotals.get(p.id);
+        const serviceDetails = p.servicos_details as Record<string, { kwp?: number }> | null;
+        const serviceKwp = serviceDetails && typeof serviceDetails === "object"
+          ? Object.values(serviceDetails).reduce((sum, product) => sum + (Number(product?.kwp) || 0), 0)
+          : 0;
+        const proposalSolarKwp = Number(p.kwp) || serviceKwp || cpeTotals?.kwp || 0;
         const nif = p.client_id ? clientNifMap.get(p.client_id) : null;
         const dedupeKey = nif || p.client_id;
-        if (!dedupeKey) continue;
-        if (p.proposal_type === "energia") energiaKeys.add(dedupeKey);
-        if (p.proposal_type === "servicos" && Number(p.kwp || 0) > 0) solarKeys.add(dedupeKey);
+        if (p.proposal_type === "energia") {
+          if (dedupeKey) energiaKeys.add(dedupeKey);
+          energia += (cpeTotals?.count ? cpeTotals.consumo : Number(p.consumo_anual) || 0) / 1000;
+          comissao += cpeTotals?.count ? cpeTotals.comissao : Number(p.comissao) || 0;
+        } else if (p.proposal_type === "servicos") {
+          if (dedupeKey && proposalSolarKwp > 0) solarKeys.add(dedupeKey);
+          solar += proposalSolarKwp;
+          comissao += p.comissao != null ? Number(p.comissao) || 0 : cpeTotals?.comissao || 0;
+        }
       }
       const opEnergia = energiaKeys.size;
       const opSolar = solarKeys.size;
-
-      const userSales = salesAggregated.filter((s: any) => s.owner_id === m.user_id);
-      let energia = 0, solar = 0, comissao = 0;
-      for (const s of userSales) {
-        energia += Number(s.consumo_anual || 0) / 1000;
-        solar += Number(s.kwp || 0);
-        comissao += Number(s.comissao || 0);
-      }
       return {
         userId: m.user_id,
         name: m.full_name + (m.user_id === user?.id ? " (eu)" : ""),
@@ -248,7 +198,7 @@ export function MetricsPanel() {
         comissao,
       };
     });
-  }, [filteredMembers, proposalsRaw, salesAggregated, clientNifMap, user?.id]);
+  }, [filteredMembers, proposalsRaw, proposalCpeTotals, clientNifMap, user?.id]);
 
   const sumRitmo = (rows: RitmoRow[]) =>
     rows.reduce((acc, r) => ({
@@ -262,14 +212,14 @@ export function MetricsPanel() {
   const ritmoTotals = sumRitmo(ritmoRows);
   const showTotals = canFilterByTeam && ritmoRows.length > 1;
 
-  const headers = (
+  const headers = (opportunities = false) => (
     <TableRow>
       <TableHead className="text-xs whitespace-nowrap">Consultor</TableHead>
       {showEnergy && <TableHead className="text-xs text-right whitespace-nowrap">OP</TableHead>}
-      {showEnergy && <TableHead className="text-xs text-right whitespace-nowrap">Energia</TableHead>}
+      {showEnergy && <TableHead className="text-xs text-right whitespace-nowrap">Energia (MWh)</TableHead>}
       {showEnergy && <TableHead className="text-xs text-right whitespace-nowrap">OP</TableHead>}
-      {showEnergy && <TableHead className="text-xs text-right whitespace-nowrap">Solar</TableHead>}
-      {showCommission && <TableHead className="text-xs text-right whitespace-nowrap">Comissão</TableHead>}
+      {showEnergy && <TableHead className="text-xs text-right whitespace-nowrap">Solar (kWp)</TableHead>}
+      {showCommission && <TableHead className="text-xs text-right whitespace-nowrap">{opportunities ? 'Comissão potencial' : 'Comissão'}</TableHead>}
     </TableRow>
   );
 
@@ -300,6 +250,8 @@ export function MetricsPanel() {
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
             </div>
+          ) : dataError ? (
+            <p className="text-sm text-destructive">Não foi possível carregar as oportunidades. Os valores de Ritmo não estão disponíveis.</p>
           ) : (
             <>
               <Collapsible open={metricasOpen} onOpenChange={setMetricasOpen}>
@@ -310,7 +262,7 @@ export function MetricsPanel() {
                 <CollapsibleContent>
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader>{headers}</TableHeader>
+                      <TableHeader>{headers()}</TableHeader>
                       <TableBody>
                         {filteredMembers.map((m) => {
                           const target = metrics.find((mt) => mt.user_id === m.user_id);
@@ -349,7 +301,7 @@ export function MetricsPanel() {
                 <CollapsibleContent>
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader>{headers}</TableHeader>
+                      <TableHeader>{headers(true)}</TableHeader>
                       <TableBody>
                         {ritmoRows.map((row) => (
                           <TableRow key={row.userId}>
@@ -385,7 +337,7 @@ export function MetricsPanel() {
                 <CollapsibleContent>
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader>{headers}</TableHeader>
+                      <TableHeader>{headers()}</TableHeader>
                       <TableBody>
                         {ritmoRows.map((row) => {
                           const target = metrics.find((m) => m.user_id === row.userId);

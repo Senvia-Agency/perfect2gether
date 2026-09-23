@@ -160,6 +160,7 @@ export interface Sale {
 }
 
 export interface SaleWithDetails extends Sale {
+  display_commission?: number | null;
   lead?: {
     name: string;
     email: string;
@@ -170,6 +171,7 @@ export interface SaleWithDetails extends Sale {
     id: string;
     code?: string;
     proposal_date: string;
+    comissao?: number | null;
   } | null;
   client?: {
     id: string;

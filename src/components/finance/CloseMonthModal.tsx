@@ -51,6 +51,7 @@ interface CommercialPreview {
     consumo_anual: number;
     margem: number;
     comissao_indicativa: number;
+    commission_recorded: boolean;
     comissao_final: number;
     commission_group_id: string | null;
     negotiation_type: string;
@@ -70,6 +71,7 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
   const { closeMonth } = useCommissionClosings();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [preview, setPreview] = useState<CommercialPreview[]>([]);
   const [notes, setNotes] = useState('');
   const [globalMwh, setGlobalMwh] = useState(0);
@@ -89,18 +91,19 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
 
   const loadPreview = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const monthStart = month;
       const monthEnd = format(endOfMonth(new Date(month)), 'yyyy-MM-dd');
 
-      // Get delivered sales filtered by activation_date
+      // Finance counts only concluded sales in the month of the sale.
       const { data: sales, error: salesError } = await supabase
         .from('sales')
-        .select('id, lead_id, activation_date, status, proposal_id')
+        .select('id, lead_id, client_id, sale_date, status, proposal_id')
         .eq('organization_id', organization!.id)
         .eq('status', 'delivered')
-        .gte('activation_date', monthStart)
-        .lte('activation_date', monthEnd);
+        .gte('sale_date', monthStart)
+        .lte('sale_date', monthEnd);
 
       if (salesError) throw salesError;
       if (!sales?.length) {
@@ -111,14 +114,15 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
         return;
       }
 
-      // Get lead assigned_to
-      const leadIds = [...new Set(sales.map(s => s.lead_id).filter(Boolean))] as string[];
-      const { data: leads } = await supabase
-        .from('leads')
+      // Attribute commission to the commercial assigned to the client, as in the live Finance view.
+      const clientIds = [...new Set(sales.map(s => s.client_id).filter(Boolean))] as string[];
+      const { data: clients, error: clientsError } = clientIds.length > 0 ? await supabase
+        .from('crm_clients')
         .select('id, assigned_to')
-        .in('id', leadIds);
+        .in('id', clientIds) : { data: [], error: null };
+      if (clientsError) throw clientsError;
 
-      const leadMap = new Map((leads || []).map(l => [l.id, l.assigned_to]));
+      const clientMap = new Map((clients || []).map(c => [c.id, c.assigned_to]));
 
       // Get proposals with negotiation_type filter
       const proposalIds = [...new Set(sales.map(s => s.proposal_id).filter(Boolean))] as string[];
@@ -130,10 +134,11 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
         return;
       }
 
-      const { data: proposals } = await supabase
+      const { data: proposals, error: proposalsError } = await supabase
         .from('proposals')
         .select('id, negotiation_type')
         .in('id', proposalIds);
+      if (proposalsError) throw proposalsError;
 
       if (!proposals?.length) {
         setPreview([]);
@@ -154,10 +159,11 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
         }
       }
 
-      const { data: cpes } = await supabase
+      const { data: cpes, error: cpesError } = await supabase
         .from('proposal_cpes')
         .select('id, proposal_id, consumo_anual, margem, comissao, commission_group_id, serial_number')
         .in('proposal_id', validProposalIds);
+      if (cpesError) throw cpesError;
 
       if (!cpes?.length) {
         setPreview([]);
@@ -175,8 +181,9 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
         const saleId = proposalToSale.get(cpe.proposal_id);
         if (!saleId) continue;
         const sale = sales.find(s => s.id === saleId);
-        if (!sale || !sale.lead_id) continue;
-        const assignedTo = leadMap.get(sale.lead_id) || 'unassigned';
+        if (!sale || !sale.client_id) continue;
+        const assignedTo = clientMap.get(sale.client_id);
+        if (!assignedTo) continue;
 
         if (!byCommercial.has(assignedTo)) {
           byCommercial.set(assignedTo, {
@@ -203,6 +210,7 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
           consumo_anual: consumo,
           margem: cpe.margem || 0,
           comissao_indicativa: cpe.comissao || 0,
+          commission_recorded: cpe.comissao != null,
           comissao_final: 0,
           commission_group_id: cpe.commission_group_id,
           negotiation_type: proposalNegotiationMap.get(cpe.proposal_id) || '',
@@ -224,7 +232,9 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
         let totalFinal = 0;
         for (const cpe of entry.cpes) {
           const multiplier = NEGOTIATION_MULTIPLIER[cpe.negotiation_type] ?? 1;
-          if (cpe.commission_group_id) {
+          if (cpe.commission_recorded && cpe.comissao_indicativa === 0) {
+            cpe.comissao_final = 0;
+          } else if (cpe.commission_group_id) {
             cpe.comissao_final = cpe.comissao_indicativa * multiplier;
           } else if (energyConfig && energyConfig.bands.length > 0) {
             const final_ = calculateEnergyCommissionPure(cpe.margem, energyConfig, entry.tier);
@@ -240,6 +250,8 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
       setPreview(Array.from(byCommercial.values()).sort((a, b) => b.totalFinal - a.totalFinal));
     } catch (err) {
       console.error('Error loading preview:', err);
+      setPreview([]);
+      setLoadError(true);
     }
     setLoading(false);
   };
@@ -278,9 +290,11 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
           </div>
+        ) : loadError ? (
+          <div className="py-12 text-center text-destructive">Não foi possível carregar a prévia do fechamento. Tente novamente.</div>
         ) : preview.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
-            Nenhuma venda concluída com data de ativação neste mês (Angariação / Angariação Indexado).
+            Nenhuma comissão atribuída de venda concluída neste mês.
           </div>
         ) : (
           <div className="space-y-6">
@@ -349,7 +363,7 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button
             onClick={handleClose}
-            disabled={loading || preview.length === 0 || closeMonth.isPending}
+            disabled={loading || loadError || preview.length === 0 || closeMonth.isPending}
           >
             {closeMonth.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Confirmar Fechamento

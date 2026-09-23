@@ -189,7 +189,7 @@ export function useCreateProposal() {
           modalidade: data.modalidade?.trim() || null,
           modelo_servico: data.modelo_servico || null,
           kwp: data.kwp || null,
-          comissao: data.comissao || null,
+          comissao: data.comissao ?? null,
           servicos_produtos: data.servicos_produtos || null,
           servicos_details: data.servicos_details || null,
         })
@@ -223,6 +223,7 @@ export function useCreateProposal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics-proposals-ops'] });
       toast({ title: 'Proposta criada', description: 'A proposta foi criada com sucesso.' });
     },
     onError: () => {
@@ -285,6 +286,7 @@ export function useUpdateProposal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics-proposals-ops'] });
       toast({ title: 'Proposta atualizada', description: 'As alterações foram guardadas.' });
     },
     onError: () => {
@@ -351,6 +353,7 @@ export function useDeleteProposal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics-proposals-ops'] });
       toast({ title: 'Proposta eliminada', description: 'A proposta foi removida.' });
     },
     onError: () => {
