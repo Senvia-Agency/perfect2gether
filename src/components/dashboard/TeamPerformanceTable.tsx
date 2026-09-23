@@ -142,7 +142,7 @@ export function TeamPerformanceTable() {
       if (!orgId || memberIds.length === 0) return [];
       const { data, error } = await supabase
         .from("sales")
-        .select("created_by, status, comissao")
+        .select("created_by, status, comissao, proposal_id, proposal_type")
         .eq("organization_id", orgId)
         .gte("created_at", monthStart)
         .lte("created_at", monthEnd)
@@ -153,7 +153,35 @@ export function TeamPerformanceTable() {
     enabled: !!orgId && memberIds.length > 0,
   });
 
-  const loading = leadsLoading || proposalsLoading || salesLoading;
+  const telecomProposalIds = useMemo(
+    () => organization?.niche === "telecom"
+      ? [...new Set([
+          ...proposalsInPeriod.map(proposal => proposal.id),
+          ...salesData.map(sale => sale.proposal_id).filter((id): id is string => !!id),
+        ])]
+      : [],
+    [organization?.niche, proposalsInPeriod, salesData],
+  );
+
+  const { data: cpeCommissionByProposal = new Map<string, number>(), isLoading: cpeCommissionsLoading, isError: cpeCommissionsError } = useQuery({
+    queryKey: ["team-perf-cpe-commissions", orgId, telecomProposalIds],
+    queryFn: async () => {
+      const totals = new Map<string, number>();
+      if (telecomProposalIds.length === 0) return totals;
+      const { data, error } = await supabase
+        .from("proposal_cpes")
+        .select("proposal_id, comissao")
+        .in("proposal_id", telecomProposalIds);
+      if (error) throw error;
+      for (const cpe of data || []) {
+        totals.set(cpe.proposal_id, (totals.get(cpe.proposal_id) || 0) + (Number(cpe.comissao) || 0));
+      }
+      return totals;
+    },
+    enabled: telecomProposalIds.length > 0,
+  });
+
+  const loading = leadsLoading || proposalsLoading || salesLoading || cpeCommissionsLoading;
 
   const rows: MemberPerformance[] = useMemo(() => {
     return filteredMembers.map((member) => {
@@ -163,10 +191,16 @@ export function TeamPerformanceTable() {
       const memberProposals = proposalsInPeriod.filter((proposal) => proposal.created_by === member.user_id);
       const openProposalValue = memberProposals
         .filter((proposal) => proposal.status === "draft" || proposal.status === "sent" || proposal.status === "negotiating")
-        .reduce((sum, proposal) => sum + (proposal.total_value || 0), 0);
+        .reduce((sum, proposal) => sum + (organization?.niche === "telecom"
+          ? (cpeCommissionByProposal.has(proposal.id)
+            ? cpeCommissionByProposal.get(proposal.id)!
+            : Number(proposal.comissao) || 0)
+          : Number(proposal.total_value) || 0), 0);
       const memberSales = (salesData || []).filter((sale) => sale.created_by === member.user_id);
       const delivered = memberSales.filter((sale) => sale.status === "delivered" || sale.status === "completed");
-      const commission = delivered.reduce((sum, sale) => sum + (sale.comissao || 0), 0);
+      const commission = delivered.reduce((sum, sale) => sum + (organization?.niche === "telecom" && sale.proposal_type === "energia" && sale.proposal_id && cpeCommissionByProposal.has(sale.proposal_id)
+        ? cpeCommissionByProposal.get(sale.proposal_id)!
+        : Number(sale.comissao) || 0), 0);
       const conversionRate = memberLeads > 0 ? (delivered.length / memberLeads) * 100 : 0;
 
       return {
@@ -181,7 +215,7 @@ export function TeamPerformanceTable() {
         conversionRate,
       };
     });
-  }, [filteredMembers, leadsData, proposalsInPeriod, salesData, user?.id]);
+  }, [filteredMembers, leadsData, proposalsInPeriod, salesData, cpeCommissionByProposal, organization?.niche, user?.id]);
 
   const totals = useMemo(() => {
     return rows.reduce(
@@ -224,6 +258,8 @@ export function TeamPerformanceTable() {
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
           </div>
+        ) : cpeCommissionsError ? (
+          <p className="text-sm text-destructive">Não foi possível carregar as comissões das propostas.</p>
         ) : (
           <div className="overflow-x-auto -mx-4 sm:mx-0">
             <Table>
@@ -233,7 +269,7 @@ export function TeamPerformanceTable() {
                   <TableHead className="text-xs text-right">Leads</TableHead>
                   <TableHead className="text-xs text-right hidden sm:table-cell">Valor Oportunidades</TableHead>
                   <TableHead className="text-xs text-right">Propostas</TableHead>
-                  <TableHead className="text-xs text-right hidden sm:table-cell">Valor Prop. Abertas</TableHead>
+                  <TableHead className="text-xs text-right hidden sm:table-cell">{organization?.niche === "telecom" ? "Comissão Prop. Abertas" : "Valor Prop. Abertas"}</TableHead>
                   <TableHead className="text-xs text-right">Vendas</TableHead>
                   <TableHead className="text-xs text-right hidden sm:table-cell">Comissão</TableHead>
                   <TableHead className="text-xs text-right">Conversão</TableHead>

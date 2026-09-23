@@ -156,6 +156,7 @@ export function useCreateProposalCpe() {
       queryClient.invalidateQueries({ queryKey: ['proposal_cpes', variables.proposal_id] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['metrics-proposal-cpes'] });
+      queryClient.invalidateQueries({ queryKey: ['team-perf-cpe-commissions'] });
       queryClient.invalidateQueries({ queryKey: ['commissions-live'] });
     },
     onError: () => {
@@ -182,6 +183,7 @@ export function useCreateProposalCpesBatch() {
       queryClient.invalidateQueries({ queryKey: ['proposal_cpe_commission_groups', variables.proposalId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['metrics-proposal-cpes'] });
+      queryClient.invalidateQueries({ queryKey: ['team-perf-cpe-commissions'] });
       queryClient.invalidateQueries({ queryKey: ['commissions-live'] });
     },
     onError: () => {
@@ -208,6 +210,7 @@ export function useDeleteProposalCpe() {
       queryClient.invalidateQueries({ queryKey: ['proposal_cpes', proposalId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['metrics-proposal-cpes'] });
+      queryClient.invalidateQueries({ queryKey: ['team-perf-cpe-commissions'] });
       queryClient.invalidateQueries({ queryKey: ['commissions-live'] });
     },
     onError: () => {
@@ -235,6 +238,7 @@ export function useUpdateProposalCpes() {
       queryClient.invalidateQueries({ queryKey: ['proposal_cpe_commission_groups', variables.proposalId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['metrics-proposal-cpes'] });
+      queryClient.invalidateQueries({ queryKey: ['team-perf-cpe-commissions'] });
       queryClient.invalidateQueries({ queryKey: ['commissions-live'] });
       toast({ title: 'CPEs atualizados', description: 'Os CPEs da proposta foram atualizados.' });
     },
