@@ -122,15 +122,24 @@ export function MetricsPanel() {
       if (!orgId) return [];
       const { data: sales, error } = await supabase
         .from("sales")
-        .select("id, created_by, proposal_id")
+        .select("id, created_by, proposal_id, client_id")
         .eq("organization_id", orgId)
         .gte("sale_date", monthStart)
         .lte("sale_date", monthEndStr)
-        .eq("status", "fulfilled");
+        .in("status", ["delivered", "fulfilled"]);
       if (error) throw error;
       if (!sales?.length) return [];
 
       const proposalIds = [...new Set(sales.map(s => s.proposal_id).filter(Boolean))] as string[];
+      const clientIds = [...new Set(sales.map(s => s.client_id).filter(Boolean))] as string[];
+
+      const { data: clients } = clientIds.length > 0
+        ? await supabase
+            .from("crm_clients")
+            .select("id, assigned_to")
+            .in("id", clientIds)
+        : { data: [] };
+      const clientAssigneeById = new Map((clients || []).map(client => [client.id, client.assigned_to]));
 
       let cpesByProposal = new Map<string, { consumo: number; comissao: number }>();
       if (proposalIds.length > 0) {
@@ -149,13 +158,15 @@ export function MetricsPanel() {
       }
 
       let kwpByProposal = new Map<string, number>();
+      const proposalAuthorById = new Map<string, string | null>();
       if (proposalIds.length > 0) {
         const { data: proposals } = await supabase
           .from("proposals")
-          .select("id, servicos_details")
+          .select("id, created_by, servicos_details")
           .in("id", proposalIds);
         if (proposals) {
           for (const p of proposals) {
+            proposalAuthorById.set(p.id, p.created_by);
             let totalKwp = 0;
             const details = p.servicos_details as Record<string, { kwp?: number }> | null;
             if (details && typeof details === "object") {
@@ -171,7 +182,12 @@ export function MetricsPanel() {
       return sales.map(s => {
         const cpeData = s.proposal_id ? cpesByProposal.get(s.proposal_id) : null;
         return {
-          created_by: s.created_by,
+          // A sale can be converted by Back Office. Attribute results to the
+          // commercial assigned to the client, then the proposal author, not
+          // merely to the person who performed the conversion.
+          owner_id: (s.client_id ? clientAssigneeById.get(s.client_id) : null)
+            || (s.proposal_id ? proposalAuthorById.get(s.proposal_id) : null)
+            || s.created_by,
           consumo_anual: cpeData?.consumo ?? 0,
           kwp: s.proposal_id ? (kwpByProposal.get(s.proposal_id) || 0) : 0,
           comissao: cpeData?.comissao ?? 0,
@@ -215,7 +231,7 @@ export function MetricsPanel() {
       const opEnergia = energiaKeys.size;
       const opSolar = solarKeys.size;
 
-      const userSales = salesAggregated.filter((s: any) => s.created_by === m.user_id);
+      const userSales = salesAggregated.filter((s: any) => s.owner_id === m.user_id);
       let energia = 0, solar = 0, comissao = 0;
       for (const s of userSales) {
         energia += Number(s.consumo_anual || 0) / 1000;
