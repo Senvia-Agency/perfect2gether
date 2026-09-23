@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { CpeServiceType } from '@/types/cpes';
 
 export interface ProposalCpe {
   id: string;
@@ -21,6 +22,9 @@ export interface ProposalCpe {
   comissao: number | null;
   contrato_inicio: string | null;
   contrato_fim: string | null;
+  service_type: CpeServiceType | null;
+  modalidade: string | null;
+  kwp: number | null;
 }
 
 export interface CreateProposalCpeData {
@@ -40,6 +44,32 @@ export interface CreateProposalCpeData {
   comissao?: number | null;
   contrato_inicio?: string | null;
   contrato_fim?: string | null;
+  service_type?: CpeServiceType | null;
+  modalidade?: string | null;
+  kwp?: number | null;
+}
+
+function toProposalCpePayload(data: CreateProposalCpeData, proposalId = data.proposal_id) {
+  return {
+    proposal_id: proposalId,
+    existing_cpe_id: data.existing_cpe_id || null,
+    equipment_type: data.equipment_type,
+    serial_number: data.serial_number || null,
+    comercializador: data.comercializador,
+    fidelizacao_start: data.fidelizacao_start || null,
+    fidelizacao_end: data.fidelizacao_end || null,
+    notes: data.notes || null,
+    consumo_anual: data.consumo_anual ?? null,
+    duracao_contrato: data.duracao_contrato ?? null,
+    dbl: data.dbl ?? null,
+    margem: data.margem ?? null,
+    comissao: data.comissao ?? null,
+    contrato_inicio: data.contrato_inicio || null,
+    contrato_fim: data.contrato_fim || null,
+    service_type: data.service_type ?? null,
+    modalidade: data.modalidade?.trim() || null,
+    kwp: data.kwp ?? null,
+  };
 }
 
 export function useProposalCpes(proposalId: string | undefined) {
@@ -67,23 +97,7 @@ export function useCreateProposalCpe() {
     mutationFn: async (data: CreateProposalCpeData) => {
       const { data: result, error } = await supabase
         .from('proposal_cpes')
-        .insert({
-          proposal_id: data.proposal_id,
-          existing_cpe_id: data.existing_cpe_id || null,
-          equipment_type: data.equipment_type,
-          serial_number: data.serial_number || null,
-          comercializador: data.comercializador,
-          fidelizacao_start: data.fidelizacao_start || null,
-          fidelizacao_end: data.fidelizacao_end || null,
-          notes: data.notes || null,
-          consumo_anual: data.consumo_anual ?? null,
-          duracao_contrato: data.duracao_contrato ?? null,
-          dbl: data.dbl ?? null,
-          margem: data.margem ?? null,
-          comissao: data.comissao ?? null,
-          contrato_inicio: data.contrato_inicio || null,
-          contrato_fim: data.contrato_fim || null,
-        })
+        .insert(toProposalCpePayload(data))
         .select()
         .single();
       
@@ -109,23 +123,7 @@ export function useCreateProposalCpesBatch() {
       
       const { data: result, error } = await supabase
         .from('proposal_cpes')
-        .insert(cpesData.map(cpe => ({
-          proposal_id: cpe.proposal_id,
-          existing_cpe_id: cpe.existing_cpe_id || null,
-          equipment_type: cpe.equipment_type,
-          serial_number: cpe.serial_number || null,
-          comercializador: cpe.comercializador,
-          fidelizacao_start: cpe.fidelizacao_start || null,
-          fidelizacao_end: cpe.fidelizacao_end || null,
-          notes: cpe.notes || null,
-          consumo_anual: cpe.consumo_anual ?? null,
-          duracao_contrato: cpe.duracao_contrato ?? null,
-          dbl: cpe.dbl ?? null,
-          margem: cpe.margem ?? null,
-          comissao: cpe.comissao ?? null,
-          contrato_inicio: cpe.contrato_inicio || null,
-          contrato_fim: cpe.contrato_fim || null,
-        })))
+        .insert(cpesData.map(cpe => toProposalCpePayload(cpe)))
         .select();
       
       if (error) throw error;
@@ -183,23 +181,7 @@ export function useUpdateProposalCpes() {
       if (cpes.length > 0) {
         const { data: result, error: insertError } = await supabase
           .from('proposal_cpes')
-          .insert(cpes.map(cpe => ({
-            proposal_id: proposalId,
-            existing_cpe_id: cpe.existing_cpe_id || null,
-            equipment_type: cpe.equipment_type,
-            serial_number: cpe.serial_number || null,
-            comercializador: cpe.comercializador,
-            fidelizacao_start: cpe.fidelizacao_start || null,
-            fidelizacao_end: cpe.fidelizacao_end || null,
-            notes: cpe.notes || null,
-            consumo_anual: cpe.consumo_anual ?? null,
-            duracao_contrato: cpe.duracao_contrato ?? null,
-            dbl: cpe.dbl ?? null,
-            margem: cpe.margem ?? null,
-            comissao: cpe.comissao ?? null,
-            contrato_inicio: cpe.contrato_inicio || null,
-            contrato_fim: cpe.contrato_fim || null,
-          })))
+          .insert(cpes.map(cpe => toProposalCpePayload(cpe, proposalId)))
           .select();
         
         if (insertError) throw insertError;

@@ -42,6 +42,8 @@ export function CreateCpeModal({ open, onOpenChange, clientId, isTelecom = false
   const [nivelTensao, setNivelTensao] = useState<NivelTensao | ''>('');
   const [notes, setNotes] = useState('');
   const [consumoAnual, setConsumoAnual] = useState('');
+  const [modalidade, setModalidade] = useState('');
+  const [kwp, setKwp] = useState('');
 
   // Conditional labels and options based on niche
   const typeLabel = isTelecom ? 'Tipo *' : 'Tipo de Equipamento *';
@@ -66,6 +68,8 @@ export function CreateCpeModal({ open, onOpenChange, clientId, isTelecom = false
     setNivelTensao('');
     setNotes('');
     setConsumoAnual('');
+    setModalidade('');
+    setKwp('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -73,6 +77,9 @@ export function CreateCpeModal({ open, onOpenChange, clientId, isTelecom = false
     
     const finalEquipmentType = equipmentType === 'Outro' ? customEquipmentType : equipmentType;
     const finalComercializador = comercializador === 'Outro' ? customComercializador : comercializador;
+    const serviceType = isTelecom
+      ? (finalEquipmentType === 'Energia' ? 'energia' : finalEquipmentType === 'Gás' ? 'gas' : undefined)
+      : undefined;
 
     if (!finalEquipmentType || !finalComercializador) return;
 
@@ -87,6 +94,9 @@ export function CreateCpeModal({ open, onOpenChange, clientId, isTelecom = false
       nivel_tensao: isTelecom && nivelTensao ? nivelTensao : undefined,
       notes: notes || undefined,
       consumo_anual: consumoAnual ? parseFloat(consumoAnual) : undefined,
+      service_type: serviceType,
+      modalidade: modalidade.trim() || undefined,
+      kwp: kwp ? parseFloat(kwp) : undefined,
     }, {
       onSuccess: () => {
         resetForm();
@@ -229,6 +239,28 @@ export function CreateCpeModal({ open, onOpenChange, clientId, isTelecom = false
                 className="pr-12"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">kWh</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Modalidade</Label>
+              <Input
+                placeholder="Ex.: Indexado"
+                value={modalidade}
+                onChange={(e) => setModalidade(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Potência (kWp)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Ex.: 5.5"
+                value={kwp}
+                onChange={(e) => setKwp(e.target.value)}
+              />
             </div>
           </div>
 

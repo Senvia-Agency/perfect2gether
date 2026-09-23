@@ -190,6 +190,7 @@ export const importClients = async (
           // KWP e Modalidade para servicos (solar/fotovoltaico)
           const kwpStr = normalizeTextValue(findValue(row, ["KWP", "Potencia", "kWp"]));
           const modalidadeStr = normalizeTextValue(findValue(row, ["Modalidade Pagamento", "Modalidade"]));
+          const kwp = kwpStr ? Number.parseFloat(kwpStr.replace(',', '.')) : null;
 
           const parts = [`Serviço: ${valorStr || `${i + 1}`}`];
           if (modalidadeStr) parts.push(`Modalidade: ${modalidadeStr}`);
@@ -217,6 +218,8 @@ export const importClients = async (
               status: "active",
               comercializador,
               notes: noteText,
+              modalidade: modalidadeStr || null,
+              kwp: Number.isFinite(kwp) ? kwp : null,
               consumo_anual: null,
               fidelizacao_start: null,
               fidelizacao_end: null,
@@ -243,6 +246,7 @@ export const importClients = async (
             if (fidelizacaoStart) updateData.fidelizacao_start = fidelizacaoStart;
             if (fidelizacaoEnd) updateData.fidelizacao_end = fidelizacaoEnd;
             if (nivelTensao) updateData.nivel_tensao = nivelTensao;
+            updateData.service_type = 'energia';
             if (Object.keys(updateData).length > 0) {
               const { error: updErr } = await supabase.from("cpes").update(updateData).eq("id", existingCpe.id);
               if (updErr) throw updErr;
@@ -259,6 +263,7 @@ export const importClients = async (
               fidelizacao_start: fidelizacaoStart,
               fidelizacao_end: fidelizacaoEnd,
               nivel_tensao: nivelTensao as any,
+              service_type: 'energia',
             });
             if (insErr) throw insErr;
           }

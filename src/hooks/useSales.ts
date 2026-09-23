@@ -75,6 +75,8 @@ export function useCreateSale() {
       servicos_produtos?: string[];
       servicos_details?: Record<string, any>;
       edp_proposal_number?: string;
+      service_type?: 'energia' | 'gas';
+      modalidade?: string;
       client_org_id?: string;
       // Campos de recorrência
       has_recurring?: boolean;
@@ -116,6 +118,8 @@ export function useCreateSale() {
           servicos_produtos: data.servicos_produtos || null,
           servicos_details: data.servicos_details || null,
           edp_proposal_number: data.edp_proposal_number || null,
+          service_type: data.service_type || null,
+          modalidade: data.modalidade?.trim() || null,
           client_org_id: (data as any).client_org_id || null,
           // Campos de recorrência
           has_recurring: data.has_recurring || false,
@@ -270,6 +274,8 @@ export function useUpdateSale() {
         servicos_produtos?: string[] | null;
         servicos_details?: Record<string, any> | null;
         edp_proposal_number?: string | null;
+        service_type?: 'energia' | 'gas' | null;
+        modalidade?: string | null;
         // Campos de recorrência
         has_recurring?: boolean;
         recurring_value?: number;

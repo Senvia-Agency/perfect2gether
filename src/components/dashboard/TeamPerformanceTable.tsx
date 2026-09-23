@@ -35,6 +35,7 @@ interface MemberPerformance {
   userId: string;
   name: string;
   leads: number;
+  opportunityValue: number;
   proposals: number;
   openProposalValue: number;
   salesDelivered: number;
@@ -124,7 +125,7 @@ export function TeamPerformanceTable() {
       if (!orgId || memberIds.length === 0) return [];
       const { data, error } = await supabase
         .from("leads")
-        .select("assigned_to")
+        .select("assigned_to, value")
         .eq("organization_id", orgId)
         .gte("created_at", monthStart)
         .lte("created_at", monthEnd)
@@ -156,7 +157,9 @@ export function TeamPerformanceTable() {
 
   const rows: MemberPerformance[] = useMemo(() => {
     return filteredMembers.map((member) => {
-      const memberLeads = (leadsData || []).filter((lead) => lead.assigned_to === member.user_id).length;
+      const memberLeadsData = (leadsData || []).filter((lead) => lead.assigned_to === member.user_id);
+      const memberLeads = memberLeadsData.length;
+      const opportunityValue = memberLeadsData.reduce((sum, lead) => sum + (Number(lead.value) || 0), 0);
       const memberProposals = proposalsInPeriod.filter((proposal) => proposal.created_by === member.user_id);
       const openProposalValue = memberProposals
         .filter((proposal) => proposal.status === "draft" || proposal.status === "sent" || proposal.status === "negotiating")
@@ -170,6 +173,7 @@ export function TeamPerformanceTable() {
         userId: member.user_id,
         name: member.full_name + (member.user_id === user?.id ? " (eu)" : ""),
         leads: memberLeads,
+        opportunityValue,
         proposals: memberProposals.length,
         openProposalValue,
         salesDelivered: delivered.length,
@@ -183,12 +187,13 @@ export function TeamPerformanceTable() {
     return rows.reduce(
       (acc, row) => ({
         leads: acc.leads + row.leads,
+        opportunityValue: acc.opportunityValue + row.opportunityValue,
         proposals: acc.proposals + row.proposals,
         openProposalValue: acc.openProposalValue + row.openProposalValue,
         salesDelivered: acc.salesDelivered + row.salesDelivered,
         commission: acc.commission + row.commission,
       }),
-      { leads: 0, proposals: 0, openProposalValue: 0, salesDelivered: 0, commission: 0 },
+      { leads: 0, opportunityValue: 0, proposals: 0, openProposalValue: 0, salesDelivered: 0, commission: 0 },
     );
   }, [rows]);
 
@@ -226,6 +231,7 @@ export function TeamPerformanceTable() {
                 <TableRow>
                   <TableHead className="text-xs">Colaborador</TableHead>
                   <TableHead className="text-xs text-right">Leads</TableHead>
+                  <TableHead className="text-xs text-right hidden sm:table-cell">Valor Oportunidades</TableHead>
                   <TableHead className="text-xs text-right">Propostas</TableHead>
                   <TableHead className="text-xs text-right hidden sm:table-cell">Valor Prop. Abertas</TableHead>
                   <TableHead className="text-xs text-right">Vendas</TableHead>
@@ -238,6 +244,7 @@ export function TeamPerformanceTable() {
                   <TableRow key={row.userId}>
                     <TableCell className="text-xs py-1.5 font-medium">{row.name}</TableCell>
                     <TableCell className="text-xs text-right py-1.5">{row.leads}</TableCell>
+                    <TableCell className="text-xs text-right py-1.5 hidden sm:table-cell">{formatCurrency(row.opportunityValue)}</TableCell>
                     <TableCell className="text-xs text-right py-1.5">{row.proposals}</TableCell>
                     <TableCell className="text-xs text-right py-1.5 hidden sm:table-cell">{formatCurrency(row.openProposalValue)}</TableCell>
                     <TableCell className="text-xs text-right py-1.5">{row.salesDelivered}</TableCell>
@@ -251,6 +258,7 @@ export function TeamPerformanceTable() {
                   <TableRow className="bg-muted/20 hover:bg-muted/20">
                     <TableCell className="text-xs font-semibold py-1.5">TOTAL</TableCell>
                     <TableCell className="text-xs text-right font-semibold py-1.5">{totals.leads}</TableCell>
+                    <TableCell className="text-xs text-right font-semibold py-1.5 hidden sm:table-cell">{formatCurrency(totals.opportunityValue)}</TableCell>
                     <TableCell className="text-xs text-right font-semibold py-1.5">{totals.proposals}</TableCell>
                     <TableCell className="text-xs text-right font-semibold py-1.5 hidden sm:table-cell">{formatCurrency(totals.openProposalValue)}</TableCell>
                     <TableCell className="text-xs text-right font-semibold py-1.5">{totals.salesDelivered}</TableCell>

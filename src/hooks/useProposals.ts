@@ -120,6 +120,9 @@ interface CreateProposalData {
   margem?: number;
   dbl?: number;
   anos_contrato?: number;
+  edp_proposal_number?: string;
+  service_type?: 'energia' | 'gas';
+  modalidade?: string;
   
   // Campos Serviços
   modelo_servico?: 'transacional' | 'saas';
@@ -181,6 +184,9 @@ export function useCreateProposal() {
           margem: data.margem || null,
           dbl: data.dbl ?? null,
           anos_contrato: data.anos_contrato || null,
+          edp_proposal_number: data.edp_proposal_number?.trim() || null,
+          service_type: data.service_type || null,
+          modalidade: data.modalidade?.trim() || null,
           modelo_servico: data.modelo_servico || null,
           kwp: data.kwp || null,
           comissao: data.comissao || null,
@@ -239,6 +245,9 @@ interface UpdateProposalData {
   margem?: number | null;
   dbl?: number | null;
   anos_contrato?: number | null;
+  edp_proposal_number?: string | null;
+  service_type?: 'energia' | 'gas' | null;
+  modalidade?: string | null;
   modelo_servico?: 'transacional' | 'saas' | null;
   kwp?: number | null;
   comissao?: number | null;

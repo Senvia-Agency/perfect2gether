@@ -4,6 +4,7 @@ export type ProposalStatus = 'draft' | 'sent' | 'negotiating' | 'accepted' | 're
 export type ProposalType = 'energia' | 'servicos';
 export type ModeloServico = 'transacional' | 'saas';
 export type NegotiationType = 'angariacao' | 'angariacao_indexado' | 'renovacao' | 'sem_volume';
+export type ProposalServiceType = 'energia' | 'gas';
 
 export interface Product {
   id: string;
@@ -45,6 +46,9 @@ export interface Proposal {
   margem?: number | null;
   dbl?: number | null;
   anos_contrato?: number | null;
+  edp_proposal_number?: string | null;
+  service_type?: ProposalServiceType | null;
+  modalidade?: string | null;
   
   // Campos Serviços
   modelo_servico?: ModeloServico | null;

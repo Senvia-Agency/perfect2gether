@@ -42,6 +42,8 @@ export function EditCpeModal({ cpe, open, onOpenChange, isTelecom = false }: Edi
   const [nivelTensao, setNivelTensao] = useState<NivelTensao | ''>('');
   const [notes, setNotes] = useState('');
   const [consumoAnual, setConsumoAnual] = useState('');
+  const [modalidade, setModalidade] = useState('');
+  const [kwp, setKwp] = useState('');
 
   // Conditional labels and options based on niche
   const typeLabel = isTelecom ? 'Tipo *' : 'Tipo de Equipamento *';
@@ -83,6 +85,8 @@ export function EditCpeModal({ cpe, open, onOpenChange, isTelecom = false }: Edi
       setNivelTensao((cpe.nivel_tensao as NivelTensao) || '');
       setNotes(cpe.notes || '');
       setConsumoAnual(cpe.consumo_anual != null ? String(cpe.consumo_anual) : '');
+      setModalidade(cpe.modalidade || '');
+      setKwp(cpe.kwp != null ? String(cpe.kwp) : '');
     }
   }, [cpe, open, isTelecom]);
 
@@ -97,6 +101,9 @@ export function EditCpeModal({ cpe, open, onOpenChange, isTelecom = false }: Edi
     
     const finalEquipmentType = equipmentType === 'Outro' ? customEquipmentType : equipmentType;
     const finalComercializador = comercializador === 'Outro' ? customComercializador : comercializador;
+    const serviceType = isTelecom
+      ? (finalEquipmentType === 'Energia' ? 'energia' : finalEquipmentType === 'Gás' ? 'gas' : null)
+      : null;
 
     if (!finalEquipmentType || !finalComercializador) return;
     if (comercializadorChanged && !fidelizacaoEnd) return;
@@ -112,6 +119,9 @@ export function EditCpeModal({ cpe, open, onOpenChange, isTelecom = false }: Edi
       nivel_tensao: isTelecom && nivelTensao ? nivelTensao : null,
       notes: notes || null,
       consumo_anual: consumoAnual ? parseFloat(consumoAnual) : null,
+      service_type: serviceType,
+      modalidade: modalidade.trim() || null,
+      kwp: kwp ? parseFloat(kwp) : null,
     };
 
     // If comercializador changed, mark as switched and reset alerts
@@ -271,6 +281,28 @@ export function EditCpeModal({ cpe, open, onOpenChange, isTelecom = false }: Edi
                 className="pr-12"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">kWh</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Modalidade</Label>
+              <Input
+                placeholder="Ex.: Indexado"
+                value={modalidade}
+                onChange={(e) => setModalidade(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Potência (kWp)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Ex.: 5.5"
+                value={kwp}
+                onChange={(e) => setKwp(e.target.value)}
+              />
             </div>
           </div>
 

@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { calculateExactDuration, formatDurationBreakdown } from '@/lib/date-utils';
 import { useCpes } from '@/hooks/useCpes';
 import { ENERGY_COMERCIALIZADORES } from '@/types/cpes';
+import type { CpeServiceType } from '@/types/cpes';
 import { useCommissionMatrix, getVolumeTier } from '@/hooks/useCommissionMatrix';
 
 export interface ProposalCpeDraft {
@@ -29,6 +30,9 @@ export interface ProposalCpeDraft {
   comissao: string;
   contrato_inicio: string;
   contrato_fim: string;
+  service_type: CpeServiceType | null;
+  modalidade: string;
+  kwp: string;
 }
 
 interface ProposalCpeSelectorProps {
@@ -144,6 +148,9 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
       comissao: updateComissao,
       contrato_inicio: updateContratoInicio,
       contrato_fim: updateContratoFim,
+      service_type: existingCpe.service_type || (existingCpe.equipment_type === 'Gás' ? 'gas' : existingCpe.equipment_type === 'Energia' ? 'energia' : null),
+      modalidade: existingCpe.modalidade || '',
+      kwp: existingCpe.kwp != null ? String(existingCpe.kwp) : '',
     };
 
     onCpesChange([...cpes, newCpe]);
@@ -321,7 +328,7 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs flex items-center gap-1">
                     <Calculator className="h-3 w-3" />
@@ -343,20 +350,6 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs flex items-center gap-1">
-                    <Calculator className="h-3 w-3" />
-                    Margem (€)
-                  </Label>
-                  <Input
-                    type="number"
-                    step="any"
-                    value={cpe.margem}
-                    className="h-8 text-sm bg-muted font-medium"
-                    disabled
-                    placeholder="Auto"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs flex items-center gap-1">
                     Comissão (€)
                     {hasEnergyConfig && <Badge variant="outline" className="text-[9px] ml-1">Auto</Badge>}
                   </Label>
@@ -374,10 +367,9 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
               </div>
 
               {/* Summary */}
-              {cpe.margem && parseFloat(cpe.margem) > 0 && (
+              {cpe.comissao && parseFloat(cpe.comissao) > 0 && (
                 <div className="mt-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded text-xs text-amber-800 dark:text-amber-200">
-                  Margem calculada: <strong>{formatCurrency(cpe.margem)}</strong>
-                  {cpe.comissao && ` | Comissão: ${formatCurrency(cpe.comissao)}`}
+                  Comissão calculada: <strong>{formatCurrency(cpe.comissao)}</strong>
                 </div>
               )}
             </div>
@@ -473,7 +465,7 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                 <Separator />
 
                 {/* Energy fields */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label className="text-xs">Consumo Anual (kWh) <span className="text-destructive">*</span></Label>
                     <Input
@@ -516,20 +508,6 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                         {formatDurationBreakdown(updateContratoInicio, updateContratoFim)}
                       </p>
                     )}
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs flex items-center gap-1">
-                      <Calculator className="h-3 w-3" />
-                      Margem (€)
-                    </Label>
-                    <Input
-                      type="number"
-                      step="any"
-                      value={updateMargem}
-                      className="h-8 bg-muted font-medium"
-                      disabled
-                      placeholder="Auto"
-                    />
                   </div>
                 </div>
 

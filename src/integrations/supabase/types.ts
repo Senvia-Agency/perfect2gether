@@ -744,12 +744,15 @@ export type Database = {
           fidelizacao_end: string | null
           fidelizacao_start: string | null
           id: string
+          kwp: number | null
           nivel_tensao: string | null
           notes: string | null
           organization_id: string
           renewal_status: string | null
           serial_number: string | null
+          service_type: string | null
           status: string
+          modalidade: string | null
           updated_at: string
         }
         Insert: {
@@ -762,12 +765,15 @@ export type Database = {
           fidelizacao_end?: string | null
           fidelizacao_start?: string | null
           id?: string
+          kwp?: number | null
           nivel_tensao?: string | null
           notes?: string | null
           organization_id: string
           renewal_status?: string | null
           serial_number?: string | null
+          service_type?: string | null
           status?: string
+          modalidade?: string | null
           updated_at?: string
         }
         Update: {
@@ -780,12 +786,15 @@ export type Database = {
           fidelizacao_end?: string | null
           fidelizacao_start?: string | null
           id?: string
+          kwp?: number | null
           nivel_tensao?: string | null
           notes?: string | null
           organization_id?: string
           renewal_status?: string | null
           serial_number?: string | null
+          service_type?: string | null
           status?: string
+          modalidade?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3286,10 +3295,13 @@ export type Database = {
           fidelizacao_end: string | null
           fidelizacao_start: string | null
           id: string
+          kwp: number | null
           margem: number | null
+          modalidade: string | null
           notes: string | null
           proposal_id: string
           serial_number: string | null
+          service_type: string | null
         }
         Insert: {
           comercializador: string
@@ -3305,10 +3317,13 @@ export type Database = {
           fidelizacao_end?: string | null
           fidelizacao_start?: string | null
           id?: string
+          kwp?: number | null
           margem?: number | null
+          modalidade?: string | null
           notes?: string | null
           proposal_id: string
           serial_number?: string | null
+          service_type?: string | null
         }
         Update: {
           comercializador?: string
@@ -3324,10 +3339,13 @@ export type Database = {
           fidelizacao_end?: string | null
           fidelizacao_start?: string | null
           id?: string
+          kwp?: number | null
           margem?: number | null
+          modalidade?: string | null
           notes?: string | null
           proposal_id?: string
           serial_number?: string | null
+          service_type?: string | null
         }
         Relationships: [
           {
@@ -3395,10 +3413,12 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           dbl: number | null
+          edp_proposal_number: string | null
           id: string
           kwp: number | null
           lead_id: string | null
           margem: number | null
+          modalidade: string | null
           modelo_servico: string | null
           negotiation_type: string | null
           notes: string | null
@@ -3407,6 +3427,7 @@ export type Database = {
           proposal_type: string | null
           servicos_details: Json | null
           servicos_produtos: string[] | null
+          service_type: string | null
           status: string
           total_value: number
           updated_at: string | null
@@ -3421,10 +3442,12 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           dbl?: number | null
+          edp_proposal_number?: string | null
           id?: string
           kwp?: number | null
           lead_id?: string | null
           margem?: number | null
+          modalidade?: string | null
           modelo_servico?: string | null
           negotiation_type?: string | null
           notes?: string | null
@@ -3433,6 +3456,7 @@ export type Database = {
           proposal_type?: string | null
           servicos_details?: Json | null
           servicos_produtos?: string[] | null
+          service_type?: string | null
           status?: string
           total_value?: number
           updated_at?: string | null
@@ -3447,10 +3471,12 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           dbl?: number | null
+          edp_proposal_number?: string | null
           id?: string
           kwp?: number | null
           lead_id?: string | null
           margem?: number | null
+          modalidade?: string | null
           modelo_servico?: string | null
           negotiation_type?: string | null
           notes?: string | null
@@ -3459,6 +3485,7 @@ export type Database = {
           proposal_type?: string | null
           servicos_details?: Json | null
           servicos_produtos?: string[] | null
+          service_type?: string | null
           status?: string
           total_value?: number
           updated_at?: string | null
@@ -3787,6 +3814,7 @@ export type Database = {
           end_date: string
           id: string
           notes: string | null
+          origin: string
           organization_id: string
           rejection_reason: string | null
           start_date: string
@@ -3802,6 +3830,7 @@ export type Database = {
           end_date: string
           id?: string
           notes?: string | null
+          origin?: string
           organization_id: string
           rejection_reason?: string | null
           start_date: string
@@ -3817,6 +3846,7 @@ export type Database = {
           end_date?: string
           id?: string
           notes?: string | null
+          origin?: string
           organization_id?: string
           rejection_reason?: string | null
           start_date?: string
@@ -4028,6 +4058,7 @@ export type Database = {
           invoice_reference: string | null
           invoicexpress_id: number | null
           notes: string | null
+          origin: string
           organization_id: string
           payment_date: string
           payment_method: string | null
@@ -4047,6 +4078,7 @@ export type Database = {
           invoice_reference?: string | null
           invoicexpress_id?: number | null
           notes?: string | null
+          origin?: string
           organization_id: string
           payment_date: string
           payment_method?: string | null
@@ -4066,6 +4098,7 @@ export type Database = {
           invoice_reference?: string | null
           invoicexpress_id?: number | null
           notes?: string | null
+          origin?: string
           organization_id?: string
           payment_date?: string
           payment_method?: string | null
@@ -4125,6 +4158,7 @@ export type Database = {
           last_renewal_date: string | null
           lead_id: string | null
           margem: number | null
+          modalidade: string | null
           modelo_servico: string | null
           negotiation_type: string | null
           next_renewal_date: string | null
@@ -4141,6 +4175,7 @@ export type Database = {
           sale_date: string | null
           servicos_details: Json | null
           servicos_produtos: string[] | null
+          service_type: string | null
           status: string
           subtotal: number | null
           total_value: number
@@ -4172,6 +4207,7 @@ export type Database = {
           last_renewal_date?: string | null
           lead_id?: string | null
           margem?: number | null
+          modalidade?: string | null
           modelo_servico?: string | null
           negotiation_type?: string | null
           next_renewal_date?: string | null
@@ -4188,6 +4224,7 @@ export type Database = {
           sale_date?: string | null
           servicos_details?: Json | null
           servicos_produtos?: string[] | null
+          service_type?: string | null
           status?: string
           subtotal?: number | null
           total_value?: number
@@ -4219,6 +4256,7 @@ export type Database = {
           last_renewal_date?: string | null
           lead_id?: string | null
           margem?: number | null
+          modalidade?: string | null
           modelo_servico?: string | null
           negotiation_type?: string | null
           next_renewal_date?: string | null
@@ -4235,6 +4273,7 @@ export type Database = {
           sale_date?: string | null
           servicos_details?: Json | null
           servicos_produtos?: string[] | null
+          service_type?: string | null
           status?: string
           subtotal?: number | null
           total_value?: number

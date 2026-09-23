@@ -65,6 +65,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
   const [notes, setNotes] = useState('');
   const [proposalDate, setProposalDate] = useState(new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState<ProposalStatus>('draft');
+  const [edpProposalNumber, setEdpProposalNumber] = useState('');
   
   const [proposalType, setProposalType] = useState<ProposalType>('energia');
   const [negotiationType, setNegotiationType] = useState<NegotiationType>('angariacao');
@@ -111,7 +112,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
   const totalValue = useMemo(() => {
     if (isTelecom) {
       if (proposalType === 'energia') {
-        return proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.margem) || 0), 0);
+        return proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.comissao) || 0), 0);
       }
       return 0;
     }
@@ -217,6 +218,16 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
     return Object.values(servicosDetails).reduce((sum, d) => sum + (d.kwp || 0), 0);
   }, [servicosDetails]);
 
+  const cpeServiceSummary = useMemo(() => {
+    const serviceTypes = [...new Set(proposalCpes.map(cpe => cpe.service_type).filter(Boolean))];
+    const modalidades = [...new Set(proposalCpes.map(cpe => cpe.modalidade.trim()).filter(Boolean))];
+    return {
+      service_type: serviceTypes.length === 1 ? serviceTypes[0] : undefined,
+      modalidade: modalidades.length === 1 ? modalidades[0] : undefined,
+      kwp: proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.kwp) || 0), 0),
+    };
+  }, [proposalCpes]);
+
   const isServicosValid = useMemo(() => {
     if (!isTelecom || proposalType !== 'servicos') return true;
     if (servicosProdutos.length === 0) return false;
@@ -242,7 +253,12 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
     return selectedProducts.length > 0;
   }, [isTelecom, selectedProducts]);
 
-  const isFormValid = isServicosValid && isEnergiaValid && isGenericValid && !!selectedClientId;
+  const requiresEdpProposalNumber = isTelecom && proposalType === 'energia';
+  const isFormValid = isServicosValid
+    && isEnergiaValid
+    && isGenericValid
+    && !!selectedClientId
+    && (!requiresEdpProposalNumber || !!edpProposalNumber.trim());
 
   const handleAddProduct = (productId: string) => {
     const product = products.find(p => p.id === productId);
@@ -314,10 +330,15 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
       status: status,
       notes: notes.trim() || undefined,
       proposal_date: proposalDate,
+      edp_proposal_number: requiresEdpProposalNumber ? edpProposalNumber : undefined,
       products: [],
       proposal_type: proposalType,
       negotiation_type: isTelecom ? negotiationType : undefined,
-      kwp: proposalType === 'servicos' ? (totalKwp || undefined) : undefined,
+      kwp: proposalType === 'servicos'
+        ? (totalKwp || undefined)
+        : (cpeServiceSummary.kwp || undefined),
+      service_type: proposalType === 'energia' ? cpeServiceSummary.service_type : undefined,
+      modalidade: proposalType === 'energia' ? cpeServiceSummary.modalidade : undefined,
       modelo_servico: proposalType === 'servicos' ? modeloServico : undefined,
       comissao: totalComissao || undefined,
       servicos_produtos: proposalType === 'servicos' && servicosProdutos.length > 0 ? servicosProdutos : undefined,
@@ -342,6 +363,9 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
                 comissao: cpe.comissao ? parseFloat(cpe.comissao) : null,
                 contrato_inicio: cpe.contrato_inicio || null,
                 contrato_fim: cpe.contrato_fim || null,
+                service_type: cpe.service_type,
+                modalidade: cpe.modalidade || null,
+                kwp: cpe.kwp ? parseFloat(cpe.kwp) : null,
               }))
             );
           }
@@ -350,6 +374,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
         setNotes('');
         setProposalDate(new Date().toISOString().split('T')[0]);
         setStatus('draft');
+        setEdpProposalNumber('');
         setProposalCpes([]);
         setProposalType('energia');
         setNegotiationType('angariacao');
@@ -448,6 +473,21 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
                           </Select>
                         </div>
                       </div>
+                      {requiresEdpProposalNumber && (
+                        <div className="space-y-2">
+                          <Label htmlFor="edp-proposal-number">Código da Proposta EDP <span className="text-destructive">*</span></Label>
+                          <Input
+                            id="edp-proposal-number"
+                            value={edpProposalNumber}
+                            onChange={(e) => setEdpProposalNumber(e.target.value)}
+                            placeholder="Ex.: EDP-2026-001234"
+                            required
+                          />
+                          {attempted && !edpProposalNumber.trim() && (
+                            <p className="text-xs text-destructive">Indique o código da proposta EDP.</p>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 

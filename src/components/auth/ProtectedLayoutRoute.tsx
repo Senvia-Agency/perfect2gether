@@ -14,10 +14,21 @@ export function ProtectedLayoutRoute() {
   const { user, isLoading, needsOrgSelection, organizations, selectOrganization, mfaStatus, completeMfaChallenge, organization, profile } = useAuth();
   const location = useLocation();
   const { data: pipelineStages, isLoading: stagesLoading } = usePipelineStages();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, isLoadingPermissions } = usePermissions();
   const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Keep the entire private shell behind the same loading gate while the
+  // organization profile permissions are being fetched. This prevents the
+  // sidebar from flashing menus that the user cannot access.
+  if (isLoadingPermissions) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

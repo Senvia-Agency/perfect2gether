@@ -180,6 +180,18 @@ export function CpeList({ clientId }: CpeListProps) {
                           </div>
                         )}
 
+                        {(cpe.service_type || cpe.modalidade || cpe.kwp != null) && (
+                          <div className="flex items-center gap-2 flex-wrap text-xs">
+                            {cpe.service_type && (
+                              <Badge variant="outline" className="text-xs">
+                                {cpe.service_type === 'gas' ? 'Gás' : 'Energia'}
+                              </Badge>
+                            )}
+                            {cpe.modalidade && <span>Modalidade: <strong className="text-foreground font-medium">{cpe.modalidade}</strong></span>}
+                            {cpe.kwp != null && <span><strong className="text-foreground font-medium">{cpe.kwp.toLocaleString('pt-PT')} kWp</strong></span>}
+                          </div>
+                        )}
+
                         {cpe.notes && (
                           <p className="text-xs italic">{cpe.notes}</p>
                         )}

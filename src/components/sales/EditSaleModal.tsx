@@ -104,7 +104,7 @@ export function EditSaleModal({
   const createSalePayment = useCreateSalePayment();
 
   const { organization } = useAuth();
-  const { isAdmin } = usePermissions();
+  const { isAdmin, isBackOffice } = usePermissions();
   const isTelecom = organization?.niche === 'telecom';
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
@@ -188,6 +188,23 @@ export function EditSaleModal({
   calcCommissionRef.current = calculateEnergyCommission;
   hasEnergyConfigRef.current = hasEnergyConfig;
 
+  const recalculateEditableCpe = (cpe: CreateProposalCpeData): CreateProposalCpeData => {
+    const consumo = Number(cpe.consumo_anual) || 0;
+    const duracao = Number(cpe.duracao_contrato) || 0;
+    const dblValue = Number(cpe.dbl) || 0;
+    const margemCalculada = consumo > 0 && duracao > 0 && dblValue > 0
+      ? (consumo * duracao * dblValue) / 1000
+      : null;
+
+    let comissaoCalculada = cpe.comissao ?? null;
+    if (hasEnergyConfigRef.current && margemCalculada !== null) {
+      const calculated = calcCommissionRef.current(margemCalculada, getVolumeTier(consumo));
+      if (calculated !== null) comissaoCalculada = Number(calculated.toFixed(2));
+    }
+
+    return { ...cpe, margem: margemCalculada, comissao: comissaoCalculada };
+  };
+
   // Initialize editable CPEs from proposalCpes with recalculated commissions
   useEffect(() => {
     if (open && proposalCpes.length > 0) {
@@ -224,6 +241,9 @@ export function EditSaleModal({
           comissao,
           contrato_inicio: cpe.contrato_inicio,
           contrato_fim: cpe.contrato_fim,
+          service_type: cpe.service_type,
+          modalidade: cpe.modalidade,
+          kwp: cpe.kwp,
         };
       }));
     } else if (open) {
@@ -257,8 +277,8 @@ export function EditSaleModal({
   useEffect(() => {
     if (!open || !sale || !isTelecom) return;
     if (sale.proposal_type === 'energia' && editableCpes.length > 0) {
-      const margemTotal = editableCpes.reduce((sum, cpe) => sum + (cpe.margem || 0), 0);
-      setManualTotalValue(margemTotal.toString());
+      const comissaoTotal = editableCpes.reduce((sum, cpe) => sum + (cpe.comissao || 0), 0);
+      setManualTotalValue(comissaoTotal.toString());
     } else if (sale.proposal_type === 'servicos' && comissao) {
       setManualTotalValue(comissao);
     }
@@ -311,7 +331,7 @@ export function EditSaleModal({
   }, [open, sale?.proposal_type, margem, consumoAnual, hasEnergyConfig, editableCpes.length, calculateEnergyCommission]);
 
   // Check if sale can be fully edited
-  const canFullEdit = isAdmin || (sale?.status !== 'delivered' && sale?.status !== 'cancelled' && sale?.status !== 'fulfilled');
+  const canFullEdit = isAdmin || isBackOffice || (sale?.status !== 'delivered' && sale?.status !== 'cancelled' && sale?.status !== 'fulfilled');
 
   // Client options
   const clientOptions: ComboboxOption[] = useMemo(() => {
@@ -706,10 +726,6 @@ export function EditSaleModal({
                             <Label className="text-xs text-muted-foreground">Consumo Anual (kWh)</Label>
                             <Input type="number" value={consumoAnual} onChange={e => setConsumoAnual(e.target.value)} className="h-9" step="0.01" />
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">Margem (€/MWh)</Label>
-                            <Input type="number" value={margem} onChange={e => setMargem(e.target.value)} className="h-9" step="0.01" />
-                          </div>
                             <div className="space-y-1.5">
                               <Label className="text-xs text-muted-foreground">Anos de Contrato (auto)</Label>
                               <Input type="number" value={anosContrato} className="h-9 bg-muted" step="any" min="0" disabled />
@@ -878,7 +894,7 @@ export function EditSaleModal({
                                   if (inicio && fim) {
                                     duracao = calculateExactDuration(inicio, fim);
                                   }
-                                  u[idx] = { ...u[idx], contrato_inicio: inicio || null, duracao_contrato: duracao };
+                                  u[idx] = recalculateEditableCpe({ ...u[idx], contrato_inicio: inicio || null, duracao_contrato: duracao });
                                   setEditableCpes(u);
                                 }} className="h-8 text-sm" />
                               </div>
@@ -892,7 +908,7 @@ export function EditSaleModal({
                                   if (inicio && fim) {
                                     duracao = calculateExactDuration(inicio, fim);
                                   }
-                                  u[idx] = { ...u[idx], contrato_fim: fim || null, duracao_contrato: duracao };
+                                  u[idx] = recalculateEditableCpe({ ...u[idx], contrato_fim: fim || null, duracao_contrato: duracao });
                                   setEditableCpes(u);
                                 }} className="h-8 text-sm" />
                               </div>
@@ -905,34 +921,13 @@ export function EditSaleModal({
                                 <Input type="number" value={cpe.consumo_anual ?? ""} onChange={e => {
                                   const u = [...editableCpes];
                                   const newConsumo = e.target.value ? parseFloat(e.target.value) : null;
-                                  const currentMargem = u[idx].margem ?? 0;
-                                  let newComissao = u[idx].comissao;
-                                  if (hasEnergyConfigRef.current && currentMargem > 0) {
-                                    const calc = calcCommissionRef.current(currentMargem, getVolumeTier(newConsumo || 0));
-                                    if (calc !== null) newComissao = parseFloat(calc.toFixed(2));
-                                  }
-                                  u[idx] = { ...u[idx], consumo_anual: newConsumo, comissao: newComissao };
+                                  u[idx] = recalculateEditableCpe({ ...u[idx], consumo_anual: newConsumo });
                                   setEditableCpes(u);
                                 }} className="h-8 text-sm" step="0.01" />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">DBL</Label>
-                                <Input type="number" value={cpe.dbl ?? ""} onChange={e => { const u = [...editableCpes]; u[idx] = { ...u[idx], dbl: e.target.value ? parseFloat(e.target.value) : null }; setEditableCpes(u); }} className="h-8 text-sm" step="0.01" />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground">Margem (€/MWh)</Label>
-                                <Input type="number" value={cpe.margem ?? ""} onChange={e => {
-                                  const u = [...editableCpes];
-                                  const newMargem = e.target.value ? parseFloat(e.target.value) : null;
-                                  const currentConsumo = u[idx].consumo_anual ?? 0;
-                                  let newComissao = u[idx].comissao;
-                                  if (hasEnergyConfigRef.current && newMargem && newMargem > 0) {
-                                    const calc = calcCommissionRef.current(newMargem, getVolumeTier(currentConsumo));
-                                    if (calc !== null) newComissao = parseFloat(calc.toFixed(2));
-                                  }
-                                  u[idx] = { ...u[idx], margem: newMargem, comissao: newComissao };
-                                  setEditableCpes(u);
-                                }} className="h-8 text-sm" step="0.01" />
+                                <Input type="number" value={cpe.dbl ?? ""} onChange={e => { const u = [...editableCpes]; u[idx] = recalculateEditableCpe({ ...u[idx], dbl: e.target.value ? parseFloat(e.target.value) : null }); setEditableCpes(u); }} className="h-8 text-sm" step="0.01" />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">Comissão (€)</Label>

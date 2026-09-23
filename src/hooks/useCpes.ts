@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import type { Cpe, CpeStatus } from '@/types/cpes';
+import type { Cpe, CpeStatus, CpeServiceType } from '@/types/cpes';
 
 export function useCpes(clientId?: string | null) {
   const { organization } = useAuth();
@@ -68,6 +68,9 @@ interface CreateCpeData {
   nivel_tensao?: string;
   notes?: string;
   consumo_anual?: number;
+  service_type?: CpeServiceType;
+  modalidade?: string;
+  kwp?: number;
 }
 
 export function useCreateCpe() {

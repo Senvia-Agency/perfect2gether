@@ -101,8 +101,8 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const [pendingActivationDate, setPendingActivationDate] = useState("");
 
   const { organization } = useAuth();
-  const { isAdmin, can, profileName } = usePermissions();
-  const canEditSale = can('sales', 'sales', 'edit');
+  const { isAdmin, isBackOffice, can } = usePermissions();
+  const canEditSale = isAdmin || isBackOffice || can('sales', 'sales', 'edit');
   const canIssueInvoice = can('finance', 'invoices', 'issue');
   const canCancelInvoice = can('finance', 'invoices', 'cancel');
   const { data: orgData } = useOrganization();
@@ -110,13 +110,13 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const lockDeliveredSales = !!salesSettings.lock_delivered_sales;
   const lockFulfilledSales = !!salesSettings.lock_fulfilled_sales;
   const preventPaymentDeletion = !!salesSettings.prevent_payment_deletion;
-  const isDeliveredAndLocked = lockDeliveredSales && sale?.status === 'delivered' && !isAdmin;
-  const isFulfilledAndLocked = lockFulfilledSales && sale?.status === 'fulfilled' && !isAdmin;
-  const isCancelledAndLocked = sale?.status === 'cancelled' && !isAdmin;
+  const isDeliveredAndLocked = lockDeliveredSales && sale?.status === 'delivered' && !isAdmin && !isBackOffice;
+  const isFulfilledAndLocked = lockFulfilledSales && sale?.status === 'fulfilled' && !isAdmin && !isBackOffice;
+  const isCancelledAndLocked = sale?.status === 'cancelled' && !isAdmin && !isBackOffice;
   const isLocked = isDeliveredAndLocked || isFulfilledAndLocked || isCancelledAndLocked;
   // O acompanhamento do estado das vendas pertence ao Back Office. Os admins
   // mantem acesso para suportar excecoes operacionais.
-  const canChangeStatus = isAdmin || profileName === 'Back Office';
+  const canChangeStatus = isAdmin || isBackOffice;
 
   const { data: saleItems = [] } = useSaleItems(sale?.id);
   const { data: products } = useProducts();
@@ -247,7 +247,6 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   // Check if has energy or service data
   const proposalCpesHaveEnergyValues = proposalCpes.some((cpe) =>
     cpe.consumo_anual != null ||
-    cpe.margem != null ||
     cpe.dbl != null ||
     cpe.comissao != null ||
     cpe.duracao_contrato != null ||
@@ -258,11 +257,6 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const displayConsumoAnual = sale.consumo_anual ?? (
     proposalCpes.some((cpe) => cpe.consumo_anual != null)
       ? proposalCpes.reduce((sum, cpe) => sum + (Number(cpe.consumo_anual) || 0), 0)
-      : null
-  );
-  const displayMargem = sale.margem ?? (
-    proposalCpes.some((cpe) => cpe.margem != null)
-      ? proposalCpes.reduce((sum, cpe) => sum + (Number(cpe.margem) || 0), 0)
       : null
   );
   const displayComissao = sale.comissao ?? (
@@ -285,7 +279,6 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const hasEnergyData = sale.proposal_type === 'energia' && (
     sale.negotiation_type ||
     displayConsumoAnual != null ||
-    displayMargem != null ||
     displayDbl != null ||
     displayAnosContrato != null ||
     displayComissao != null ||
@@ -510,16 +503,28 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                               <p className="text-sm font-medium">{displayDbl.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</p>
                             </div>
                           )}
-                          {displayMargem != null && (
-                            <div>
-                              <p className="text-xs text-muted-foreground">Margem</p>
-                              <p className="text-sm font-medium">{formatCurrency(displayMargem)}</p>
-                            </div>
-                          )}
                           {displayComissao != null && (
                             <div>
                               <p className="text-xs text-muted-foreground">Comissão</p>
                               <p className="text-sm font-medium text-green-500">{formatCurrency(displayComissao)}</p>
+                            </div>
+                          )}
+                          {sale.service_type && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Serviço</p>
+                              <p className="text-sm font-medium">{sale.service_type === 'gas' ? 'Gás' : 'Energia'}</p>
+                            </div>
+                          )}
+                          {sale.modalidade && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Modalidade</p>
+                              <p className="text-sm font-medium">{sale.modalidade}</p>
+                            </div>
+                          )}
+                          {sale.kwp != null && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Potência</p>
+                              <p className="text-sm font-medium">{Number(sale.kwp).toLocaleString('pt-PT')} kWp</p>
                             </div>
                           )}
                           {(displayContratoInicio || displayContratoFim) && (
@@ -677,12 +682,6 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                                   <div>
                                     <p className="text-xs text-muted-foreground">DBL</p>
                                     <p className="text-sm font-medium">{Number(cpe.dbl).toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</p>
-                                  </div>
-                                )}
-                                {cpe.margem != null && (
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Margem</p>
-                                    <p className="text-sm font-medium">{formatCurrency(Number(cpe.margem))}</p>
                                   </div>
                                 )}
                                 {cpe.comissao != null && (

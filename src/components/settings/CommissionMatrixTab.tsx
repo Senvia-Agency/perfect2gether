@@ -121,7 +121,7 @@ export function CommissionMatrixTab() {
             <Zap className="h-8 w-8 text-amber-500" />
             <span className="text-sm font-medium leading-tight">EE & Gás</span>
             <Badge variant="secondary" className="text-[10px]">
-              Bandas de Margem
+              Bandas de Cálculo
             </Badge>
             <span className="text-[10px] text-muted-foreground">
               {localEnergy.bands.length} banda(s)
@@ -724,10 +724,10 @@ function EnergyModal({
         <DialogHeader className="shrink-0 border-b px-4 sm:px-6 py-4 pr-14">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-amber-500" />
-            <DialogTitle className="text-base sm:text-lg">EE & Gás — Comissões por Margem</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">EE & Gás — Matriz de Comissões</DialogTitle>
           </div>
           <DialogDescription>
-            Configure as bandas de margem e comissões para cada faixa de volume.
+            Configure as bases de cálculo e comissões para cada faixa de volume.
           </DialogDescription>
         </DialogHeader>
 
@@ -801,12 +801,12 @@ function EnergyModal({
 
           {/* Bands table */}
           <div className="space-y-3">
-            <div className="text-sm font-medium">Bandas de Margem</div>
+            <div className="text-sm font-medium">Bandas de Cálculo</div>
             <div className="relative w-full overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead rowSpan={2} className="text-xs whitespace-nowrap align-bottom border-r">Banda de Margem (€)</TableHead>
+                    <TableHead rowSpan={2} className="text-xs whitespace-nowrap align-bottom border-r">Base de cálculo (€)</TableHead>
                      <TableHead colSpan={2} className="text-xs text-center border-r">300 MWh</TableHead>
                      <TableHead colSpan={2} className="text-xs text-center border-r">301-600 MWh</TableHead>
                      <TableHead colSpan={2} className="text-xs text-center border-r">601+ MWh</TableHead>
@@ -897,7 +897,7 @@ function EnergyModal({
           {/* Formula preview */}
           <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
             <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
-            <span>Comissão = Valor + (Margem − Limite_Banda) × (Ponderador / 100). Cada faixa de volume (300, 301-600, 601+) usa os seus valores próprios.</span>
+            <span>Comissão = Valor + (Base de cálculo − Limite da banda) × (Ponderador / 100). Cada faixa de volume (300, 301-600, 601+) usa os seus valores próprios.</span>
           </div>
         </div>
 

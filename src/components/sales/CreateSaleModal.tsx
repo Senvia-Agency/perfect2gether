@@ -312,7 +312,7 @@ export function CreateSaleModal({
       setSaleDate(new Date());
       // Para telecom, quando vem de proposta, estado padrão = fulfilled (Entregue)
       setSaleStatus(isTelecom && prefillProposal ? 'fulfilled' : 'in_progress');
-      setEdpProposalNumber("");
+      setEdpProposalNumber(prefillProposal?.edp_proposal_number || "");
       setActivationDate(undefined);
       setItems([]);
       setDiscount("0");
@@ -487,14 +487,22 @@ export function CreateSaleModal({
   }, [isTelecom, isNewFormat, proposalId, catalogTotalComissao, servicosProdutos]);
 
   // Calculate totals
+  const energyCommissionTotal = useMemo(
+    () => proposalCpes.reduce((sum, cpe) => sum + (Number(cpe.comissao) || 0), 0),
+    [proposalCpes]
+  );
+
   const subtotal = useMemo(() => {
     const itemsTotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    if (isTelecom && proposalType === 'energia' && proposalCpes.length > 0 && itemsTotal === 0) {
+      return energyCommissionTotal;
+    }
     // For telecom direct sales with catalog, use catalog price as subtotal
     if (isTelecom && isNewFormat && !proposalId && servicosProdutos.length > 0 && itemsTotal === 0) {
       return catalogTotalPrice;
     }
     return itemsTotal;
-  }, [items, isTelecom, isNewFormat, proposalId, servicosProdutos, catalogTotalPrice]);
+  }, [items, isTelecom, proposalType, proposalCpes.length, energyCommissionTotal, isNewFormat, proposalId, servicosProdutos, catalogTotalPrice]);
 
   const discountValue = parseFloat(discount) || 0;
   const total = Math.max(0, subtotal - discountValue);
@@ -565,6 +573,7 @@ export function CreateSaleModal({
       setNegotiationType(null);
       setServicosProdutos([]);
       setServicosDetails({});
+      setEdpProposalNumber("");
       return;
     }
     
@@ -598,6 +607,7 @@ export function CreateSaleModal({
       setNegotiationType(proposal.negotiation_type || null);
       setServicosProdutos(proposal.servicos_produtos || []);
       setServicosDetails((proposal as any).servicos_details || {});
+      setEdpProposalNumber(proposal.edp_proposal_number || "");
       
       // Recalculate commission using matrix
       const recalcedComissao = recalcComissaoFromProposal(proposal);
@@ -717,6 +727,8 @@ export function CreateSaleModal({
         notes: notes.trim() || undefined,
         ...(isTelecom ? {
           proposal_type: proposalType || (servicosProdutos.length > 0 ? 'servicos' : undefined),
+          service_type: prefillProposal?.service_type || proposals?.find(p => p.id === proposalId)?.service_type || undefined,
+          modalidade: prefillProposal?.modalidade || proposals?.find(p => p.id === proposalId)?.modalidade || undefined,
           consumo_anual: parseFloat(consumoAnual) || undefined,
           margem: parseFloat(margem) || undefined,
           dbl: parseFloat(dbl) || undefined,
@@ -769,6 +781,9 @@ export function CreateSaleModal({
                 fidelizacao_start: proposalCpe.contrato_inicio || proposalCpe.fidelizacao_start || undefined,
                 fidelizacao_end: proposalCpe.contrato_fim || proposalCpe.fidelizacao_end || undefined,
                 notes: proposalCpe.notes || undefined,
+                service_type: proposalCpe.service_type || undefined,
+                modalidade: proposalCpe.modalidade || undefined,
+                kwp: proposalCpe.kwp ?? undefined,
                 status: 'active',
               });
             } else {
@@ -780,6 +795,9 @@ export function CreateSaleModal({
                 fidelizacao_start: proposalCpe.contrato_inicio || proposalCpe.fidelizacao_start || undefined,
                 fidelizacao_end: proposalCpe.contrato_fim || proposalCpe.fidelizacao_end || undefined,
                 notes: proposalCpe.notes || undefined,
+                service_type: proposalCpe.service_type || undefined,
+                modalidade: proposalCpe.modalidade || undefined,
+                kwp: proposalCpe.kwp ?? undefined,
                 status: 'active',
               });
             }
@@ -1142,12 +1160,6 @@ export function CreateSaleModal({
                               <div>
                                 <p className="text-xs text-muted-foreground">DBL</p>
                                 <p className="text-sm font-medium">{cpe.dbl.toLocaleString('pt-PT', { minimumFractionDigits: 2 })}</p>
-                              </div>
-                            )}
-                            {cpe.margem != null && (
-                              <div>
-                                <p className="text-xs text-muted-foreground">Margem</p>
-                                <p className="text-sm font-medium">{cpe.margem.toLocaleString('pt-PT', { minimumFractionDigits: 2 })} €/MWh</p>
                               </div>
                             )}
                             {cpe.comissao != null && (

@@ -1,6 +1,7 @@
 export type CpeStatus = 'active' | 'inactive' | 'pending' | 'returned';
 export type NivelTensao = 'BTE' | 'BTN' | 'MT';
 export type RenewalStatus = 'pending' | 'renewed' | 'switched';
+export type CpeServiceType = 'energia' | 'gas';
 
 export interface Cpe {
   id: string;
@@ -16,6 +17,9 @@ export interface Cpe {
   notes?: string | null;
   renewal_status?: RenewalStatus | null;
   consumo_anual?: number | null;
+  service_type?: CpeServiceType | null;
+  modalidade?: string | null;
+  kwp?: number | null;
   created_at: string;
   updated_at: string;
 }

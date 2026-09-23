@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash2, Printer, Mail, Loader2, Router, Zap, Wrench, Pencil, MoreHorizontal, CalendarDays, TrendingUp, FileText, User } from 'lucide-react';
+import { Trash2, Printer, Mail, Loader2, Router, Zap, Wrench, Pencil, MoreHorizontal, CalendarDays, FileText, User } from 'lucide-react';
 import { calculateExactDuration, formatDurationBreakdown } from '@/lib/date-utils';
 import { LeadAttachments } from '@/components/leads/LeadAttachments';
 import {
@@ -278,8 +278,6 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
               : formatCurrency(proposal.total_value)}</div>
             ${showEnergy && proposal.proposal_type === 'energia' && recalculatedCpes.length > 0 ? `
               <div style="font-size: 12px; color: #666; margin-top: 6px;">
-                Margem Total: <strong>${formatCurrency(recalculatedCpes.reduce((sum, cpe) => sum + (Number(cpe.margem) || 0), 0))}</strong>
-                &nbsp;|&nbsp;
                 Comissão Total: <strong>${formatCurrency(recalculatedCpes.reduce((sum, cpe) => sum + (Number(cpe.comissao) || 0), 0))}</strong>
               </div>
             ` : ''}
@@ -303,7 +301,6 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                     ${cpe.consumo_anual ? `<div class="cpe-field"><strong>Consumo:</strong> ${Number(cpe.consumo_anual).toLocaleString('pt-PT')} kWh</div>` : ''}
                     ${cpe.duracao_contrato ? `<div class="cpe-field"><strong>Duração:</strong> ${Number(cpe.duracao_contrato).toLocaleString('pt-PT')} ${Number(cpe.duracao_contrato) === 1 ? 'ano' : 'anos'}</div>` : ''}
                     ${cpe.dbl ? `<div class="cpe-field"><strong>DBL:</strong> ${cpe.dbl} €/MWh</div>` : ''}
-                    ${cpe.margem ? `<div class="cpe-field"><strong>Margem:</strong> ${formatCurrency(Number(cpe.margem))}</div>` : ''}
                     ${cpe.comissao ? `<div class="cpe-field"><strong>Comissão:</strong> ${formatCurrency(Number(cpe.comissao))}</div>` : ''}
                     ${cpe.contrato_inicio ? `<div class="cpe-field"><strong>Início:</strong> ${cpe.contrato_inicio}</div>` : ''}
                     ${cpe.contrato_fim ? `<div class="cpe-field"><strong>Fim:</strong> ${cpe.contrato_fim}</div>` : ''}
@@ -553,14 +550,6 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                                   <p className="font-medium">{cpe.dbl} €/MWh</p>
                                 </div>
                               )}
-                              {cpe.margem && (
-                                <div>
-                                  <span className="text-muted-foreground text-xs flex items-center gap-1">
-                                    <TrendingUp className="h-3 w-3" /> Margem:
-                                  </span>
-                                  <p className="font-medium text-green-600 dark:text-green-400">{formatCurrency(Number(cpe.margem))}</p>
-                                </div>
-                              )}
                               {cpe.comissao && (
                                 <div>
                                   <span className="text-muted-foreground text-xs">Comissão:</span>
@@ -740,10 +729,6 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                             </div>
                             {proposal.proposal_type === 'energia' && recalculatedCpes.length > 0 && (
                               <>
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Margem Total</span>
-                                  <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(recalculatedCpes.reduce((sum, cpe) => sum + (Number(cpe.margem) || 0), 0))}</span>
-                                </div>
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Comissão Total</span>
                                   <span className="font-medium">{formatCurrency(recalculatedCpes.reduce((sum, cpe) => sum + (Number(cpe.comissao) || 0), 0))}</span>

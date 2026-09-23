@@ -214,6 +214,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!mounted) return;
+
+        // The protected layout must never render with the previous/default
+        // permissions while the profile for a newly established session is
+        // still loading. TOKEN_REFRESHED is intentionally excluded: it does
+        // not change the user data and setting this flag there would leave the
+        // application waiting for an effect that will not run again.
+        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+          setIsLoadingUserData(true);
+        }
+        if (!session?.user) {
+          setIsLoadingUserData(false);
+        }
         
         setSession(session);
         setUser(session?.user ?? null);
@@ -254,6 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOrganizations([]);
     setRoles([]);
     setNeedsOrgSelection(false);
+    setIsLoadingUserData(false);
     
     // Limpar localStorage
     localStorage.removeItem(ACTIVE_ORG_KEY);

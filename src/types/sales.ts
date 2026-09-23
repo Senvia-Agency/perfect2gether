@@ -4,6 +4,7 @@ export type PaymentMethod = 'mbway' | 'transfer' | 'cash' | 'card' | 'check' | '
 export type PaymentStatus = 'pending' | 'partial' | 'paid';
 export type ProposalType = 'energia' | 'servicos';
 export type ModeloServico = 'transacional' | 'saas';
+export type SaleServiceType = 'energia' | 'gas';
 
 export const SALE_STATUS_LABELS: Record<SaleStatus, string> = {
   in_progress: 'Em Progresso',
@@ -122,6 +123,8 @@ export interface Sale {
   margem: number | null;
   dbl: number | null;
   anos_contrato: number | null;
+  service_type?: SaleServiceType | null;
+  modalidade?: string | null;
   
   // Campos Serviços
   modelo_servico: ModeloServico | null;

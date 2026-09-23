@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { usePersistedState } from "@/hooks/usePersistedState";
-import { ShoppingBag, Search, TrendingUp, Package, CheckCircle, Plus, Zap, Download, Loader2 } from "lucide-react";
+import { ShoppingBag, Search, TrendingUp, Package, CheckCircle, Plus, Zap, Download, Loader2, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -36,8 +37,9 @@ export default function Sales() {
   // Subscribe to realtime updates
   useSalesRealtime();
   const { profile, organization, organizations, isSuperAdmin } = useAuth();
-  const { can } = usePermissions();
-  const canCreateSale = can('sales', 'sales', 'create');
+  const { can, isAdmin, isBackOffice } = usePermissions();
+  const canAccessSalesWorkspace = isSuperAdmin || isAdmin || isBackOffice;
+  const canCreateSale = canAccessSalesWorkspace && can('sales', 'sales', 'create');
   const { data: sales, isLoading } = useSales();
   const isTelecom = organization?.niche === 'telecom';
   const isPerfect2Gether = hasPerfect2GetherAccess({
@@ -55,6 +57,10 @@ export default function Sales() {
   const [saleToEdit, setSaleToEdit] = useState<SaleWithDetails | null>(null);
   const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  if (!canAccessSalesWorkspace) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   // Reactively open sale details when pendingSaleId matches a sale in cache
   useEffect(() => {
@@ -112,11 +118,12 @@ export default function Sales() {
 
   // Summary stats
   const stats = useMemo(() => {
-    if (!filteredSales.length) return { total: 0, totalValue: 0, delivered: 0, deliveredValue: 0, inProgress: 0, fulfilled: 0, fulfilledValue: 0 };
+    if (!filteredSales.length) return { total: 0, totalValue: 0, delivered: 0, deliveredValue: 0, inProgress: 0, fulfilled: 0, fulfilledValue: 0, cancelled: 0, cancelledValue: 0 };
 
     const delivered = filteredSales.filter(s => s.status === 'delivered');
     const inProgress = filteredSales.filter(s => s.status === 'in_progress');
     const fulfilled = filteredSales.filter(s => s.status === 'fulfilled');
+    const cancelled = filteredSales.filter(s => s.status === 'cancelled');
 
     return {
       total: filteredSales.length,
@@ -126,6 +133,8 @@ export default function Sales() {
       inProgress: inProgress.length,
       fulfilled: fulfilled.length,
       fulfilledValue: fulfilled.reduce((acc, s) => acc + (s.total_value || 0), 0),
+      cancelled: cancelled.length,
+      cancelledValue: cancelled.reduce((acc, s) => acc + (s.total_value || 0), 0),
     };
   }, [filteredSales]);
 
@@ -147,6 +156,7 @@ export default function Sales() {
       inProgress: byType(filteredSales.filter((s) => s.status === 'in_progress')),
       fulfilled: byType(filteredSales.filter((s) => s.status === 'fulfilled')),
       delivered: byType(filteredSales.filter((s) => s.status === 'delivered')),
+      cancelled: byType(filteredSales.filter((s) => s.status === 'cancelled')),
     };
   }, [filteredSales]);
 
@@ -289,8 +299,8 @@ export default function Sales() {
       </div>
 
       {/* Summary Cards */}
-      <div className="p-4 md:p-6 grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-        <Card className="bg-card/50 border-border/50">
+      <div className="p-4 md:p-6 grid grid-cols-2 sm:grid-cols-5 gap-3 md:gap-4">
+        <Card className="bg-card/50 border-border/50 cursor-pointer transition-colors hover:bg-accent/50" onClick={() => setStatusFilter('all')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -307,7 +317,7 @@ export default function Sales() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50 border-border/50">
+        <Card className="bg-card/50 border-border/50 cursor-pointer transition-colors hover:bg-accent/50" onClick={() => setStatusFilter('fulfilled')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Package className="h-4 w-4 text-purple-500" />
@@ -324,7 +334,7 @@ export default function Sales() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50 border-border/50">
+        <Card className="bg-card/50 border-border/50 cursor-pointer transition-colors hover:bg-accent/50" onClick={() => setStatusFilter('in_progress')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Package className="h-4 w-4 text-blue-500" />
@@ -340,7 +350,7 @@ export default function Sales() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50 border-border/50">
+        <Card className="bg-card/50 border-border/50 cursor-pointer transition-colors hover:bg-accent/50" onClick={() => setStatusFilter('delivered')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="h-4 w-4 text-green-500" />
@@ -352,6 +362,23 @@ export default function Sales() {
               <TypeSplit
                 energia={typeStats.delivered.energiaCount}
                 servicos={typeStats.delivered.servicosCount}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/50 border-border/50 cursor-pointer transition-colors hover:bg-accent/50" onClick={() => setStatusFilter('cancelled')}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <XCircle className="h-4 w-4 text-red-500" />
+              <span className="text-xs text-muted-foreground">Canceladas</span>
+            </div>
+            <p className="text-2xl font-bold text-red-500">{stats.cancelled}</p>
+            <p className="text-xs text-muted-foreground">{formatCurrency(stats.cancelledValue)}</p>
+            {isTelecom && modules.energy && (
+              <TypeSplit
+                energia={typeStats.cancelled.energiaCount}
+                servicos={typeStats.cancelled.servicosCount}
               />
             )}
           </CardContent>

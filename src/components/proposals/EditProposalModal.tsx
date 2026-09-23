@@ -65,6 +65,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
   const [notes, setNotes] = useState('');
   const [proposalDate, setProposalDate] = useState('');
   const [status, setStatus] = useState<ProposalStatus>('draft');
+  const [edpProposalNumber, setEdpProposalNumber] = useState('');
   
   const [negotiationType, setNegotiationType] = useState<NegotiationType | null>(null);
   const [proposalType, setProposalType] = useState<ProposalType>('energia');
@@ -95,6 +96,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
       setNotes(proposal.notes || '');
       setProposalDate(proposal.proposal_date?.split('T')[0] || new Date().toISOString().split('T')[0]);
       setStatus(proposal.status);
+      setEdpProposalNumber(proposal.edp_proposal_number || '');
       setProposalType((proposal.proposal_type as ProposalType) || 'energia');
       setNegotiationType((proposal.negotiation_type as NegotiationType) || null);
       
@@ -181,6 +183,9 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
             comissao,
             contrato_inicio: cpe.contrato_inicio || '',
             contrato_fim: cpe.contrato_fim || '',
+            service_type: cpe.service_type,
+            modalidade: cpe.modalidade || '',
+            kwp: cpe.kwp != null ? String(cpe.kwp) : '',
           };
         })
       );
@@ -207,7 +212,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
   const totalValue = useMemo(() => {
     if (isTelecom) {
       if (proposalType === 'energia') {
-        return proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.margem) || 0), 0);
+        return proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.comissao) || 0), 0);
       }
       return totalComissao;
     }
@@ -298,6 +303,16 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
     return Object.values(servicosDetails).reduce((sum, d) => sum + (d.kwp || 0), 0);
   }, [servicosDetails]);
 
+  const cpeServiceSummary = useMemo(() => {
+    const serviceTypes = [...new Set(proposalCpes.map(cpe => cpe.service_type).filter(Boolean))];
+    const modalidades = [...new Set(proposalCpes.map(cpe => cpe.modalidade.trim()).filter(Boolean))];
+    return {
+      service_type: serviceTypes.length === 1 ? serviceTypes[0] : undefined,
+      modalidade: modalidades.length === 1 ? modalidades[0] : undefined,
+      kwp: proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.kwp) || 0), 0),
+    };
+  }, [proposalCpes]);
+
   const isServicosValid = useMemo(() => {
     if (!isTelecom || proposalType !== 'servicos') return true;
     if (servicosProdutos.length === 0) return false;
@@ -310,7 +325,10 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
     });
   }, [isTelecom, proposalType, servicosProdutos, servicosDetails]);
 
-  const isFormValid = isServicosValid && !!selectedClientId;
+  const requiresEdpProposalNumber = isTelecom && proposalType === 'energia';
+  const isFormValid = isServicosValid
+    && !!selectedClientId
+    && (!requiresEdpProposalNumber || !!edpProposalNumber.trim());
 
   const handleAddProduct = (productId: string) => {
     const product = products.find(p => p.id === productId);
@@ -389,6 +407,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
       status: status,
       notes: notes.trim() || null,
       proposal_date: proposalDate,
+      edp_proposal_number: requiresEdpProposalNumber ? edpProposalNumber : null,
       proposal_type: proposalType,
       negotiation_type: negotiationType,
       consumo_anual: null,
@@ -396,7 +415,11 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
       dbl: null,
       anos_contrato: null,
       modelo_servico: proposalType === 'servicos' ? modeloServico : null,
-      kwp: proposalType === 'servicos' ? (totalKwp || null) : null,
+      kwp: proposalType === 'servicos'
+        ? (totalKwp || null)
+        : (cpeServiceSummary.kwp || null),
+      service_type: proposalType === 'energia' ? cpeServiceSummary.service_type || null : null,
+      modalidade: proposalType === 'energia' ? cpeServiceSummary.modalidade || null : null,
       comissao: proposalType === 'servicos' ? (totalComissao || null) : null,
       servicos_produtos: proposalType === 'servicos' ? servicosProdutos : null,
       servicos_details: proposalType === 'servicos' && Object.keys(servicosDetails).length > 0 ? servicosDetails : null,
@@ -421,6 +444,9 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
           comissao: cpe.comissao ? parseFloat(cpe.comissao) : null,
           contrato_inicio: cpe.contrato_inicio || null,
           contrato_fim: cpe.contrato_fim || null,
+          service_type: cpe.service_type,
+          modalidade: cpe.modalidade || null,
+          kwp: cpe.kwp ? parseFloat(cpe.kwp) : null,
         })),
       });
     }
@@ -523,6 +549,21 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
                           </Select>
                         </div>
                       </div>
+                      {requiresEdpProposalNumber && (
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-edp-proposal-number">Código da Proposta EDP <span className="text-destructive">*</span></Label>
+                          <Input
+                            id="edit-edp-proposal-number"
+                            value={edpProposalNumber}
+                            onChange={(e) => setEdpProposalNumber(e.target.value)}
+                            placeholder="Ex.: EDP-2026-001234"
+                            required
+                          />
+                          {attempted && !edpProposalNumber.trim() && (
+                            <p className="text-xs text-destructive">Indique o código da proposta EDP.</p>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 

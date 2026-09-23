@@ -18,7 +18,7 @@ export function usePermissions() {
   const isAdmin = roles.includes('admin') || isSuperAdmin;
   const isViewer = roles.includes('viewer') && !isAdmin;
 
-  const { data: profileData } = useQuery({
+  const { data: profileData, isLoading: isLoadingProfilePermissions } = useQuery({
     queryKey: ['user-profile-permissions', user?.id, organization?.id],
     queryFn: async () => {
       if (!user?.id || !organization?.id) return null;
@@ -52,6 +52,7 @@ export function usePermissions() {
   });
 
   const modulePermissions = profileData?.permissions ?? null;
+  const isBackOffice = profileData?.profileName === 'Back Office';
   const dataScope: 'own' | 'team' | 'all' = isSuperAdmin || isAdmin
     ? 'all'
     : (profileData?.dataScope as 'own' | 'team' | 'all') || 'own';
@@ -93,10 +94,15 @@ export function usePermissions() {
     canManageIntegrations: can('settings', 'general', 'edit'),
 
     isAdmin,
+    isBackOffice,
     isViewer,
     isSuperAdmin,
     dataScope,
     profileName: profileData?.profileName ?? null,
+    // Consumers that render navigation should wait for this query. Without
+    // this, a commercial user briefly receives the permissive fallback while
+    // their organization profile is still being resolved.
+    isLoadingPermissions: !isSuperAdmin && !!user?.id && !!organization?.id && isLoadingProfilePermissions,
     systems: profileData?.systems || ['p2g'],
     hasSystem: (system: SystemKey) => {
       if (isSuperAdmin) return true;
