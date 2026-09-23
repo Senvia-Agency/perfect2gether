@@ -93,14 +93,16 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
       const monthStart = selectedMonth;
       const monthEnd = format(endOfMonth(new Date(selectedMonth)), 'yyyy-MM-dd');
 
-      // Get delivered sales filtered by activation_date
+      // Commissions become payable when the sale is concluded. Activation can
+      // be scheduled for a future date (or be absent), so filtering by it
+      // hides valid commissions from the Finance workspace.
       const { data: sales, error: salesError } = await supabase
         .from('sales')
-        .select('id, code, lead_id, client_id, activation_date, status, proposal_id')
+        .select('id, code, lead_id, client_id, sale_date, activation_date, status, proposal_id')
         .eq('organization_id', organizationId)
         .in('status', ['delivered', 'fulfilled'])
-        .gte('activation_date', monthStart)
-        .lte('activation_date', monthEnd);
+        .gte('sale_date', monthStart)
+        .lte('sale_date', monthEnd);
 
       if (salesError) throw salesError;
       if (!sales?.length) return emptyResult;
