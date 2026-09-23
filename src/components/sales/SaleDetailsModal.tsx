@@ -127,6 +127,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const proposalCpes = useMemo(() => {
     if (!hasEnergyConfig || rawProposalCpes.length === 0) return rawProposalCpes;
     return rawProposalCpes.map(cpe => {
+      if (cpe.commission_group_id) return cpe;
       if (!cpe.margem || !cpe.consumo_anual) return cpe;
       const margem = Number(cpe.margem);
       if (margem <= 0) return cpe;

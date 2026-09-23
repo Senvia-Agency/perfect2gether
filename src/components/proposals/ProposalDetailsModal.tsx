@@ -97,6 +97,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   const recalculatedCpes = useMemo(() => {
     if (!hasEnergyConfig || proposalCpes.length === 0) return proposalCpes;
     return proposalCpes.map(cpe => {
+      if (cpe.commission_group_id) return cpe;
       if (!cpe.margem || !cpe.consumo_anual) return cpe;
       const margem = Number(cpe.margem);
       if (margem <= 0) return cpe;

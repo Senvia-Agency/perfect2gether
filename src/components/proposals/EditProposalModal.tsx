@@ -19,8 +19,13 @@ import { useActiveProducts } from '@/hooks/useProducts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommissionMatrix, getVolumeTier } from '@/hooks/useCommissionMatrix';
 import { CreateClientModal } from '@/components/clients/CreateClientModal';
-import { ProposalCpeSelector, type ProposalCpeDraft } from './ProposalCpeSelector';
-import { useProposalCpes, useUpdateProposalCpes } from '@/hooks/useProposalCpes';
+import {
+  ProposalCpeSelector,
+  getProposalCpeDraftCommissionGroups,
+  getProposalCpeDraftTotalCommission,
+  type ProposalCpeDraft,
+} from './ProposalCpeSelector';
+import { useProposalCpeCommissionGroups, useProposalCpes, useUpdateProposalCpes } from '@/hooks/useProposalCpes';
 import { calculateExactDuration } from '@/lib/date-utils';
 import { 
   PROPOSAL_STATUS_LABELS, 
@@ -49,6 +54,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
   const { data: clients = [] } = useClients();
   const { data: products = [] } = useActiveProducts();
   const { data: existingCpes = [] } = useProposalCpes(proposal.id);
+  const { data: existingCpeGroups = [] } = useProposalCpeCommissionGroups(proposal.id);
   const { data: existingProducts = [] } = useProposalProducts(proposal.id);
   const { organization } = useAuth();
   const { products: SERVICOS_PRODUCTS, configs: SERVICOS_PRODUCT_CONFIGS, catalog, isNewFormat } = useServicosProducts();
@@ -144,6 +150,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
 
   useEffect(() => {
     if (open && existingCpes.length > 0) {
+      const groupTotals = new Map(existingCpeGroups.map(group => [group.id, group.total_comissao]));
       setProposalCpes(
         existingCpes.map(cpe => {
           const consumoAnual = cpe.consumo_anual?.toString() || '';
@@ -158,7 +165,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
           
           // Recalculate commission using current tier rules (runtime derivation)
           let comissao = cpe.comissao?.toString() || '';
-          if (hasEnergyConfigRef.current && margem) {
+          if (!cpe.commission_group_id && hasEnergyConfigRef.current && margem) {
             const margemNum = parseFloat(margem);
             if (margemNum > 0) {
               const calc = calcRef.current(margemNum, getVolumeTier(parseFloat(consumoAnual) || 0));
@@ -181,6 +188,10 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
             dbl: cpe.dbl?.toString() || '',
             margem,
             comissao,
+            commission_group_key: cpe.commission_group_id,
+            commission_group_comissao: cpe.commission_group_id
+              ? String(groupTotals.get(cpe.commission_group_id) ?? 0)
+              : undefined,
             contrato_inicio: cpe.contrato_inicio || '',
             contrato_fim: cpe.contrato_fim || '',
             service_type: cpe.service_type,
@@ -192,7 +203,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
     } else if (open) {
       setProposalCpes([]);
     }
-  }, [open, existingCpes]);
+  }, [open, existingCpes, existingCpeGroups]);
 
   const getProductTotal = (product: typeof selectedProducts[0]) => {
     const subtotal = product.quantity * product.unit_price;
@@ -204,7 +215,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
 
   const totalComissao = useMemo(() => {
     if (proposalType === 'energia') {
-      return proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.comissao) || 0), 0);
+      return getProposalCpeDraftTotalCommission(proposalCpes);
     }
     return servicosProdutos.reduce((sum, p) => sum + (servicosDetails[p]?.comissao || 0), 0);
   }, [proposalType, proposalCpes, servicosProdutos, servicosDetails]);
@@ -212,7 +223,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
   const totalValue = useMemo(() => {
     if (isTelecom) {
       if (proposalType === 'energia') {
-        return proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.comissao) || 0), 0);
+        return getProposalCpeDraftTotalCommission(proposalCpes);
       }
       return totalComissao;
     }
@@ -397,6 +408,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
       await updateProposalCpes.mutateAsync({
         proposalId: proposal.id,
         cpes: [],
+        groups: [],
       });
     }
 
@@ -420,7 +432,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
         : (cpeServiceSummary.kwp || null),
       service_type: proposalType === 'energia' ? cpeServiceSummary.service_type || null : null,
       modalidade: proposalType === 'energia' ? cpeServiceSummary.modalidade || null : null,
-      comissao: proposalType === 'servicos' ? (totalComissao || null) : null,
+      comissao: totalComissao || null,
       servicos_produtos: proposalType === 'servicos' ? servicosProdutos : null,
       servicos_details: proposalType === 'servicos' && Object.keys(servicosDetails).length > 0 ? servicosDetails : null,
     });
@@ -428,6 +440,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
     if (isTelecom && proposalType === 'energia') {
       await updateProposalCpes.mutateAsync({
         proposalId: proposal.id,
+        groups: getProposalCpeDraftCommissionGroups(proposalCpes),
         cpes: proposalCpes.map(cpe => ({
           proposal_id: proposal.id,
           existing_cpe_id: cpe.existing_cpe_id || null,
@@ -442,6 +455,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
           dbl: cpe.dbl ? parseFloat(cpe.dbl) : null,
           margem: cpe.margem ? parseFloat(cpe.margem) : null,
           comissao: cpe.comissao ? parseFloat(cpe.comissao) : null,
+          commission_group_key: cpe.commission_group_key || null,
           contrato_inicio: cpe.contrato_inicio || null,
           contrato_fim: cpe.contrato_fim || null,
           service_type: cpe.service_type,

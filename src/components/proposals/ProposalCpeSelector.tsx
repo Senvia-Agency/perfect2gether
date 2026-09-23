@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, X, Zap, Calculator } from 'lucide-react';
+import { Layers3, Plus, X, Zap, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { calculateExactDuration, formatDurationBreakdown } from '@/lib/date-utils';
 import { useCpes } from '@/hooks/useCpes';
@@ -28,6 +29,10 @@ export interface ProposalCpeDraft {
   dbl: string;
   margem: string;
   comissao: string;
+  /** Same key on all CPEs that share a single commission calculation. */
+  commission_group_key?: string | null;
+  /** Kept on every draft only for rendering; persisted once in the group header. */
+  commission_group_comissao?: string;
   contrato_inicio: string;
   contrato_fim: string;
   service_type: CpeServiceType | null;
@@ -52,6 +57,28 @@ function calculateMargem(consumo: string, duracao: string, dbl: string): string 
   return '';
 }
 
+export function getProposalCpeDraftCommissionGroups(cpes: ProposalCpeDraft[]) {
+  const seen = new Set<string>();
+  return cpes.flatMap(cpe => {
+    if (!cpe.commission_group_key) return [];
+    if (seen.has(cpe.commission_group_key)) return [];
+    seen.add(cpe.commission_group_key);
+    return [{
+      source_id: cpe.commission_group_key,
+      total_comissao: Number(cpe.commission_group_comissao || 0),
+    }];
+  });
+}
+
+export function getProposalCpeDraftTotalCommission(cpes: ProposalCpeDraft[]) {
+  const grouped = getProposalCpeDraftCommissionGroups(cpes)
+    .reduce((sum, group) => sum + group.total_comissao, 0);
+  const legacy = cpes
+    .filter(cpe => !cpe.commission_group_key)
+    .reduce((sum, cpe) => sum + (Number(cpe.comissao) || 0), 0);
+  return grouped + legacy;
+}
+
 export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCpeSelectorProps) {
   const { data: clientCpes = [] } = useCpes(clientId);
   const { calculateEnergyCommission, hasEnergyConfig } = useCommissionMatrix();
@@ -59,7 +86,8 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
   const comercializadorOptions = ENERGY_COMERCIALIZADORES;
   
   // State for existing CPE selection form
-  const [selectedExistingCpe, setSelectedExistingCpe] = useState<string | null>(null);
+  const [selectedExistingCpeIds, setSelectedExistingCpeIds] = useState<string[]>([]);
+  const [requestedCpeQuantity, setRequestedCpeQuantity] = useState('1');
   const [updateConsumoAnual, setUpdateConsumoAnual] = useState('');
   const [updateDuracaoContrato, setUpdateDuracaoContrato] = useState('');
   const [updateDbl, setUpdateDbl] = useState('');
@@ -105,7 +133,8 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
   }, [updateContratoInicio, updateContratoFim]);
 
   const resetForm = () => {
-    setSelectedExistingCpe(null);
+    setSelectedExistingCpeIds([]);
+    setRequestedCpeQuantity('1');
     setUpdateConsumoAnual('');
     setUpdateDuracaoContrato('');
     setUpdateDbl('');
@@ -117,43 +146,43 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
   };
 
   const handleAddExistingCpe = () => {
-    if (!selectedExistingCpe) return;
-    
-    const existingCpe = clientCpes.find(c => c.id === selectedExistingCpe);
-    if (!existingCpe) return;
-
-    // Check if already added
-    if (cpes.find(c => c.existing_cpe_id === selectedExistingCpe)) {
-      return;
-    }
+    if (selectedExistingCpeIds.length === 0) return;
 
     const finalComercializador = updateComercializador === 'other' 
       ? updateCustomComercializador 
       : (updateComercializador === 'keep_current' || !updateComercializador ? existingCpe.comercializador : updateComercializador);
 
-    const newCpe: ProposalCpeDraft = {
-      id: crypto.randomUUID(),
-      existing_cpe_id: existingCpe.id,
-      equipment_type: existingCpe.equipment_type,
-      serial_number: existingCpe.serial_number || '',
-      comercializador: finalComercializador,
-      fidelizacao_start: updateContratoInicio || existingCpe.fidelizacao_start || '',
-      fidelizacao_end: updateContratoFim || existingCpe.fidelizacao_end || '',
-      notes: '',
-      isNew: false,
-      consumo_anual: updateConsumoAnual,
-      duracao_contrato: updateDuracaoContrato,
-      dbl: updateDbl,
-      margem: updateMargem,
-      comissao: updateComissao,
-      contrato_inicio: updateContratoInicio,
-      contrato_fim: updateContratoFim,
-      service_type: existingCpe.service_type || (existingCpe.equipment_type === 'Gás' ? 'gas' : existingCpe.equipment_type === 'Energia' ? 'energia' : null),
-      modalidade: existingCpe.modalidade || '',
-      kwp: existingCpe.kwp != null ? String(existingCpe.kwp) : '',
-    };
+    const commissionGroupKey = crypto.randomUUID();
+    const newCpes = selectedExistingCpeIds
+      .map(id => clientCpes.find(cpe => cpe.id === id))
+      .filter((cpe): cpe is NonNullable<typeof cpe> => !!cpe)
+      .map((existingCpe, index): ProposalCpeDraft => ({
+        id: crypto.randomUUID(),
+        existing_cpe_id: existingCpe.id,
+        equipment_type: existingCpe.equipment_type,
+        serial_number: existingCpe.serial_number || '',
+        comercializador: finalComercializador,
+        fidelizacao_start: updateContratoInicio || existingCpe.fidelizacao_start || '',
+        fidelizacao_end: updateContratoFim || existingCpe.fidelizacao_end || '',
+        notes: '',
+        isNew: false,
+        consumo_anual: updateConsumoAnual,
+        duracao_contrato: updateDuracaoContrato,
+        dbl: updateDbl,
+        margem: updateMargem,
+        // The database keeps this value on one technical anchor CPE only so
+        // older totals remain correct. The UI always presents it as a group.
+        comissao: index === 0 ? updateComissao : '0',
+        commission_group_key: commissionGroupKey,
+        commission_group_comissao: updateComissao,
+        contrato_inicio: updateContratoInicio,
+        contrato_fim: updateContratoFim,
+        service_type: existingCpe.service_type || (existingCpe.equipment_type === 'Gás' ? 'gas' : existingCpe.equipment_type === 'Energia' ? 'energia' : null),
+        modalidade: existingCpe.modalidade || '',
+        kwp: existingCpe.kwp != null ? String(existingCpe.kwp) : '',
+      }));
 
-    onCpesChange([...cpes, newCpe]);
+    onCpesChange([...cpes, ...newCpes]);
     resetForm();
   };
 
@@ -197,16 +226,56 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
     }));
   };
 
+  const handleUpdateGroupField = (groupKey: string, field: keyof ProposalCpeDraft, value: string) => {
+    const group = cpes.filter(cpe => cpe.commission_group_key === groupKey);
+    const source = group[0];
+    if (!source) return;
+
+    const next = { ...source, [field]: value };
+    if ((field === 'contrato_inicio' || field === 'contrato_fim') && next.contrato_inicio && next.contrato_fim) {
+      const duration = calculateExactDuration(next.contrato_inicio, next.contrato_fim);
+      next.duracao_contrato = duration > 0 ? duration.toString() : '';
+    }
+    if (['consumo_anual', 'duracao_contrato', 'dbl', 'contrato_inicio', 'contrato_fim'].includes(field)) {
+      next.margem = calculateMargem(next.consumo_anual, next.duracao_contrato, next.dbl);
+      if (hasEnergyConfig && next.margem) {
+        const calculated = calculateEnergyCommission(Number(next.margem), getVolumeTier(Number(next.consumo_anual) || 0));
+        if (calculated !== null) next.commission_group_comissao = calculated.toFixed(2);
+      }
+    }
+    if (field === 'commission_group_comissao') next.commission_group_comissao = value;
+
+    const groupCommission = next.commission_group_comissao || '';
+    onCpesChange(cpes.map(cpe => {
+      if (cpe.commission_group_key !== groupKey) return cpe;
+      return {
+        ...cpe,
+        comercializador: next.comercializador,
+        consumo_anual: next.consumo_anual,
+        duracao_contrato: next.duracao_contrato,
+        dbl: next.dbl,
+        margem: next.margem,
+        contrato_inicio: next.contrato_inicio,
+        contrato_fim: next.contrato_fim,
+        fidelizacao_start: next.contrato_inicio,
+        fidelizacao_end: next.contrato_fim,
+        commission_group_comissao: groupCommission,
+        comissao: cpe.id === group[0].id ? groupCommission : '0',
+      };
+    }));
+  };
+
   // Filter out already selected CPEs from the list
   const availableExistingCpes = clientCpes.filter(
     cpe => !cpes.find(c => c.existing_cpe_id === cpe.id)
   );
+  const requestedQuantity = Math.max(1, Math.min(availableExistingCpes.length || 1, Number(requestedCpeQuantity) || 1));
 
   const hasValidComercializador = updateComercializador === 'other' 
     ? !!updateCustomComercializador.trim() 
     : (!!updateComercializador && updateComercializador !== '');
 
-  const canAddExisting = selectedExistingCpe !== null
+  const canAddExisting = selectedExistingCpeIds.length === requestedQuantity
     && !!updateConsumoAnual
     && !!updateDuracaoContrato
     && !!updateDbl
@@ -214,6 +283,23 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
     && !!updateContratoInicio
     && !!updateContratoFim
     && hasValidComercializador;
+
+  const groupedCpes = useMemo(() => {
+    const groups = new Map<string, ProposalCpeDraft[]>();
+    cpes.forEach(cpe => {
+      if (!cpe.commission_group_key) return;
+      groups.set(cpe.commission_group_key, [...(groups.get(cpe.commission_group_key) || []), cpe]);
+    });
+    return [...groups.entries()].map(([key, items]) => ({ key, items, source: items[0] }));
+  }, [cpes]);
+
+  const toggleExistingCpe = (cpeId: string, checked: boolean) => {
+    setSelectedExistingCpeIds(current => {
+      if (!checked) return current.filter(id => id !== cpeId);
+      if (current.length >= requestedQuantity) return current;
+      return [...current, cpeId];
+    });
+  };
 
   const formatCurrency = (value: string) => {
     const num = parseFloat(value) || 0;
@@ -227,10 +313,49 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
         CPE/CUI (Pontos de Consumo)
       </Label>
 
+      {groupedCpes.length > 0 && (
+        <div className="space-y-3">
+          {groupedCpes.map(({ key, items, source }, index) => (
+            <div key={key} className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Layers3 className="h-4 w-4 text-blue-700 dark:text-blue-300" />
+                    <span className="text-sm font-semibold">Condições em lote #{index + 1}</span>
+                    <Badge variant="outline" className="border-blue-300 bg-white/70 text-blue-800 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-200">{items.length} CPE{items.length === 1 ? '' : 's'}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">O consumo indicado é repetido em cada CPE. A comissão pertence ao lote e é contabilizada uma única vez.</p>
+                </div>
+                <Button type="button" variant="ghost" size="sm" className="self-start text-muted-foreground hover:text-destructive" onClick={() => onCpesChange(cpes.filter(cpe => cpe.commission_group_key !== key))}>
+                  <X className="mr-1 h-4 w-4" />Remover lote
+                </Button>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {items.map(cpe => <Badge key={cpe.id} variant="secondary" className="max-w-full truncate font-mono text-[11px]">{cpe.serial_number || cpe.equipment_type}</Badge>)}
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="space-y-1"><Label className="text-xs">Comercializador</Label><Input value={source.comercializador} onChange={event => handleUpdateGroupField(key, 'comercializador', event.target.value)} className="h-9 bg-white/80 text-sm dark:bg-background" /></div>
+                <div className="space-y-1"><Label className="text-xs">Início do contrato</Label><Input type="date" value={source.contrato_inicio} onChange={event => handleUpdateGroupField(key, 'contrato_inicio', event.target.value)} className="h-9 bg-white/80 text-sm dark:bg-background" /></div>
+                <div className="space-y-1"><Label className="text-xs">Fim do contrato</Label><Input type="date" value={source.contrato_fim} onChange={event => handleUpdateGroupField(key, 'contrato_fim', event.target.value)} className="h-9 bg-white/80 text-sm dark:bg-background" /></div>
+                <div className="space-y-1"><Label className="text-xs">Consumo anual por CPE (kWh)</Label><Input type="number" min="0" value={source.consumo_anual} onChange={event => handleUpdateGroupField(key, 'consumo_anual', event.target.value)} className="h-9 bg-white/80 text-sm dark:bg-background" /></div>
+                <div className="space-y-1"><Label className="text-xs">DBL (€/MWh)</Label><Input type="number" step="0.01" min="0" value={source.dbl} onChange={event => handleUpdateGroupField(key, 'dbl', event.target.value)} className="h-9 bg-white/80 text-sm dark:bg-background" /></div>
+                <div className="space-y-1"><Label className="text-xs">Duração</Label><Input value={source.duracao_contrato ? `${source.duracao_contrato} anos` : ''} disabled className="h-9 bg-white/60 text-sm dark:bg-background" placeholder="Automática" /></div>
+              </div>
+              <div className="mt-3 rounded-lg border border-blue-200 bg-white/75 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+                <div className="flex flex-wrap items-center justify-between gap-2"><Label className="text-xs font-semibold text-blue-900 dark:text-blue-100">Comissão única do lote (€){hasEnergyConfig ? <Badge variant="outline" className="ml-2 text-[9px]">Auto</Badge> : null}</Label><span className="text-sm font-semibold text-blue-900 dark:text-blue-100">{formatCurrency(source.commission_group_comissao || '0')}</span></div>
+                <Input type="number" step="0.01" min="0" value={source.commission_group_comissao || ''} onChange={event => handleUpdateGroupField(key, 'commission_group_comissao', event.target.value)} readOnly={hasEnergyConfig} className={`mt-2 h-9 bg-white text-sm dark:bg-background ${hasEnergyConfig ? 'opacity-80' : ''}`} placeholder="0,00" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* List of added CPEs with energy data */}
       {cpes.length > 0 && (
         <div className="space-y-4">
-          {cpes.map((cpe, index) => (
+          {cpes.filter(cpe => !cpe.commission_group_key).map((cpe, index) => (
             <div
               key={cpe.id}
               className="p-4 rounded-lg border bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
@@ -400,23 +525,41 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
           </p>
         ) : (
           <>
-            <div className="space-y-1">
-              <Select value={selectedExistingCpe || ''} onValueChange={setSelectedExistingCpe}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Selecionar CPE existente..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableExistingCpes.map((cpe) => (
-                    <SelectItem key={cpe.id} value={cpe.id}>
-                      {cpe.equipment_type} - {cpe.comercializador}
-                      {cpe.serial_number && ` (${cpe.serial_number})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid gap-3 rounded-lg border bg-background/70 p-3 sm:grid-cols-[150px_1fr]">
+              <div className="space-y-1">
+                <Label className="text-xs">Quantidade de CPEs</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={availableExistingCpes.length}
+                  value={requestedCpeQuantity}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setRequestedCpeQuantity(next);
+                    const amount = Math.max(1, Number(next) || 1);
+                    setSelectedExistingCpeIds(current => current.slice(0, amount));
+                  }}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-3"><Label className="text-xs">Selecionar os CPEs</Label><span className="text-[11px] text-muted-foreground">{selectedExistingCpeIds.length}/{requestedQuantity}</span></div>
+                <div className="grid max-h-32 gap-1 overflow-y-auto rounded-md border p-2 sm:grid-cols-2">
+                  {availableExistingCpes.map((cpe) => {
+                    const checked = selectedExistingCpeIds.includes(cpe.id);
+                    const limitReached = selectedExistingCpeIds.length >= requestedQuantity && !checked;
+                    return (
+                      <label key={cpe.id} className={`flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs transition-colors ${limitReached ? 'opacity-50' : 'hover:bg-muted'}`}>
+                        <Checkbox checked={checked} disabled={limitReached} onCheckedChange={(value) => toggleExistingCpe(cpe.id, value === true)} />
+                        <span className="truncate">{cpe.serial_number || cpe.equipment_type} <span className="text-muted-foreground">· {cpe.comercializador}</span></span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            {selectedExistingCpe && (
+            {selectedExistingCpeIds.length > 0 && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="space-y-1">
@@ -537,7 +680,7 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Adicionar à Proposta
+                  Aplicar condições ao lote
                 </Button>
               </>
             )}

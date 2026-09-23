@@ -7,11 +7,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedLayoutRoute } from "@/components/auth/ProtectedLayoutRoute";
+import { TotalLinkProtectedRoute } from "@/components/auth/TotalLinkProtectedRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
 const PWAInstallButton = lazy(() => import("@/components/pwa/PWAInstallButton").then(m => ({ default: m.PWAInstallButton })));
 
 // Eager: Login is the entry point
 import Login from "./pages/Login";
+import TotalLinkLogin from "./pages/TotalLinkLogin";
 
 // Lazy: All other pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -90,6 +92,7 @@ const App = () => (
                 {/* Public Routes */}
                 <Route path="/" element={<Login />} />
                 <Route path="/login" element={<Navigate to="/" replace />} />
+                <Route path="/total-link/login" element={<TotalLinkLogin />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/f/:slug" element={<PublicLeadForm />} />
                 <Route path="/f/:slug/:formSlug" element={<PublicLeadForm />} />
@@ -106,15 +109,6 @@ const App = () => (
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/leads" element={<Leads />} />
                   <Route path="/prospects" element={<Prospects />} />
-                  <Route path="/portal-total-link" element={<PortalTotalLink />}>
-                    <Route index element={<Navigate to="home" replace />} />
-                    <Route path="home" element={<PortalTotalLinkHome />} />
-                    <Route path="contratos" element={<PortalTotalLinkContratos />} />
-                    <Route path="ids" element={<PortalTotalLinkIds />} />
-                    <Route path="pendentes" element={<PortalTotalLinkPendentes />} />
-                    <Route path="reclamacoes" element={<PortalTotalLinkReclamacoes />} />
-                    <Route path="rh" element={<PortalTotalLinkRh />} />
-                  </Route>
                   <Route path="/clients" element={<Clients />} />
                   <Route path="/calendar" element={<Calendar />} />
                   <Route path="/proposals" element={<Proposals />} />
@@ -138,6 +132,19 @@ const App = () => (
                   <Route path="/marketing/lists" element={<MarketingLists />} />
                   <Route path="/gestao" element={<Gestao />} />
                   <Route path="/notas-atualizacao" element={<ReleaseNotes />} />
+                </Route>
+
+                {/* Total Link has a separate private shell and must not inherit the P2G navigation. */}
+                <Route element={<TotalLinkProtectedRoute />}>
+                  <Route path="/portal-total-link" element={<PortalTotalLink />}>
+                    <Route index element={<Navigate to="home" replace />} />
+                    <Route path="home" element={<PortalTotalLinkHome />} />
+                    <Route path="contratos" element={<PortalTotalLinkContratos />} />
+                    <Route path="ids" element={<PortalTotalLinkIds />} />
+                    <Route path="pendentes" element={<PortalTotalLinkPendentes />} />
+                    <Route path="reclamacoes" element={<PortalTotalLinkReclamacoes />} />
+                    <Route path="rh" element={<PortalTotalLinkRh />} />
+                  </Route>
                 </Route>
 
                 {/* Super Admin Routes */}

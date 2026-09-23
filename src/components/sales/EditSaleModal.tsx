@@ -218,7 +218,7 @@ export function EditSaleModal({
 
         // Recalculate commission using current tier rules
         let comissao = cpe.comissao;
-        if (hasEnergyConfigRef.current && cpe.margem && cpe.consumo_anual) {
+        if (!cpe.commission_group_id && hasEnergyConfigRef.current && cpe.margem && cpe.consumo_anual) {
           const margem = Number(cpe.margem);
           if (margem > 0) {
             const calc = calcCommissionRef.current(margem, getVolumeTier(Number(cpe.consumo_anual) || 0));
@@ -239,6 +239,7 @@ export function EditSaleModal({
           dbl: cpe.dbl,
           margem: cpe.margem,
           comissao,
+          commission_group_id: cpe.commission_group_id,
           contrato_inicio: cpe.contrato_inicio,
           contrato_fim: cpe.contrato_fim,
           service_type: cpe.service_type,
@@ -865,10 +866,13 @@ export function EditSaleModal({
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-4 pt-0 space-y-3">
-                        {editableCpes.map((cpe, idx) => (
+                        {editableCpes.map((cpe, idx) => {
+                          const isCommissionBatch = !!cpe.commission_group_id;
+                          return (
                           <div key={idx} className="p-3 rounded-lg border bg-muted/30 space-y-3">
                             <div className="flex items-center gap-2 flex-wrap">
                               <Badge variant="outline" className="text-xs">{cpe.equipment_type}</Badge>
+                              {isCommissionBatch && <Badge variant="outline" className="text-xs border-blue-500/30 bg-blue-500/10 text-blue-600">Condições em lote</Badge>}
                               {negotiationType === 'renovacao' ? (
                                 <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/30">Renovação</Badge>
                               ) : (
@@ -878,7 +882,7 @@ export function EditSaleModal({
                             <div className="grid grid-cols-2 gap-2">
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">Comercializador</Label>
-                                <Input value={cpe.comercializador} onChange={e => { const u = [...editableCpes]; u[idx] = { ...u[idx], comercializador: e.target.value }; setEditableCpes(u); }} className="h-8 text-sm" />
+                                <Input value={cpe.comercializador} onChange={e => { const u = [...editableCpes]; u[idx] = { ...u[idx], comercializador: e.target.value }; setEditableCpes(u); }} className="h-8 text-sm" disabled={isCommissionBatch} />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">{serialLabel}</Label>
@@ -896,7 +900,7 @@ export function EditSaleModal({
                                   }
                                   u[idx] = recalculateEditableCpe({ ...u[idx], contrato_inicio: inicio || null, duracao_contrato: duracao });
                                   setEditableCpes(u);
-                                }} className="h-8 text-sm" />
+                                }} className="h-8 text-sm" disabled={isCommissionBatch} />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">Fim Contrato</Label>
@@ -910,7 +914,7 @@ export function EditSaleModal({
                                   }
                                   u[idx] = recalculateEditableCpe({ ...u[idx], contrato_fim: fim || null, duracao_contrato: duracao });
                                   setEditableCpes(u);
-                                }} className="h-8 text-sm" />
+                                }} className="h-8 text-sm" disabled={isCommissionBatch} />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">Duração (anos)</Label>
@@ -923,19 +927,21 @@ export function EditSaleModal({
                                   const newConsumo = e.target.value ? parseFloat(e.target.value) : null;
                                   u[idx] = recalculateEditableCpe({ ...u[idx], consumo_anual: newConsumo });
                                   setEditableCpes(u);
-                                }} className="h-8 text-sm" step="0.01" />
+                                }} className="h-8 text-sm" step="0.01" disabled={isCommissionBatch} />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">DBL</Label>
-                                <Input type="number" value={cpe.dbl ?? ""} onChange={e => { const u = [...editableCpes]; u[idx] = recalculateEditableCpe({ ...u[idx], dbl: e.target.value ? parseFloat(e.target.value) : null }); setEditableCpes(u); }} className="h-8 text-sm" step="0.01" />
+                                <Input type="number" value={cpe.dbl ?? ""} onChange={e => { const u = [...editableCpes]; u[idx] = recalculateEditableCpe({ ...u[idx], dbl: e.target.value ? parseFloat(e.target.value) : null }); setEditableCpes(u); }} className="h-8 text-sm" step="0.01" disabled={isCommissionBatch} />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">Comissão (€)</Label>
-                                <Input type="number" value={cpe.comissao ?? ""} onChange={e => { const u = [...editableCpes]; u[idx] = { ...u[idx], comissao: e.target.value ? parseFloat(e.target.value) : null }; setEditableCpes(u); }} className="h-8 text-sm" step="0.01" />
+                                <Input type="number" value={cpe.comissao ?? ""} onChange={e => { const u = [...editableCpes]; u[idx] = { ...u[idx], comissao: e.target.value ? parseFloat(e.target.value) : null }; setEditableCpes(u); }} className="h-8 text-sm" step="0.01" disabled={isCommissionBatch} />
                               </div>
                             </div>
+                            {isCommissionBatch && <p className="text-xs leading-5 text-muted-foreground">As condições e a comissão deste lote são únicas. Altere-as na proposta para atualizar todos os CPEs do grupo em conjunto.</p>}
                           </div>
-                        ))}
+                          );
+                        })}
                       </CardContent>
                     </Card>
                   )}

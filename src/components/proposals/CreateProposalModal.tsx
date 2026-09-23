@@ -18,7 +18,12 @@ import { useClients } from '@/hooks/useClients';
 import { useCreateProposalCpesBatch } from '@/hooks/useProposalCpes';
 import { useActiveProducts } from '@/hooks/useProducts';
 import { CreateClientModal } from '@/components/clients/CreateClientModal';
-import { ProposalCpeSelector, type ProposalCpeDraft } from '@/components/proposals/ProposalCpeSelector';
+import {
+  ProposalCpeSelector,
+  getProposalCpeDraftCommissionGroups,
+  getProposalCpeDraftTotalCommission,
+  type ProposalCpeDraft,
+} from '@/components/proposals/ProposalCpeSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommissionMatrix } from '@/hooks/useCommissionMatrix';
 import type { CrmClient } from '@/types/clients';
@@ -112,7 +117,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
   const totalValue = useMemo(() => {
     if (isTelecom) {
       if (proposalType === 'energia') {
-        return proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.comissao) || 0), 0);
+        return getProposalCpeDraftTotalCommission(proposalCpes);
       }
       return 0;
     }
@@ -122,7 +127,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
 
   const totalComissao = useMemo(() => {
     if (proposalType === 'energia') {
-      return proposalCpes.reduce((sum, cpe) => sum + (parseFloat(cpe.comissao) || 0), 0);
+      return getProposalCpeDraftTotalCommission(proposalCpes);
     }
     // Sum comissao from each active servicos product
     return servicosProdutos.reduce((sum, p) => sum + (servicosDetails[p]?.comissao || 0), 0);
@@ -346,8 +351,10 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
       }, {
         onSuccess: async (createdProposal) => {
           if (proposalType === 'energia' && proposalCpes.length > 0 && createdProposal?.id) {
-            await createProposalCpesBatch.mutateAsync(
-              proposalCpes.map(cpe => ({
+            await createProposalCpesBatch.mutateAsync({
+              proposalId: createdProposal.id,
+              groups: getProposalCpeDraftCommissionGroups(proposalCpes),
+              cpes: proposalCpes.map(cpe => ({
                 proposal_id: createdProposal.id,
                 existing_cpe_id: cpe.existing_cpe_id,
                 equipment_type: cpe.equipment_type,
@@ -361,13 +368,14 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
                 dbl: cpe.dbl ? parseFloat(cpe.dbl) : null,
                 margem: cpe.margem ? parseFloat(cpe.margem) : null,
                 comissao: cpe.comissao ? parseFloat(cpe.comissao) : null,
+                commission_group_key: cpe.commission_group_key || null,
                 contrato_inicio: cpe.contrato_inicio || null,
                 contrato_fim: cpe.contrato_fim || null,
                 service_type: cpe.service_type,
                 modalidade: cpe.modalidade || null,
                 kwp: cpe.kwp ? parseFloat(cpe.kwp) : null,
-              }))
-            );
+              })),
+            });
           }
         
         setSelectedClientId(null);

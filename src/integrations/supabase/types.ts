@@ -3284,6 +3284,7 @@ export type Database = {
         Row: {
           comercializador: string
           comissao: number | null
+          commission_group_id: string | null
           consumo_anual: number | null
           contrato_fim: string | null
           contrato_inicio: string | null
@@ -3306,6 +3307,7 @@ export type Database = {
         Insert: {
           comercializador: string
           comissao?: number | null
+          commission_group_id?: string | null
           consumo_anual?: number | null
           contrato_fim?: string | null
           contrato_inicio?: string | null
@@ -3328,6 +3330,7 @@ export type Database = {
         Update: {
           comercializador?: string
           comissao?: number | null
+          commission_group_id?: string | null
           consumo_anual?: number | null
           contrato_fim?: string | null
           contrato_inicio?: string | null
@@ -3349,6 +3352,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "proposal_cpes_commission_group_id_fkey"
+            columns: ["commission_group_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_cpe_commission_groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "proposal_cpes_existing_cpe_id_fkey"
             columns: ["existing_cpe_id"]
             isOneToOne: false
@@ -3357,6 +3367,38 @@ export type Database = {
           },
           {
             foreignKeyName: "proposal_cpes_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_cpe_commission_groups: {
+        Row: {
+          created_at: string
+          id: string
+          proposal_id: string
+          total_comissao: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          proposal_id: string
+          total_comissao?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          proposal_id?: string
+          total_comissao?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_cpe_commission_groups_proposal_id_fkey"
             columns: ["proposal_id"]
             isOneToOne: false
             referencedRelation: "proposals"
@@ -4821,6 +4863,10 @@ export type Database = {
       }
       normalize_chargeback_cpe: { Args: { p_cpe: string }; Returns: string }
       parse_chargeback_amount: { Args: { p_value: string }; Returns: number }
+      replace_proposal_cpes: {
+        Args: { p_cpes: Json; p_groups?: Json; p_proposal_id: string }
+        Returns: undefined
+      }
       search_clients_unaccent: {
         Args: { max_results?: number; org_id: string; search_term: string }
         Returns: {

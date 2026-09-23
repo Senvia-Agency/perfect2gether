@@ -163,6 +163,10 @@ export function CreateSaleModal({
   const proposalCpes = useMemo(() => {
     if (!hasEnergyConfig || rawProposalCpes.length === 0) return rawProposalCpes;
     return rawProposalCpes.map(cpe => {
+      // A batch commission is stored once on its technical anchor CPE. It is
+      // already the business value for the whole group and must not be copied
+      // to each selected CPE when a sale is created.
+      if (cpe.commission_group_id) return cpe;
       if (!cpe.margem || !cpe.consumo_anual) return cpe;
       const margem = Number(cpe.margem);
       if (margem <= 0) return cpe;

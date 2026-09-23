@@ -1,0 +1,76 @@
+.total-link-shell {
+  background: #f4f8fe;
+  color: #122033;
+}
+
+.total-link-login {
+  background:
+    radial-gradient(circle at 88% 12%, rgba(76, 160, 243, 0.18), transparent 30rem),
+    linear-gradient(135deg, #f8fbff 0%, #edf5ff 100%);
+}
+
+.total-link-login__intro {
+  background: linear-gradient(145deg, #103a9b 0%, #195cc7 52%, #358be3 100%);
+}
+
+.total-link-login__lane {
+  position: absolute;
+  display: block;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  transform: rotate(-35deg);
+}
+
+.total-link-login__lane--one {
+  width: 34rem;
+  height: 12rem;
+  right: -10rem;
+  top: 34%;
+}
+
+.total-link-login__lane--two {
+  width: 29rem;
+  height: 9rem;
+  left: -14rem;
+  bottom: 8%;
+}
+
+.total-link-login__node {
+  position: absolute;
+  display: block;
+  height: 1.1rem;
+  width: 1.1rem;
+  border: 3px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  background: #66b7fb;
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.08);
+}
+
+.total-link-login__node--one { right: 27%; top: 48%; }
+.total-link-login__node--two { left: 17%; bottom: 23%; }
+
+.total-link-input {
+  border-color: #d5e1f1;
+  background: #fbfdff;
+  color: #122033;
+}
+
+.total-link-input:focus-visible {
+  border-color: #2473da;
+  box-shadow: 0 0 0 3px rgba(36, 115, 218, 0.13);
+}
+
+.total-link-button {
+  background: linear-gradient(100deg, #123eaf 0%, #2074db 100%);
+  color: white;
+  box-shadow: 0 10px 20px rgba(18, 62, 175, 0.2);
+}
+
+.total-link-button:hover { background: linear-gradient(100deg, #103793 0%, #1965c8 100%); }
+
+.total-link-portal .total-link-tab[data-active="true"] {
+  border-color: transparent;
+  background: #123eaf;
+  color: white;
+  box-shadow: 0 8px 16px rgba(18, 62, 175, 0.18);
+}

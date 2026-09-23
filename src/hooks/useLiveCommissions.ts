@@ -36,6 +36,7 @@ export interface CpeDetail {
   margem: number;
   comissao_indicativa: number;
   comissao_final: number;
+  commission_group_id: string | null;
   negotiation_type: string;
   servicos: string[];
   servicos_kwp: number;
@@ -155,7 +156,7 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
 
       const { data: cpes } = await supabase
         .from('proposal_cpes')
-        .select('id, proposal_id, consumo_anual, dbl, duracao_contrato, margem, comissao, serial_number, contrato_inicio, contrato_fim')
+        .select('id, proposal_id, consumo_anual, dbl, duracao_contrato, margem, comissao, commission_group_id, serial_number, contrato_inicio, contrato_fim')
         .in('proposal_id', validProposalIds);
 
       if (!cpes?.length) return emptyResult;
@@ -216,6 +217,7 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
           margem: cpe.margem || 0,
           comissao_indicativa: cpe.comissao || 0,
           comissao_final: 0,
+          commission_group_id: cpe.commission_group_id,
           negotiation_type: proposalNegotiationMap.get(cpe.proposal_id) || '',
           servicos: proposalServicosMap.get(cpe.proposal_id) || [],
           servicos_kwp: cpeServicosKwp,
@@ -241,7 +243,9 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
         let servicosFinal = 0;
         for (const cpe of entry.cpes) {
           const multiplier = NEGOTIATION_MULTIPLIER[cpe.negotiation_type] ?? 1;
-          if (energyConfig && energyConfig.bands.length > 0) {
+          if (cpe.commission_group_id) {
+            cpe.comissao_final = cpe.comissao_indicativa * multiplier;
+          } else if (energyConfig && energyConfig.bands.length > 0) {
             const final_ = calculateEnergyCommissionPure(cpe.margem, energyConfig, entry.tier);
             cpe.comissao_final = (final_ ?? cpe.comissao_indicativa) * multiplier;
           } else {
