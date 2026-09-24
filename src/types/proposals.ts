@@ -24,6 +24,7 @@ export interface Product {
 
 export interface Proposal {
   id: string;
+  has_sale?: boolean;
   organization_id: string;
   code?: string | null;
   client_id?: string | null;
@@ -63,6 +64,7 @@ export interface Proposal {
   client?: {
     id: string;
     name: string;
+    assigned_to?: string | null;
     email?: string | null;
     phone?: string | null;
   };

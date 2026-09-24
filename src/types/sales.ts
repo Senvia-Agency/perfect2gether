@@ -176,6 +176,7 @@ export interface SaleWithDetails extends Sale {
   client?: {
     id: string;
     name: string;
+    assigned_to?: string | null;
     code?: string;
     email?: string | null;
     phone?: string | null;

@@ -20,7 +20,7 @@ export function useSales() {
           *,
           lead:leads(name, email, phone, assigned_to),
           proposal:proposals(id, code, proposal_date, comissao),
-          client:crm_clients(id, name, code, email, phone, company, nif, address_line1, address_line2, city, postal_code, country)
+          client:crm_clients(id, name, code, email, phone, company, nif, address_line1, address_line2, city, postal_code, country, assigned_to)
         `)
         .eq("organization_id", organization.id)
         .order("created_at", { ascending: false });
@@ -33,7 +33,8 @@ export function useSales() {
       if (effectiveUserIds) {
         result = result.filter(sale => 
           (sale.created_by && effectiveUserIds.includes(sale.created_by)) || 
-          (sale.lead?.assigned_to && effectiveUserIds.includes(sale.lead.assigned_to))
+          (sale.lead?.assigned_to && effectiveUserIds.includes(sale.lead.assigned_to)) ||
+          (sale.client?.assigned_to && effectiveUserIds.includes(sale.client.assigned_to))
         );
       }
 

@@ -110,21 +110,22 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   }, [proposalCpes, hasEnergyConfig, calculateEnergyCommission]);
 
 
-  const { data: completedSale } = useQuery({
-    queryKey: ['proposal-completed-sale', proposal?.id],
+  const { data: linkedSale, isLoading: loadingLinkedSale } = useQuery({
+    queryKey: ['proposal-linked-sale', proposal?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('sales')
         .select('id, status')
         .eq('proposal_id', proposal!.id)
-        .eq('status', 'delivered')
+        .limit(1)
         .maybeSingle();
       return data;
     },
     enabled: !!proposal?.id,
   });
 
-  const hasCompletedSale = !!completedSale;
+  const hasLinkedSale = !!linkedSale || !!proposal?.has_sale;
+  const canChangeProposal = canEditProposal && !loadingLinkedSale && !hasLinkedSale;
 
   // Sincronizar estado quando proposal muda
   useEffect(() => {
@@ -146,6 +147,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   };
 
   const handleStatusChange = (newStatus: ProposalStatus) => {
+    if (!canChangeProposal) return;
     if (newStatus === 'accepted') {
       setShowSaleModal(true);
       return;
@@ -176,6 +178,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   };
 
   const handleNotesBlur = () => {
+    if (!canChangeProposal) return;
     if (notes !== proposal.notes) {
       updateProposal.mutate({ id: proposal.id, notes: notes.trim() || undefined });
     }
@@ -430,10 +433,9 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                         </span>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Select 
-                          value={status} 
+                        {canChangeProposal ? <Select
+                          value={status}
                           onValueChange={(v) => handleStatusChange(v as ProposalStatus)}
-                          disabled={hasCompletedSale}
                         >
                           <SelectTrigger className={cn('w-auto min-w-[140px] h-8 text-xs', PROPOSAL_STATUS_COLORS[status])}>
                             <SelectValue />
@@ -447,7 +449,12 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                               </SelectItem>
                             ))}
                           </SelectContent>
-                        </Select>
+                        </Select> : (
+                          <Badge className={cn('text-xs', PROPOSAL_STATUS_COLORS[status])}>
+                            {PROPOSAL_STATUS_LABELS[status]}
+                          </Badge>
+                        )}
+                        {hasLinkedSale && <Badge variant="outline" className="text-xs">Convertida em venda</Badge>}
                         {isTelecom && proposal.negotiation_type && (
                           <Badge variant="outline" className="text-xs">
                             {NEGOTIATION_TYPE_LABELS[proposal.negotiation_type as NegotiationType]}
@@ -677,14 +684,20 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                       <CardTitle className="text-sm font-medium text-muted-foreground">Observações da Negociação</CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
-                      <Textarea
-                        id="proposal-notes"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        onBlur={handleNotesBlur}
-                        placeholder="Notas internas sobre a negociação..."
-                        rows={3}
-                      />
+                      {canChangeProposal ? (
+                        <Textarea
+                          id="proposal-notes"
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          onBlur={handleNotesBlur}
+                          placeholder="Notas internas sobre a negociação..."
+                          rows={3}
+                        />
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap text-muted-foreground">
+                          {proposal.notes || 'Sem observações'}
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -764,13 +777,12 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                         <CardTitle className="text-sm font-medium text-muted-foreground">Ações</CardTitle>
                       </CardHeader>
                       <CardContent className="p-4 pt-0 space-y-2">
-                        {canEditProposal && (
+                        {canChangeProposal && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="w-full justify-start"
                             onClick={() => setShowEditModal(true)}
-                            disabled={hasCompletedSale}
                           >
                             <Pencil className="h-4 w-4 mr-2" />
                             Editar
@@ -801,7 +813,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                             {!isBrevoConfigured ? 'Configurar Email' : 'Enviar Email'}
                           </Button>
                         )}
-                        {canDeleteProposal && (
+                        {canDeleteProposal && !hasLinkedSale && !loadingLinkedSale && (
                           <Button
                             variant="destructive"
                             size="sm"

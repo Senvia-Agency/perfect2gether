@@ -18,7 +18,7 @@ export function useProposals() {
         .select(`
           *,
           lead:leads(id, name, email, phone, assigned_to),
-          client:crm_clients(id, name, email, phone),
+          client:crm_clients(id, name, email, phone, assigned_to),
           linked_sales:sales!sales_proposal_id_fkey(id)
         `)
         .eq('organization_id', organization!.id)
@@ -29,13 +29,14 @@ export function useProposals() {
       let result = (data as any[]).map(({ linked_sales, ...rest }) => ({
         ...rest,
         has_sale: Array.isArray(linked_sales) && linked_sales.length > 0,
-      })) as (Proposal & { lead?: { assigned_to?: string }; has_sale?: boolean })[];
+      })) as (Proposal & { lead?: { assigned_to?: string }; client?: { assigned_to?: string }; has_sale?: boolean })[];
       
       // Filter by user IDs (admin/leader/single user)
       if (effectiveUserIds) {
         result = result.filter(proposal => 
           (proposal.created_by && effectiveUserIds.includes(proposal.created_by)) || 
-          (proposal.lead?.assigned_to && effectiveUserIds.includes(proposal.lead.assigned_to))
+          (proposal.lead?.assigned_to && effectiveUserIds.includes(proposal.lead.assigned_to)) ||
+          (proposal.client?.assigned_to && effectiveUserIds.includes(proposal.client.assigned_to))
         );
       }
       

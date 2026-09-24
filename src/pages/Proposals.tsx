@@ -47,9 +47,6 @@ export default function Proposals() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const filteredProposals = proposals.filter((proposal) => {
-    // Hide proposals that already have a sale created (telecom)
-    if (isTelecom && (proposal as any).has_sale) return false;
-    
     const searchLower = search.toLowerCase();
     const matchesSearch = !search || 
       proposal.client?.name?.toLowerCase().includes(searchLower) ||
@@ -241,6 +238,9 @@ export default function Proposals() {
                       <Badge className={cn('text-xs', PROPOSAL_STATUS_COLORS[proposal.status])}>
                         {PROPOSAL_STATUS_LABELS[proposal.status]}
                       </Badge>
+                      {proposal.has_sale && (
+                        <Badge variant="outline" className="text-xs">Convertida em venda</Badge>
+                      )}
                       {proposal.proposal_type && (
                         <Badge className={cn('text-xs', proposal.proposal_type === 'energia' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-violet-500/20 text-violet-400')}>
                           {proposal.proposal_type === 'energia' ? <Zap className="h-3 w-3 mr-1" /> : <Wrench className="h-3 w-3 mr-1" />}
