@@ -6,6 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const PERFECT2GETHER_ORG_ID = '96a3950e-31be-4c6d-abed-b82968c0d7e9';
+
 interface CreateMemberRequest {
   email: string;
   password: string;
@@ -70,38 +72,36 @@ serve(async (req) => {
 
     const organizationId = profile.organization_id;
 
-    // ---- Validate user limit based on subscription plan ----
-    // Get org plan
-    const { data: orgData } = await supabaseAdmin
-      .from('organizations')
-      .select('plan')
-      .eq('id', organizationId)
-      .single();
+    // O Perfect2Gether não tem planos nem limites de utilizadores por subscrição.
+    if (organizationId !== PERFECT2GETHER_ORG_ID) {
+      const { data: orgData } = await supabaseAdmin
+        .from('organizations')
+        .select('plan')
+        .eq('id', organizationId)
+        .single();
 
-    const planId = orgData?.plan || 'starter';
+      const planId = orgData?.plan || 'starter';
+      const { data: planData } = await supabaseAdmin
+        .from('subscription_plans')
+        .select('max_users, name')
+        .eq('id', planId)
+        .single();
 
-    // Get plan limits from subscription_plans
-    const { data: planData } = await supabaseAdmin
-      .from('subscription_plans')
-      .select('max_users, name')
-      .eq('id', planId)
-      .single();
+      if (planData?.max_users !== null && planData?.max_users !== undefined) {
+        const { count: memberCount } = await supabaseAdmin
+          .from('organization_members')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organizationId)
+          .eq('is_active', true);
 
-    if (planData?.max_users !== null && planData?.max_users !== undefined) {
-      // Count active members
-      const { count: memberCount } = await supabaseAdmin
-        .from('organization_members')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .eq('is_active', true);
-
-      if (memberCount !== null && memberCount >= planData.max_users) {
-        return new Response(
-          JSON.stringify({ 
-            error: `Limite de ${planData.max_users} utilizadores atingido para o plano ${planData.name || planId}. Faça upgrade para adicionar mais membros.` 
-          }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        if (memberCount !== null && memberCount >= planData.max_users) {
+          return new Response(
+            JSON.stringify({
+              error: `Limite de ${planData.max_users} utilizadores atingido para o plano ${planData.name || planId}. Faça upgrade para adicionar mais membros.`
+            }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
     }
 

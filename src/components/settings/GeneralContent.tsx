@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { User, Building, Loader2, Save, Mail, Eye, EyeOff } from "lucide-react";
 import { PLAN_LABELS, OrganizationPlan } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import { useState } from "react";
 
 interface GeneralContentProps {
@@ -106,14 +107,14 @@ export const GeneralContent = ({
                 <p className="text-foreground font-medium">{organization?.name || '-'}</p>
               )}
             </div>
-            <div>
+            {!isPerfect2GetherOrg(organization?.id) && <div>
               <Label>Plano</Label>
               <div className="flex items-center gap-2 mt-2">
                 <Badge variant={isOnTrial ? 'outline' : (organization?.plan === 'elite' || organization?.plan === 'pro' ? 'default' : 'secondary')}>
                   {isOnTrial ? 'Trial' : (organization?.plan ? PLAN_LABELS[organization.plan as OrganizationPlan] : 'Starter')}
                 </Badge>
               </div>
-            </div>
+            </div>}
           </div>
           
           <Separator />

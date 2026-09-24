@@ -168,6 +168,8 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
   const { data: saleFields } = useSaleFieldsSettings();
+  const isP2GEnergySale = !!sale && isP2G && (sale.proposal_type ?? 'energia') === 'energia';
+  const showEdpCode = isP2GEnergySale || (!!saleFields?.edp_proposal_number?.visible && !!sale?.edp_proposal_number?.trim());
   const cpeLabel = isTelecom ? 'CPE/CUI (Pontos de Consumo)' : 'CPEs (Equipamentos)';
   const serialLabel = isTelecom ? 'Local de Consumo' : 'Nº Série';
 
@@ -371,10 +373,10 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                             </Badge>
                           )}
                         </div>
-                        {saleFields?.edp_proposal_number?.visible && (sale as any).edp_proposal_number && (
+                        {showEdpCode && (
                           <div>
-                            <p className="text-xs text-muted-foreground">{saleFields.edp_proposal_number.label}</p>
-                            <p className="text-sm font-medium font-mono">{(sale as any).edp_proposal_number}</p>
+                            <p className="text-xs text-muted-foreground">{saleFields?.edp_proposal_number?.label || 'Número da Proposta EDP'}</p>
+                            <p className="text-sm font-medium font-mono">{sale.edp_proposal_number?.trim() || 'Por preencher'}</p>
                           </div>
                         )}
                         {isTelecom && sale.activation_date && (

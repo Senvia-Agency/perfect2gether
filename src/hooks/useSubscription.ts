@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 
 type ModuleKey = 'sales' | 'finance' | 'marketing' | 'ecommerce';
 type IntegrationKey = 'whatsapp' | 'invoicing' | 'meta_pixels' | 'stripe';
@@ -49,6 +50,9 @@ function isOrgOnTrial(org: { trial_ends_at?: string; billing_exempt?: boolean } 
 
 export function useSubscription() {
   const { organization } = useAuth();
+  // O Perfect2Gether é um projeto interno sem subscrição por planos.
+  // Os módulos continuam sujeitos às permissões e à configuração da organização.
+  const withoutPlan = isPerfect2GetherOrg(organization?.id);
   
   // If on trial, use 'elite' features; otherwise use the DB plan
   const onTrial = isOrgOnTrial(organization as any);
@@ -74,25 +78,29 @@ export function useSubscription() {
         features: data.features as PlanFeatures,
       } as SubscriptionPlan;
     },
-    enabled: !!organization,
+    enabled: !!organization && !withoutPlan,
     staleTime: 1000 * 60 * 10,
   });
 
   const currentPlan = plan || DEFAULT_PLAN;
 
   const canUseModule = (module: ModuleKey): boolean => {
+    if (withoutPlan) return true;
     return currentPlan.features?.modules?.[module] ?? false;
   };
 
   const canUseIntegration = (integration: IntegrationKey): boolean => {
+    if (withoutPlan) return true;
     return currentPlan.features?.integrations?.[integration] ?? false;
   };
 
   const canUseFeature = (feature: FeatureKey): boolean => {
+    if (withoutPlan) return true;
     return currentPlan.features?.features?.[feature] ?? false;
   };
 
   const isModuleLocked = (moduleKey: string): boolean => {
+    if (withoutPlan) return false;
     const modulesMap = currentPlan.features?.modules;
     if (!modulesMap) return false;
     return moduleKey in modulesMap && !modulesMap[moduleKey as ModuleKey];
@@ -103,14 +111,14 @@ export function useSubscription() {
   };
 
   return {
-    plan: currentPlan.id,
-    planName: currentPlan.name,
-    onTrial,
+    plan: withoutPlan ? null : currentPlan.id,
+    planName: withoutPlan ? 'Sem plano' : currentPlan.name,
+    onTrial: withoutPlan ? false : onTrial,
     limits: {
-      maxUsers: currentPlan.max_users,
-      maxForms: currentPlan.max_forms,
+      maxUsers: withoutPlan ? null : currentPlan.max_users,
+      maxForms: withoutPlan ? null : currentPlan.max_forms,
     },
-    isLoading,
+    isLoading: withoutPlan ? false : isLoading,
     canUseModule,
     canUseIntegration,
     canUseFeature,
