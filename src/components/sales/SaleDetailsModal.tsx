@@ -82,6 +82,7 @@ import { CreateCreditNoteModal } from "./CreateCreditNoteModal";
 import { openPdfInNewTab } from "@/lib/download";
 import { useSaleActivationHistory } from "@/hooks/useSaleActivationHistory";
 import { useSaleFieldsSettings } from "@/hooks/useSaleFieldsSettings";
+import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 
 interface SaleDetailsModalProps {
   sale: SaleWithDetails | null;
@@ -102,9 +103,11 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
 
   const { organization } = useAuth();
   const { isAdmin, isBackOffice, can } = usePermissions();
-  const canEditSale = isAdmin || isBackOffice || can('sales', 'sales', 'edit');
-  const canIssueInvoice = can('finance', 'invoices', 'issue');
-  const canCancelInvoice = can('finance', 'invoices', 'cancel');
+  const isP2G = isPerfect2GetherOrg(organization?.id);
+  const canManageP2GSale = isAdmin || isBackOffice;
+  const canEditSale = (!isP2G || canManageP2GSale) && can('sales', 'sales', 'edit');
+  const canIssueInvoice = (!isP2G || canManageP2GSale) && can('finance', 'invoices', 'issue');
+  const canCancelInvoice = (!isP2G || canManageP2GSale) && can('finance', 'invoices', 'cancel');
   const { data: orgData } = useOrganization();
   const salesSettings = (orgData?.sales_settings as { lock_delivered_sales?: boolean; lock_fulfilled_sales?: boolean; prevent_payment_deletion?: boolean }) || {};
   const lockDeliveredSales = !!salesSettings.lock_delivered_sales;
@@ -232,6 +235,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   };
 
   const handleNotesBlur = () => {
+    if (!canEditSale) return;
     if (notes !== sale.notes) {
       updateSale.mutate({ saleId: sale.id, updates: { notes } });
     }
@@ -348,7 +352,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Estado</p>
-                          <Select value={status} onValueChange={handleStatusChange} disabled={isLocked || !canChangeStatus}>
+                          {canChangeStatus && !isLocked ? <Select value={status} onValueChange={handleStatusChange}>
                             <SelectTrigger className={cn('w-full h-8 text-xs border mt-0.5', SALE_STATUS_COLORS[status])}>
                               <SelectValue />
                             </SelectTrigger>
@@ -361,7 +365,11 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                                 </SelectItem>
                               ))}
                             </SelectContent>
-                          </Select>
+                          </Select> : (
+                            <Badge variant="outline" className={cn('mt-1', SALE_STATUS_COLORS[status])}>
+                              {SALE_STATUS_LABELS[status]}
+                            </Badge>
+                          )}
                         </div>
                         {saleFields?.edp_proposal_number?.visible && (sale as any).edp_proposal_number && (
                           <div>
@@ -814,7 +822,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                           saleId={sale.id}
                           organizationId={organization.id}
                           saleTotal={sale.total_value}
-                          readonly={false}
+                          readonly={!canEditSale}
                           hasInvoiceXpress={hasInvoiceXpress}
                           invoicexpressId={sale.invoicexpress_id}
                           invoicexpressType={sale.invoicexpress_type}
@@ -924,6 +932,7 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                             recurringStatus={sale.recurring_status}
                             nextRenewalDate={sale.next_renewal_date}
                             lastRenewalDate={sale.last_renewal_date}
+                            readonly={!canEditSale}
                           />
                         </CardContent>
                       </Card>
@@ -974,14 +983,20 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                         <CardTitle className="text-sm font-medium text-muted-foreground">Observações</CardTitle>
                       </CardHeader>
                       <CardContent className="p-4 pt-0">
-                        <Textarea
-                          placeholder="Adicionar observações..."
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          onBlur={handleNotesBlur}
-                          rows={3}
-                          className="min-h-[60px]"
-                        />
+                        {canEditSale ? (
+                          <Textarea
+                            placeholder="Adicionar observações..."
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            onBlur={handleNotesBlur}
+                            rows={3}
+                            className="min-h-[60px]"
+                          />
+                        ) : (
+                          <p className="text-sm whitespace-pre-wrap text-muted-foreground">
+                            {sale.notes || 'Sem observações'}
+                          </p>
+                        )}
                       </CardContent>
                     </Card>
                   </div>

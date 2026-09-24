@@ -174,6 +174,9 @@ export function useCreateSale() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      queryClient.invalidateQueries({ queryKey: ["client-proposals"] });
+      queryClient.invalidateQueries({ queryKey: ["client-sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["recurring-sales"] });
       queryClient.invalidateQueries({ queryKey: ["commissions-live"] });
@@ -228,6 +231,9 @@ export function useCreateSaleFromProposal() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      queryClient.invalidateQueries({ queryKey: ["client-proposals"] });
+      queryClient.invalidateQueries({ queryKey: ["client-sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["commissions-live"] });
       if (!(data as any).alreadyExists) {

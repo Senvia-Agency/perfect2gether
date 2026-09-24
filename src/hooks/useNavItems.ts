@@ -47,7 +47,7 @@ const MAIN_NAV: NavItem[] = [
 export function useNavItems(): { items: NavItem[]; isTotalLinkOnly: boolean } {
   const { isSuperAdmin } = useAuth();
   const { modules } = useModules();
-  const { isAdmin, isBackOffice, canViewModule, systems } = usePermissions();
+  const { isAdmin, canViewModule, systems } = usePermissions();
   const { isModuleLocked } = useSubscription();
 
   const isTotalLinkOnly = systems.length === 1 && systems[0] === 'total_link';
@@ -63,9 +63,6 @@ export function useNavItems(): { items: NavItem[]; isTotalLinkOnly: boolean } {
   const items: NavItem[] = MAIN_NAV
     .filter(item => {
       if (item.isAdminOnly && !isAdmin && !isSuperAdmin) return false;
-      // Sales follow-up belongs to Back Office. Other users retain their
-      // dashboard data scope but do not see or enter the sales workspace.
-      if (item.to === '/sales' && !isAdmin && !isSuperAdmin && !isBackOffice) return false;
       if (item.permissionKey && !canViewModule(item.permissionKey)) return false;
       if (!item.moduleKey) return true;
       if (isModuleLocked(item.moduleKey)) return true; // bloqueado pelo plano: continua visível

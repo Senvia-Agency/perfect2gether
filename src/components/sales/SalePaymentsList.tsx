@@ -85,8 +85,8 @@ export function SalePaymentsList({
   const { can } = usePermissions();
   const canAddPayment = can('sales', 'payments', 'add');
   const canEditSale = can('sales', 'sales', 'edit');
-  const canIssueInvoice = can('finance', 'invoices', 'issue');
-  const canCancelInvoice = can('finance', 'invoices', 'cancel');
+  const canIssueInvoice = !readonly && can('finance', 'invoices', 'issue');
+  const canCancelInvoice = !readonly && can('finance', 'invoices', 'cancel');
 
   // Build draft items for InvoiceDraftModal
   const draftSaleItems: DraftSaleItem[] = saleItemsData.map((item: any) => ({
@@ -310,7 +310,7 @@ export function SalePaymentsList({
                        <FileDown className="h-3.5 w-3.5" />
                     </Button>
                   )}
-                  {!payment.invoice_file_url && payment.invoice_reference && payment.invoicexpress_id && (
+                  {!readonly && !payment.invoice_file_url && payment.invoice_reference && payment.invoicexpress_id && (
                     <Button
                       variant="ghost"
                       size="icon"

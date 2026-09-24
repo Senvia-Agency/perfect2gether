@@ -18,7 +18,7 @@ import { TypeSplit } from "@/components/shared/TypeSplit";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { formatCurrency } from "@/lib/format";
 import { exportToExcel, mapPerfect2GetherSalesForExport } from "@/lib/export";
-import { hasPerfect2GetherAccess } from "@/lib/perfect2gether";
+import { hasPerfect2GetherAccess, isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import { format, parseISO, startOfDay, endOfDay } from "date-fns";
 import { pt } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
@@ -26,6 +26,7 @@ import type { SaleWithDetails, SaleStatus } from "@/types/sales";
 import { SALE_STATUS_LABELS, SALE_STATUS_COLORS, SALE_STATUSES } from "@/types/sales";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useTeamFilter } from "@/hooks/useTeamFilter";
 import { useModules } from "@/hooks/useModules";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -40,8 +41,11 @@ export default function Sales() {
   useSalesRealtime();
   const { profile, organization, organizations, isSuperAdmin } = useAuth();
   const { can, isAdmin, isBackOffice } = usePermissions();
-  const canAccessSalesWorkspace = isSuperAdmin || isAdmin || isBackOffice;
-  const canCreateSale = canAccessSalesWorkspace && can('sales', 'sales', 'create');
+  const { selectedMemberId, setSelectedMemberId } = useTeamFilter();
+  const canAccessSalesWorkspace = can('sales', 'sales', 'view');
+  const canCreateSale = (isAdmin || isBackOffice) && can('sales', 'sales', 'create');
+  const canEditSales = (!isPerfect2GetherOrg(organization?.id) || isAdmin || isBackOffice)
+    && can('sales', 'sales', 'edit');
   const { data: sales, isLoading } = useSales();
   const isTelecom = organization?.niche === 'telecom';
   const isPerfect2Gether = hasPerfect2GetherAccess({
@@ -59,6 +63,15 @@ export default function Sales() {
   const [saleToEdit, setSaleToEdit] = useState<SaleWithDetails | null>(null);
   const [pendingSaleId, setPendingSaleId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const hasActiveFilters = Boolean(search.trim() || statusFilter !== 'all' || typeFilter !== 'all' || dateRange?.from || selectedMemberId);
+
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setDateRange(undefined);
+    setSelectedMemberId(null);
+  };
 
   // Reactively open sale details when pendingSaleId matches a sale in cache
   useEffect(() => {
@@ -273,7 +286,9 @@ export default function Sales() {
             </div>
             <div>
               <h1 className="text-xl font-semibold">Vendas</h1>
-              <p className="text-sm text-muted-foreground hidden sm:block">Gestão de vendas e entregas.</p>
+              <p className="text-sm text-muted-foreground hidden sm:block">
+                {canEditSales ? 'Gestão de vendas e entregas.' : 'Consulta das vendas e entregas.'}
+              </p>
             </div>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -441,10 +456,15 @@ export default function Sales() {
             <ShoppingBag className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium">Nenhuma venda encontrada</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {search || statusFilter !== "all" 
-                ? "Tente ajustar os filtros de pesquisa."
-                : "Crie a sua primeira venda ou aceite uma proposta."}
+              {hasActiveFilters
+                ? "Os filtros ativos podem estar a ocultar esta venda."
+                : canCreateSale ? "Crie a sua primeira venda ou aceite uma proposta." : "Ainda não existem vendas para consultar."}
             </p>
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
+                Limpar filtros
+              </Button>
+            )}
           </div>
         ) : (
           filteredSales.map((sale) => (

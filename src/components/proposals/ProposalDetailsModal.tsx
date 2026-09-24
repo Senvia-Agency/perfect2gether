@@ -162,8 +162,9 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   };
 
   const handleSaleCreated = () => {
-    updateProposal.mutate({ id: proposal.id, status: 'accepted' });
-
+    // A base de dados aceita a proposta na mesma transação que cria a venda.
+    // Atualizar aqui, depois da criação, falha para comerciais porque a
+    // proposta já convertida fica bloqueada para alterações.
     if (proposal.lead_id && finalPositiveStage) {
       updateLeadStatus.mutate({ leadId: proposal.lead_id, status: finalPositiveStage.key });
       updateLead.mutate({ leadId: proposal.lead_id, updates: { value: proposal.total_value } });

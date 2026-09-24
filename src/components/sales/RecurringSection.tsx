@@ -27,6 +27,7 @@ interface RecurringSectionProps {
   recurringStatus: RecurringStatus | null;
   nextRenewalDate: string | null;
   lastRenewalDate: string | null;
+  readonly?: boolean;
 }
 
 export function RecurringSection({
@@ -36,6 +37,7 @@ export function RecurringSection({
   recurringStatus,
   nextRenewalDate,
   lastRenewalDate,
+  readonly = false,
 }: RecurringSectionProps) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const renewSale = useRenewSale();
@@ -46,6 +48,7 @@ export function RecurringSection({
   const renewalPayments = payments.filter(p => p.notes?.includes('Renovação'));
 
   const handleRenew = () => {
+    if (readonly) return;
     renewSale.mutate({
       saleId,
       organizationId,
@@ -54,6 +57,7 @@ export function RecurringSection({
   };
 
   const handleCancel = () => {
+    if (readonly) return;
     cancelRecurrence.mutate(saleId, {
       onSuccess: () => setShowCancelConfirm(false),
     });
@@ -168,7 +172,7 @@ export function RecurringSection({
           )}
 
           {/* Action buttons */}
-          <div className="flex gap-2 pt-2">
+          {!readonly && <div className="flex gap-2 pt-2">
             <Button
               onClick={handleRenew}
               disabled={renewSale.isPending}
@@ -187,7 +191,7 @@ export function RecurringSection({
               <XCircle className="h-4 w-4 mr-2" />
               Cancelar
             </Button>
-          </div>
+          </div>}
         </div>
       </div>
 
