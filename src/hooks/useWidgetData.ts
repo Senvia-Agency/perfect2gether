@@ -8,7 +8,8 @@ import { useEcommerceStats } from "@/hooks/ecommerce/useEcommerceStats";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { useDashboardPeriod } from "@/stores/useDashboardPeriod";
 import { WidgetType } from "@/lib/dashboard-templates";
-import { addDays, endOfMonth, format, isThisWeek, isToday, startOfMonth, subMonths } from "date-fns";
+import { getSaleCommission, isConcludedCommissionSale, sumConcludedCommissions } from "@/lib/monthly-commissions";
+import { addDays, endOfDay, endOfMonth, format, isThisWeek, isToday, parseISO, startOfMonth, subMonths } from "date-fns";
 
 export interface WidgetData {
   value: string;
@@ -37,9 +38,10 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
     const selectedMonthEnd = endOfMonth(selectedMonth);
     const selectedMonthLabel = format(selectedMonthStart, 'MMMM yyyy');
 
+    const parseDashboardDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseISO(value) : new Date(value);
     const isInSelectedMonth = (value?: string | null) => {
       if (!value) return false;
-      const date = new Date(value);
+      const date = parseDashboardDate(value);
       return !Number.isNaN(date.getTime()) && date >= selectedMonthStart && date <= selectedMonthEnd;
     };
 
@@ -64,18 +66,20 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
     };
 
     // Four weekly buckets for the month selected in the dashboard filter.
-    const generateLast7DaysChart = (items: Array<{ created_at?: string | null; sale_date?: string | null }>) => {
+    const generateLast7DaysChart = <T extends { created_at?: string | null; sale_date?: string | null }>(
+      items: T[], valueOf: (item: T) => number = () => 1,
+    ) => {
       const data: Array<{ name: string; value: number }> = [];
       for (let i = 0; i < 4; i++) {
         const date = addDays(selectedMonthStart, i * 7);
-        const bucketEnd = i === 3 ? selectedMonthEnd : addDays(date, 6);
+        const bucketEnd = i === 3 ? selectedMonthEnd : endOfDay(addDays(date, 6));
         const dayItems = items.filter(item => {
-          const itemDate = new Date(item.sale_date || item.created_at || '');
+          const itemDate = parseDashboardDate(item.sale_date || item.created_at || '');
           return !Number.isNaN(itemDate.getTime()) && itemDate >= date && itemDate <= bucketEnd;
         });
         data.push({
           name: format(date, 'd MMM'),
-          value: dayItems.length,
+          value: dayItems.reduce((sum, item) => sum + valueOf(item), 0),
         });
       }
       return data;
@@ -384,12 +388,15 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
       }
 
       case 'monthly_commissions': {
-        const total = periodSales.reduce((sum, s) => sum + (Number(s.comissao) || 0), 0);
+        // Only concluded sales earn commission. For energy, use the CPE-based
+        // amount resolved by useSales instead of a stale sale-level figure.
+        const concludedSales = periodSales.filter(isConcludedCommissionSale);
+        const total = sumConcludedCommissions(concludedSales);
         
         return {
           value: `€${total.toLocaleString('pt-PT')}`,
           subtitle: selectedMonthLabel,
-          chartData: generateLast7DaysChart(periodSales),
+          chartData: generateLast7DaysChart<(typeof concludedSales)[number]>(concludedSales, getSaleCommission),
           isLoading: salesLoading,
         };
       }
