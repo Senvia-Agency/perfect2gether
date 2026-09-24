@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from 'react';
 import type { User, Session } from '@supabase/auth-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole } from '@/types';
@@ -76,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+  const authUserIdRef = useRef<string | null>(null);
   const [needsOrgSelection, setNeedsOrgSelection] = useState(false);
   const [mfaStatus, setMfaStatus] = useState<MFAStatus>('none');
 
@@ -210,35 +211,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auth state listener
   useEffect(() => {
     let mounted = true;
+
+    const applySession = (nextSession: Session | null) => {
+      const nextUserId = nextSession?.user.id ?? null;
+      // SIGNED_IN can also fire when an existing session is revalidated (for
+      // example, when the tab regains focus). Only a changed identity needs a
+      // new profile fetch; otherwise this flag would never be cleared because
+      // the user-id-dependent fetch effect does not run again.
+      if (authUserIdRef.current !== nextUserId) {
+        authUserIdRef.current = nextUserId;
+        setIsLoadingUserData(Boolean(nextUserId));
+      }
+
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setIsLoading(false);
+    };
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
         if (!mounted) return;
-
-        // The protected layout must never render with the previous/default
-        // permissions while the profile for a newly established session is
-        // still loading. TOKEN_REFRESHED is intentionally excluded: it does
-        // not change the user data and setting this flag there would leave the
-        // application waiting for an effect that will not run again.
-        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-          setIsLoadingUserData(true);
-        }
-        if (!session?.user) {
-          setIsLoadingUserData(false);
-        }
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
+        applySession(session);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
+      applySession(session);
     }).catch(() => {
       if (mounted) setIsLoading(false);
     });
@@ -267,6 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles([]);
     setNeedsOrgSelection(false);
     setIsLoadingUserData(false);
+    authUserIdRef.current = null;
     
     // Limpar localStorage
     localStorage.removeItem(ACTIVE_ORG_KEY);
