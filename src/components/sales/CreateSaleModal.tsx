@@ -190,6 +190,9 @@ export function CreateSaleModal({
   
   // Campos específicos de proposta (Energia / Serviços)
   const [proposalType, setProposalType] = useState<ProposalType | null>(null);
+  const requiresEdpCode = isTelecom && proposalType !== 'servicos';
+  const showEdpCodeField = isTelecom ? requiresEdpCode : !!saleFields?.edp_proposal_number?.visible;
+  const isEdpCodeRequired = requiresEdpCode || (!isTelecom && !!saleFields?.edp_proposal_number?.required);
   const [consumoAnual, setConsumoAnual] = useState<string>("");
   const [margem, setMargem] = useState<string>("");
   const [dbl, setDbl] = useState<string>("");
@@ -697,7 +700,7 @@ export function CreateSaleModal({
 
     // Em contratos de energia da P2G, o código EDP identifica a proposta
     // adjudicada e não pode ficar em branco ao criar a venda.
-    if (isTelecom && proposalType !== 'servicos' && !edpProposalNumber.trim()) {
+    if (requiresEdpCode && !edpProposalNumber.trim()) {
       toast.error("O código da proposta EDP é obrigatório para contratos de energia.");
       return;
     }
@@ -1513,10 +1516,10 @@ export function CreateSaleModal({
                   </Card>
 
                   {/* EDP Proposal Number */}
-                  {saleFields?.edp_proposal_number?.visible && (<Card>
+                  {showEdpCodeField && (<Card>
                     <CardHeader className="pb-2 p-4">
                       <CardTitle className="text-sm font-medium text-muted-foreground">
-                        {saleFields.edp_proposal_number.label}{saleFields.edp_proposal_number.required ? ' *' : ''}
+                        {saleFields?.edp_proposal_number?.label || 'Número da Proposta EDP'}{isEdpCodeRequired ? ' *' : ''}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
@@ -1524,7 +1527,7 @@ export function CreateSaleModal({
                         placeholder="Ex: EDP-2024-001234"
                         value={edpProposalNumber}
                         onChange={(e) => setEdpProposalNumber(e.target.value)}
-                        required={saleFields.edp_proposal_number.required}
+                        required={isEdpCodeRequired}
                       />
                     </CardContent>
                   </Card>)}

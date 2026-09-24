@@ -71,7 +71,6 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
   const [notes, setNotes] = useState('');
   const [proposalDate, setProposalDate] = useState('');
   const [status, setStatus] = useState<ProposalStatus>('draft');
-  const [edpProposalNumber, setEdpProposalNumber] = useState('');
   
   const [negotiationType, setNegotiationType] = useState<NegotiationType | null>(null);
   const [proposalType, setProposalType] = useState<ProposalType>('energia');
@@ -102,7 +101,6 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
       setNotes(proposal.notes || '');
       setProposalDate(proposal.proposal_date?.split('T')[0] || new Date().toISOString().split('T')[0]);
       setStatus(proposal.status);
-      setEdpProposalNumber(proposal.edp_proposal_number || '');
       setProposalType((proposal.proposal_type as ProposalType) || 'energia');
       setNegotiationType((proposal.negotiation_type as NegotiationType) || null);
       
@@ -336,10 +334,8 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
     });
   }, [isTelecom, proposalType, servicosProdutos, servicosDetails]);
 
-  const requiresEdpProposalNumber = isTelecom && proposalType === 'energia';
   const isFormValid = isServicosValid
-    && !!selectedClientId
-    && (!requiresEdpProposalNumber || !!edpProposalNumber.trim());
+    && !!selectedClientId;
 
   const handleAddProduct = (productId: string) => {
     const product = products.find(p => p.id === productId);
@@ -419,7 +415,6 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
       status: status,
       notes: notes.trim() || null,
       proposal_date: proposalDate,
-      edp_proposal_number: requiresEdpProposalNumber ? edpProposalNumber : null,
       proposal_type: proposalType,
       negotiation_type: negotiationType,
       consumo_anual: null,
@@ -563,21 +558,6 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
                           </Select>
                         </div>
                       </div>
-                      {requiresEdpProposalNumber && (
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-edp-proposal-number">Código da Proposta EDP <span className="text-destructive">*</span></Label>
-                          <Input
-                            id="edit-edp-proposal-number"
-                            value={edpProposalNumber}
-                            onChange={(e) => setEdpProposalNumber(e.target.value)}
-                            placeholder="Ex.: EDP-2026-001234"
-                            required
-                          />
-                          {attempted && !edpProposalNumber.trim() && (
-                            <p className="text-xs text-destructive">Indique o código da proposta EDP.</p>
-                          )}
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
 

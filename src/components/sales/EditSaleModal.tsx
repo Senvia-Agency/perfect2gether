@@ -106,9 +106,12 @@ export function EditSaleModal({
   const { organization } = useAuth();
   const { isAdmin, isBackOffice } = usePermissions();
   const isTelecom = organization?.niche === 'telecom';
+  const requiresEdpCode = isTelecom && (sale.proposal_type ?? 'energia') === 'energia';
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
   const { data: saleFields } = useSaleFieldsSettings();
+  const showEdpCodeField = isTelecom ? requiresEdpCode : !!saleFields?.edp_proposal_number?.visible;
+  const isEdpCodeRequired = requiresEdpCode || (!isTelecom && !!saleFields?.edp_proposal_number?.required);
   const { calculateCommission, isAutoCalculated, calculateEnergyCommission, hasEnergyConfig } = useCommissionMatrix();
   const { data: orgData } = useOrganization();
   const salesSettings = (orgData?.sales_settings as { lock_delivered_sales?: boolean }) || {};
@@ -437,6 +440,10 @@ export function EditSaleModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sale) return;
+    if (requiresEdpCode && !edpProposalNumber.trim()) {
+      toast.error('O código da proposta EDP é obrigatório para contratos de energia.');
+      return;
+    }
     
     setIsSubmitting(true);
 
@@ -460,7 +467,7 @@ export function EditSaleModal({
           servicos_produtos: servicosProdutos.length > 0 ? servicosProdutos : null,
           servicos_details: Object.keys(servicosDetails).length > 0 ? servicosDetails : null,
           ...(isTelecom ? { activation_date: activationDate || null } : {}),
-          ...(saleFields?.edp_proposal_number?.visible ? { edp_proposal_number: edpProposalNumber.trim() || null } : {}),
+          ...(showEdpCodeField ? { edp_proposal_number: edpProposalNumber.trim() || null } : {}),
         },
       });
 
@@ -1236,10 +1243,10 @@ export function EditSaleModal({
 
                     {/* Notes */}
                     {/* EDP Proposal Number */}
-                    {saleFields?.edp_proposal_number?.visible && (<Card>
+                    {showEdpCodeField && (<Card>
                       <CardHeader className="pb-2 p-4">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
-                          {saleFields.edp_proposal_number.label}{saleFields.edp_proposal_number.required ? ' *' : ''}
+                          {saleFields?.edp_proposal_number?.label || 'Número da Proposta EDP'}{isEdpCodeRequired ? ' *' : ''}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-4 pt-0">
@@ -1247,7 +1254,7 @@ export function EditSaleModal({
                           placeholder="Ex: EDP-2024-001234"
                           value={edpProposalNumber}
                           onChange={(e) => setEdpProposalNumber(e.target.value)}
-                          required={saleFields.edp_proposal_number.required}
+                          required={isEdpCodeRequired}
                         />
                     </CardContent>
                     </Card>)}
