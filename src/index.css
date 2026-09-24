@@ -154,14 +154,6 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  /* The branded arrow is limited to mouse/trackpad use. Native pointer,
-     text-selection and disabled cursors still signal their interactions. */
-  @media (hover: hover) and (pointer: fine) {
-    body {
-      cursor: url('/cursor-arrow.svg') 4 3, auto;
-    }
-  }
-
   /* Safe areas for PWA - using clamp() to guarantee minimum padding even when env() returns 0 */
   .safe-top {
     padding-top: var(--safe-area-top);
