@@ -19,7 +19,7 @@ export function TotalLinkProtectedRoute() {
     mfaStatus,
     completeMfaChallenge,
   } = useAuth();
-  const { isLoadingPermissions } = usePermissions();
+  const { isLoadingPermissions, hasSystem } = usePermissions();
   const location = useLocation();
 
   if (isLoading || isLoadingPermissions) {
@@ -32,6 +32,12 @@ export function TotalLinkProtectedRoute() {
 
   if (!user) {
     return <Navigate to="/total-link/login" state={{ from: location }} replace />;
+  }
+
+  if (!hasSystem('total_link')) {
+    return hasSystem('p2g')
+      ? <Navigate to="/dashboard" replace />
+      : <div className="total-link-shell flex min-h-screen items-center justify-center p-6 text-center">Esta conta não tem acesso ao Total Link.</div>;
   }
 
   if (mfaStatus === "pending") {

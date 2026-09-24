@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, Lock } from "lucide-react";
+import { ArrowRightLeft, LogOut, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -10,6 +10,7 @@ import { APP_VERSION } from "@/lib/constants";
 import { getRoleLabel } from "@/lib/roles";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { UpgradeModal } from "@/components/shared/UpgradeModal";
+import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 
 interface AppSidebarProps {
   userName?: string;
@@ -22,7 +23,7 @@ export function AppSidebar({
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, roles, organization } = useAuth();
-  const { profileName } = usePermissions();
+  const { profileName, hasSystem } = usePermissions();
   const { getRequiredPlan } = useSubscription();
   const { items } = useNavItems();
 
@@ -86,6 +87,15 @@ export function AppSidebar({
                 </NavLink>
               );
             })}
+            {isPerfect2GetherOrg(organization?.id) && hasSystem('total_link') && (
+              <NavLink
+                to="/portal-total-link/home"
+                className="mt-4 flex min-h-11 items-center gap-3 rounded-lg border-t border-sidebar-border px-3 py-2.5 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-foreground"
+              >
+                <ArrowRightLeft className="h-5 w-5" aria-hidden="true" />
+                <span>Ir para Total Link</span>
+              </NavLink>
+            )}
           </nav>
 
           <div className="border-t border-sidebar-border p-4">

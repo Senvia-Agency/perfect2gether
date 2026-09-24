@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ArrowRightLeft } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PortalTotalLinkFilters } from "./PortalTotalLinkFilters";
 import { PortalTotalLinkReclamacaoAddDialog } from "./PortalTotalLinkReclamacaoAddDialog";
@@ -31,7 +32,7 @@ export function PortalTotalLinkLayout({ children }: { children: ReactNode }) {
   const selectedYear = searchParams.get("homeYear") ?? portalTotalLinkHomeYearOptions[2]?.value ?? String(new Date().getFullYear());
   const ActionIcon = currentSection.action?.icon;
 
-  const { can } = usePermissions();
+  const { can, hasSystem } = usePermissions();
   // Gate the header action button per section. The "pendentes" action is a read-only
   // search trigger (no-op here), so it is not permission-gated.
   // Contratos has no dedicated 'add' permission action; gate it on 'edit'.
@@ -64,7 +65,6 @@ export function PortalTotalLinkLayout({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex flex-col items-start gap-2 sm:items-end">
-              <Link to="/dashboard" className="text-xs font-semibold text-[#315994] transition-colors hover:text-[#123eaf]">Ir para Perfect2Gether</Link>
               <div className="flex items-center gap-2">
                 <Select value={selectedCycle} onValueChange={(value) => updateHomeParam("homeCycle", value)}>
                   <SelectTrigger className="h-9 w-[120px] border-[#d5e1f1] text-sm text-[#243552]">
@@ -123,6 +123,15 @@ export function PortalTotalLinkLayout({ children }: { children: ReactNode }) {
                   {section.label}
                 </NavLink>
               ))}
+              {hasSystem('p2g') && (
+                <Link
+                  to="/dashboard"
+                  className="ml-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#d8e4f5] bg-white px-4 text-sm font-semibold text-[#123eaf] transition-colors hover:bg-[#eaf2ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123eaf]"
+                >
+                  <ArrowRightLeft className="h-4 w-4" aria-hidden="true" />
+                  <span>Ir para Perfect2Gether</span>
+                </Link>
+              )}
             </nav>
           </div>
         </div>

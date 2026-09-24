@@ -14,7 +14,7 @@ export function ProtectedLayoutRoute() {
   const { user, isLoading, needsOrgSelection, organizations, selectOrganization, mfaStatus, completeMfaChallenge, organization, profile } = useAuth();
   const location = useLocation();
   const { data: pipelineStages, isLoading: stagesLoading } = usePipelineStages();
-  const { isAdmin, isLoadingPermissions } = usePermissions();
+  const { isAdmin, isLoadingPermissions, hasSystem } = usePermissions();
   const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   if (isLoading) {
@@ -38,6 +38,12 @@ export function ProtectedLayoutRoute() {
 
   if (!user) {
     return <Navigate to="/" state={{ from: location }} replace />;
+  }
+
+  if (!hasSystem('p2g')) {
+    return hasSystem('total_link')
+      ? <Navigate to="/portal-total-link/home" replace />
+      : <div className="flex min-h-screen items-center justify-center p-6 text-center text-muted-foreground">Esta conta não tem acesso ao Perfect2Gether.</div>;
   }
 
   if (mfaStatus === 'pending') {

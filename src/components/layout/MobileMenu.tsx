@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LogOut, X, Lock } from "lucide-react";
+import { ArrowRightLeft, LogOut, X, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -7,6 +7,7 @@ import { useNavItems, NavItem } from "@/hooks/useNavItems";
 import { APP_VERSION } from "@/lib/constants";
 import { getRoleLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
+import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -17,8 +18,8 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizationName = "A Minha Empresa" }: MobileMenuProps) {
   const navigate = useNavigate();
-  const { signOut, roles } = useAuth();
-  const { profileName } = usePermissions();
+  const { signOut, roles, organization } = useAuth();
+  const { profileName, hasSystem } = usePermissions();
   const { items } = useNavItems();
   // "Definições" fica de fora do menu hambúrguer (continua na barra inferior).
   const navItems = items.filter((item) => item.to !== "/settings");
@@ -89,6 +90,16 @@ export function MobileMenu({ isOpen, onClose, userName = "Utilizador", organizat
               {item.locked && <Lock className="h-4 w-4 text-muted-foreground/60" />}
             </NavLink>
           ))}
+          {isPerfect2GetherOrg(organization?.id) && hasSystem('total_link') && (
+            <NavLink
+              to="/portal-total-link/home"
+              onClick={onClose}
+              className="flex min-h-11 items-center gap-4 rounded-xl border-t border-border px-4 py-3.5 text-base font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <ArrowRightLeft className="h-5 w-5" aria-hidden="true" />
+              <span>Ir para Total Link</span>
+            </NavLink>
+          )}
         </nav>
 
         {/* Logout & Version */}

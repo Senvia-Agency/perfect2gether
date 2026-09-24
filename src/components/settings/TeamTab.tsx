@@ -417,7 +417,7 @@ export function TeamTab() {
         organizationId: organization.id,
         recipientEmail: selectedMember.email,
         recipientName: selectedMember.full_name,
-        loginUrl,
+        loginUrl: loginUrlForMember(selectedMember),
         password: memberNewPassword,
       });
 
@@ -518,7 +518,11 @@ export function TeamTab() {
     );
   };
 
-  const loginUrl = `${getBaseUrl()}/`;
+  const loginUrl = `${getBaseUrl()}${accessSystem === 'total_link' ? '/total-link/login' : '/'}`;
+  const loginUrlForMember = (member: TeamMember) => {
+    const systems = profiles.find(profile => profile.id === member.profile_id)?.systems || ['p2g'];
+    return `${getBaseUrl()}${systems.includes('total_link') && !systems.includes('p2g') ? '/total-link/login' : '/'}`;
+  };
 
   // Check if member is current user
   const isCurrentUser = (member: TeamMember) => member.user_id === user?.id;
