@@ -64,10 +64,12 @@ export default function Proposals() {
     return matchesSearch && matchesStatus && matchesType && matchesDate;
   });
   const {
-    data: consumptionByProposal = {},
+    data: cpeMetrics,
     isPending: isConsumptionPending,
     isError: isConsumptionError,
   } = useTelecomProposalMetrics(filteredProposals);
+  const consumptionByProposal = cpeMetrics?.consumptionByProposal ?? {};
+  const commissionByProposal = cpeMetrics?.commissionByProposal ?? {};
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
@@ -79,16 +81,26 @@ export default function Proposals() {
     return acc;
   }, {} as Record<ProposalStatus, Proposal[]>);
 
-  const sumValue = (list: Proposal[]) => list.reduce((sum, p) => sum + Number(p.total_value), 0);
   // Propostas legadas sem proposal_type contam como energia (igual ao backfill da BD).
   const isEnergia = (p: Proposal) => (p.proposal_type ?? 'energia') === 'energia';
+  // Em energia, total_value pode conter margem histórica. O valor monetário
+  // exibido é sempre a comissão dos CPEs, como no separador Vendas.
+  const proposalValue = (proposal: Proposal) => isTelecom && isEnergia(proposal)
+    ? (commissionByProposal[proposal.id] ?? Number(proposal.comissao ?? 0))
+    : Number(proposal.total_value || 0);
+  const sumValue = (list: Proposal[]) => list.reduce((sum, proposal) => sum + proposalValue(proposal), 0);
+  const formatProposalMoney = (list: Proposal[]) => {
+    if (isTelecom && list.some(isEnergia)) {
+      if (isConsumptionError) return 'indisponível';
+      if (isConsumptionPending) return 'a calcular…';
+    }
+    return formatCurrency(sumValue(list));
+  };
   const energiaProposals = filteredProposals.filter(isEnergia);
   const servicosProposals = filteredProposals.filter((p) => !isEnergia(p));
   const negotiatingProposals = proposalsByStatus.negotiating ?? [];
   const acceptedProposals = proposalsByStatus.accepted ?? [];
 
-  const totalValue = sumValue(filteredProposals);
-  const negotiatingValue = sumValue(negotiatingProposals);
   const sumEnergyMWh = (list: Proposal[]) => list
     .filter(isEnergia)
     .reduce((sum, proposal) => {
@@ -151,13 +163,13 @@ export default function Proposals() {
           </Card>
           <Card>
             <CardContent className="pt-4">
-              <p className="text-sm text-muted-foreground">Valor Total</p>
-              <p className="text-2xl font-bold text-primary">{formatCurrency(totalValue)}</p>
+              <p className="text-sm text-muted-foreground">{isTelecom ? 'Comissão Total' : 'Valor Total'}</p>
+              <p className="text-2xl font-bold text-primary">{formatProposalMoney(filteredProposals)}</p>
               {isTelecom && (
                 <TypeSplit
-                  energia={formatCurrency(sumValue(energiaProposals))}
+                  energia={formatProposalMoney(energiaProposals)}
                   energiaUnit={formatEnergyVolume(filteredProposals)}
-                  servicos={formatCurrency(sumValue(servicosProposals))}
+                  servicos={formatProposalMoney(servicosProposals)}
                   servicosUnit={formatVolume(sumServicesKWp(filteredProposals), 'kWp')}
                 />
               )}
@@ -166,12 +178,12 @@ export default function Proposals() {
           <Card>
             <CardContent className="pt-4">
               <p className="text-sm text-muted-foreground">Em Negociação</p>
-              <p className="text-2xl font-bold text-amber-500">{formatCurrency(negotiatingValue)}</p>
+              <p className="text-2xl font-bold text-amber-500">{formatProposalMoney(negotiatingProposals)}</p>
               {isTelecom && (
                 <TypeSplit
-                  energia={formatCurrency(sumValue(negotiatingProposals.filter(isEnergia)))}
+                  energia={formatProposalMoney(negotiatingProposals.filter(isEnergia))}
                   energiaUnit={formatEnergyVolume(negotiatingProposals)}
-                  servicos={formatCurrency(sumValue(negotiatingProposals.filter((p) => !isEnergia(p))))}
+                  servicos={formatProposalMoney(negotiatingProposals.filter((p) => !isEnergia(p)))}
                   servicosUnit={formatVolume(sumServicesKWp(negotiatingProposals), 'kWp')}
                 />
               )}
@@ -308,7 +320,7 @@ export default function Proposals() {
                   </div>
                   <div className="text-right ml-4">
                     <p className="text-lg font-bold text-primary">
-                      {formatCurrency(proposal.total_value)}
+                      {formatProposalMoney([proposal])}
                     </p>
                   </div>
                 </CardContent>

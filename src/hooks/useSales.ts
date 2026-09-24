@@ -5,12 +5,12 @@ import { useTeamFilter } from "@/hooks/useTeamFilter";
 import { toast } from "sonner";
 import type { SaleStatus, SaleWithDetails, PaymentMethod, PaymentStatus, ProposalType, ModeloServico, NegotiationType } from "@/types/sales";
 
-export function useSales() {
+export function useSales({ unfiltered = false }: { unfiltered?: boolean } = {}) {
   const { organization } = useAuth();
   const { effectiveUserIds } = useTeamFilter();
 
   return useQuery({
-    queryKey: ["sales", organization?.id, effectiveUserIds],
+    queryKey: ["sales", organization?.id],
     queryFn: async (): Promise<SaleWithDetails[]> => {
       if (!organization?.id) return [];
 
@@ -29,15 +29,6 @@ export function useSales() {
       
       let result = (data as unknown as SaleWithDetails[]) || [];
       
-      // Filter by user IDs (admin/leader/single user)
-      if (effectiveUserIds) {
-        result = result.filter(sale => 
-          (sale.created_by && effectiveUserIds.includes(sale.created_by)) || 
-          (sale.lead?.assigned_to && effectiveUserIds.includes(sale.lead.assigned_to)) ||
-          (sale.client?.assigned_to && effectiveUserIds.includes(sale.client.assigned_to))
-        );
-      }
-
       if (organization.niche === 'telecom') {
         const proposalIds = [...new Set(result.map(sale => sale.proposal_id).filter(Boolean))] as string[];
         const commissionByProposal = new Map<string, number>();
@@ -65,6 +56,11 @@ export function useSales() {
       return result;
     },
     enabled: !!organization?.id,
+    select: (result) => unfiltered || !effectiveUserIds ? result : result.filter(sale =>
+      (sale.created_by && effectiveUserIds.includes(sale.created_by)) ||
+      (sale.lead?.assigned_to && effectiveUserIds.includes(sale.lead.assigned_to)) ||
+      (sale.client?.assigned_to && effectiveUserIds.includes(sale.client.assigned_to))
+    ),
   });
 }
 

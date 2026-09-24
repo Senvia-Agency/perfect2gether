@@ -157,7 +157,7 @@ export function CreateSaleModal({
   const { data: proposalProducts } = useProposalProducts(effectiveProposalId);
   
   // Fetch proposal CPEs - usa prefill OU seleção manual, gated by open
-  const { data: rawProposalCpes = [] } = useProposalCpes(effectiveProposalId);
+  const { data: rawProposalCpes = [], isPending: isProposalCpesPending, isError: isProposalCpesError } = useProposalCpes(effectiveProposalId);
 
   // Recalculate energy CPE commissions using current tier rules
   const proposalCpes = useMemo(() => {
@@ -367,6 +367,12 @@ export function CreateSaleModal({
         setInitializedProposalId(currentProposalId);
       }
     } 
+    else if (prefillProposal && isTelecom && (prefillProposal.proposal_type ?? 'energia') === 'energia' && proposalProducts !== undefined) {
+      // O total histórico pode ser margem, não comissão. A venda de energia
+      // usa exclusivamente a comissão dos CPEs carregados abaixo.
+      setItems([]);
+      setInitializedProposalId(prefillProposal.id);
+    }
     else if (prefillProposal && prefillProposal.total_value > 0 && proposalProducts !== undefined) {
       const itemName = prefillProposal.proposal_type === 'energia' 
         ? 'Contrato de Energia' 
@@ -385,7 +391,10 @@ export function CreateSaleModal({
     }
     else if (selectedProposalId && proposalProducts !== undefined && proposalProducts.length === 0) {
       const selectedProposal = proposals?.find(p => p.id === selectedProposalId);
-      if (selectedProposal && selectedProposal.total_value > 0) {
+      if (selectedProposal && isTelecom && (selectedProposal.proposal_type ?? 'energia') === 'energia') {
+        setItems([]);
+        setInitializedProposalId(selectedProposalId);
+      } else if (selectedProposal && selectedProposal.total_value > 0) {
         const itemName = selectedProposal.proposal_type === 'energia' 
           ? 'Contrato de Energia' 
           : selectedProposal.proposal_type === 'servicos'
@@ -402,7 +411,7 @@ export function CreateSaleModal({
         setInitializedProposalId(selectedProposalId);
       }
     }
-  }, [open, proposalProducts, prefillProposal, selectedProposalId, initializedProposalId, proposals]);
+  }, [open, proposalProducts, prefillProposal, selectedProposalId, initializedProposalId, proposals, isTelecom]);
 
   // Auto-fill plan price when selecting client org for plan sale
   useEffect(() => {
@@ -502,7 +511,7 @@ export function CreateSaleModal({
 
   const subtotal = useMemo(() => {
     const itemsTotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-    if (isTelecom && proposalType === 'energia' && proposalCpes.length > 0 && itemsTotal === 0) {
+    if (isTelecom && (proposalType ?? 'energia') === 'energia' && proposalId) {
       return energyCommissionTotal;
     }
     // For telecom direct sales with catalog, use catalog price as subtotal
@@ -510,7 +519,7 @@ export function CreateSaleModal({
       return catalogTotalPrice;
     }
     return itemsTotal;
-  }, [items, isTelecom, proposalType, proposalCpes.length, energyCommissionTotal, isNewFormat, proposalId, servicosProdutos, catalogTotalPrice]);
+  }, [items, isTelecom, proposalType, energyCommissionTotal, isNewFormat, proposalId, servicosProdutos, catalogTotalPrice]);
 
   const discountValue = parseFloat(discount) || 0;
   const total = Math.max(0, subtotal - discountValue);
@@ -683,6 +692,12 @@ export function CreateSaleModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isTelecom && (proposalType ?? 'energia') === 'energia' && proposalId &&
+        (isProposalCpesPending || isProposalCpesError || proposalCpes.length === 0)) {
+      toast.error('Não foi possível confirmar os CPEs e a comissão desta proposta. Tente novamente.');
+      return;
+    }
     
     if (!isTelecom && !isPlanSale && total <= 0 && items.length === 0) return;
 

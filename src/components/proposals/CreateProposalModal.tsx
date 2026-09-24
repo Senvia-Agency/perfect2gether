@@ -105,25 +105,6 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
     }
   }, [open, client?.id, preselectedClientId]);
 
-  const getProductTotal = (product: typeof selectedProducts[0]) => {
-    const subtotal = product.quantity * product.unit_price;
-    if (product.discount_type === 'percentage') {
-      return subtotal * (1 - product.discount_value / 100);
-    }
-    return Math.max(0, subtotal - product.discount_value);
-  };
-
-  const totalValue = useMemo(() => {
-    if (isTelecom) {
-      if (proposalType === 'energia') {
-        return getProposalCpeDraftTotalCommission(proposalCpes);
-      }
-      return 0;
-    }
-    const productsTotal = selectedProducts.reduce((sum, p) => sum + getProductTotal(p), 0);
-    return productsTotal;
-  }, [isTelecom, proposalType, proposalCpes, selectedProducts]);
-
   const totalComissao = useMemo(() => {
     if (proposalType === 'energia') {
       return getProposalCpeDraftTotalCommission(proposalCpes);
@@ -131,6 +112,16 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
     // Sum comissao from each active servicos product
     return servicosProdutos.reduce((sum, p) => sum + (servicosDetails[p]?.comissao || 0), 0);
   }, [proposalType, proposalCpes, servicosProdutos, servicosDetails]);
+
+  const totalValue = useMemo(() => {
+    if (isTelecom) return totalComissao;
+    return selectedProducts.reduce((sum, product) => {
+      const subtotal = product.quantity * product.unit_price;
+      return sum + (product.discount_type === 'percentage'
+        ? subtotal * (1 - product.discount_value / 100)
+        : Math.max(0, subtotal - product.discount_value));
+    }, 0);
+  }, [isTelecom, totalComissao, selectedProducts]);
 
   const handleClientCreated = (newClientId: string) => {
     setSelectedClientId(newClientId);

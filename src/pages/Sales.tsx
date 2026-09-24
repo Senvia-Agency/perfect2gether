@@ -47,6 +47,7 @@ export default function Sales() {
   const canEditSales = (!isPerfect2GetherOrg(organization?.id) || isAdmin || isBackOffice)
     && can('sales', 'sales', 'edit');
   const { data: sales, isLoading } = useSales();
+  const { data: allSales = [] } = useSales({ unfiltered: true });
   const isTelecom = organization?.niche === 'telecom';
   const isPerfect2Gether = hasPerfect2GetherAccess({
     organizationId: organization?.id,
@@ -129,16 +130,14 @@ export default function Sales() {
 
   // Summary stats
   const stats = useMemo(() => {
-    if (!filteredSales.length) return { total: 0, totalValue: 0, delivered: 0, deliveredValue: 0, inProgress: 0, fulfilled: 0, fulfilledValue: 0, cancelled: 0, cancelledValue: 0 };
-
     const delivered = filteredSales.filter(s => s.status === 'delivered');
     const inProgress = filteredSales.filter(s => s.status === 'in_progress');
     const fulfilled = filteredSales.filter(s => s.status === 'fulfilled');
     const cancelled = filteredSales.filter(s => s.status === 'cancelled');
 
     return {
-      total: filteredSales.length,
-      totalValue: filteredSales.reduce((acc, s) => acc + displayedSaleValue(s, isTelecom), 0),
+      total: allSales.length,
+      totalValue: allSales.reduce((acc, s) => acc + displayedSaleValue(s, isTelecom), 0),
       delivered: delivered.length,
       deliveredValue: delivered.reduce((acc, s) => acc + displayedSaleValue(s, isTelecom), 0),
       inProgress: inProgress.length,
@@ -147,9 +146,9 @@ export default function Sales() {
       cancelled: cancelled.length,
       cancelledValue: cancelled.reduce((acc, s) => acc + displayedSaleValue(s, isTelecom), 0),
     };
-  }, [filteredSales, isTelecom]);
+  }, [allSales, filteredSales, isTelecom]);
 
-  // Breakdown Energia / Servicos por card (respeita os filtros ativos)
+  // Só o card Total Vendas ignora os filtros; os cards por estado seguem a lista.
   const typeStats = useMemo(() => {
     const byType = (list: SaleWithDetails[]) => {
       const energia = list.filter(isEnergiaSale);
@@ -163,13 +162,13 @@ export default function Sales() {
       };
     };
     return {
-      total: byType(filteredSales),
+      total: byType(allSales),
       inProgress: byType(filteredSales.filter((s) => s.status === 'in_progress')),
       fulfilled: byType(filteredSales.filter((s) => s.status === 'fulfilled')),
       delivered: byType(filteredSales.filter((s) => s.status === 'delivered')),
       cancelled: byType(filteredSales.filter((s) => s.status === 'cancelled')),
     };
-  }, [filteredSales, isTelecom]);
+  }, [allSales, filteredSales, isTelecom]);
 
   const handleExportPerfect2Gether = async () => {
     if (!isPerfect2Gether) return;
@@ -317,7 +316,7 @@ export default function Sales() {
 
       {/* Summary Cards */}
       <div className="p-4 md:p-6 grid grid-cols-2 sm:grid-cols-5 gap-3 md:gap-4">
-        <Card className="bg-card/50 border-border/50 cursor-pointer transition-colors hover:bg-accent/50" onClick={() => setStatusFilter('all')}>
+        <Card className="bg-card/50 border-border/50 cursor-pointer transition-colors hover:bg-accent/50" onClick={clearFilters}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="h-4 w-4 text-muted-foreground" />

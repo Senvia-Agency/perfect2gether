@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Proposal } from '@/types/proposals';
 
-/** Consumo por proposta, limitado às mesmas propostas que a página apresenta. */
+/** Consumo e comissão por proposta, limitados às mesmas propostas que a página apresenta. */
 export function useTelecomProposalMetrics(proposals: Proposal[]) {
   const { organization, user } = useAuth();
   const proposalIds = proposals
@@ -14,8 +14,9 @@ export function useTelecomProposalMetrics(proposals: Proposal[]) {
 
   return useQuery({
     queryKey: ['metrics-proposal-cpes', organization?.id, user?.id, proposalIds],
-    queryFn: async (): Promise<Record<string, number>> => {
+    queryFn: async (): Promise<{ consumptionByProposal: Record<string, number>; commissionByProposal: Record<string, number> }> => {
       const consumptionByProposal: Record<string, number> = {};
+      const commissionByProposal: Record<string, number> = {};
 
       // Limita o tamanho do filtro e pagina também os CPEs de propostas grandes.
       for (let offset = 0; offset < proposalIds.length; offset += 100) {
@@ -23,7 +24,7 @@ export function useTelecomProposalMetrics(proposals: Proposal[]) {
         for (let page = 0; ; page += 1) {
           const { data, error } = await supabase
             .from('proposal_cpes')
-            .select('id, proposal_id, consumo_anual')
+            .select('id, proposal_id, consumo_anual, comissao')
             .in('proposal_id', batch)
             .order('id', { ascending: true })
             .range(page * 1000, page * 1000 + 999);
@@ -32,12 +33,14 @@ export function useTelecomProposalMetrics(proposals: Proposal[]) {
           for (const cpe of data || []) {
             consumptionByProposal[cpe.proposal_id] =
               (consumptionByProposal[cpe.proposal_id] || 0) + (Number(cpe.consumo_anual) || 0);
+            commissionByProposal[cpe.proposal_id] =
+              (commissionByProposal[cpe.proposal_id] || 0) + (Number(cpe.comissao) || 0);
           }
           if (!data || data.length < 1000) break;
         }
       }
 
-      return consumptionByProposal;
+      return { consumptionByProposal, commissionByProposal };
     },
     enabled: isTelecom && proposalIds.length > 0,
   });

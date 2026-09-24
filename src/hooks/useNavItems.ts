@@ -2,7 +2,7 @@ import type { ElementType } from 'react';
 import {
   LayoutDashboard, Users, UserCheck, FileText, ShoppingBag,
   Wallet, Calendar, Mail, Search, Store, Settings, BarChart3,
-  Building2, Shield,
+  Building2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModules, EnabledModules } from '@/hooks/useModules';
@@ -74,10 +74,6 @@ export function useNavItems(): { items: NavItem[]; isTotalLinkOnly: boolean } {
       ...item,
       locked: item.moduleKey ? isModuleLocked(item.moduleKey) : false,
     }));
-
-  if (isSuperAdmin) {
-    items.push({ to: '/system-admin', icon: Shield, label: 'System Admin', shortLabel: 'Admin' });
-  }
 
   return { items, isTotalLinkOnly };
 }
