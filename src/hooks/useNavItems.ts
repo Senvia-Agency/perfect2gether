@@ -78,9 +78,6 @@ export function useNavItems(): { items: NavItem[]; isTotalLinkOnly: boolean } {
       locked: item.moduleKey ? isModuleLocked(item.moduleKey) : false,
     }));
 
-  if (canViewModule('portal_total_link')) {
-    items.push({ to: '/portal-total-link', icon: Building2, label: 'Portal Total Link', shortLabel: 'Portal' });
-  }
   if (isSuperAdmin) {
     items.push({ to: '/system-admin', icon: Shield, label: 'System Admin', shortLabel: 'Admin' });
   }
