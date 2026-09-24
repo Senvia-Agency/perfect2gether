@@ -25,8 +25,9 @@ import {
 } from '@/types/proposals';
 import type { Proposal, ProposalStatus, ProposalType } from '@/types/proposals';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { endOfDay, format } from 'date-fns';
 import { useTelecomProposalMetrics } from '@/hooks/useTelecomProposalMetrics';
+import { useTeamFilter } from '@/hooks/useTeamFilter';
 import { pt } from 'date-fns/locale';
 
 export default function Proposals() {
@@ -34,10 +35,10 @@ export default function Proposals() {
   useProposalsRealtime();
   const { profile, organization } = useAuth();
   const { can } = usePermissions();
+  const { selectedMemberId, setSelectedMemberId } = useTeamFilter();
   const canCreateProposal = can('proposals', 'proposals', 'create');
-  const { data: proposals = [], isLoading } = useProposals();
+  const { data: proposals = [], isLoading, isError: isProposalsError, refetch: refetchProposals } = useProposals();
   const isTelecom = organization?.niche === 'telecom';
-  const { data: telecomMetrics } = useTelecomProposalMetrics();
   
   const [search, setSearch] = usePersistedState('proposals-search-v1', '');
   const [statusFilter, setStatusFilter] = usePersistedState<ProposalStatus | 'all'>('proposals-status-v1', 'all');
@@ -47,21 +48,26 @@ export default function Proposals() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const filteredProposals = proposals.filter((proposal) => {
-    const searchLower = search.toLowerCase();
-    const matchesSearch = !search || 
+    const searchLower = search.trim().toLowerCase();
+    const matchesSearch = !searchLower ||
       proposal.client?.name?.toLowerCase().includes(searchLower) ||
       proposal.lead?.name?.toLowerCase().includes(searchLower) ||
       proposal.code?.toLowerCase().includes(searchLower) ||
       proposal.notes?.toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === 'all' || proposal.status === statusFilter;
-    const matchesType = typeFilter === 'all' || proposal.proposal_type === typeFilter;
+    const matchesType = typeFilter === 'all' || (proposal.proposal_type ?? 'energia') === typeFilter;
     const proposalDate = new Date(proposal.proposal_date);
     const matchesDate = !dateRange?.from || (
       proposalDate >= dateRange.from &&
-      (!dateRange.to || proposalDate <= dateRange.to)
+      (!dateRange.to || proposalDate <= endOfDay(dateRange.to))
     );
     return matchesSearch && matchesStatus && matchesType && matchesDate;
   });
+  const {
+    data: consumptionByProposal = {},
+    isPending: isConsumptionPending,
+    isError: isConsumptionError,
+  } = useTelecomProposalMetrics(filteredProposals);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value);
@@ -78,11 +84,36 @@ export default function Proposals() {
   const isEnergia = (p: Proposal) => (p.proposal_type ?? 'energia') === 'energia';
   const energiaProposals = filteredProposals.filter(isEnergia);
   const servicosProposals = filteredProposals.filter((p) => !isEnergia(p));
-  const pendingProposals = filteredProposals.filter(p => ['sent', 'negotiating'].includes(p.status));
+  const negotiatingProposals = proposalsByStatus.negotiating ?? [];
   const acceptedProposals = proposalsByStatus.accepted ?? [];
 
   const totalValue = sumValue(filteredProposals);
-  const pendingValue = sumValue(pendingProposals);
+  const negotiatingValue = sumValue(negotiatingProposals);
+  const sumEnergyMWh = (list: Proposal[]) => list
+    .filter(isEnergia)
+    .reduce((sum, proposal) => {
+      const consumption = consumptionByProposal[proposal.id] ?? Number(proposal.consumo_anual ?? 0);
+      return sum + consumption;
+    }, 0) / 1000;
+  const sumServicesKWp = (list: Proposal[]) => list
+    .filter((proposal) => !isEnergia(proposal))
+    .reduce((sum, proposal) => sum + (Number(proposal.kwp) || 0), 0);
+  const formatVolume = (value: number, unit: 'MWh' | 'kWp') =>
+    `${value.toLocaleString('pt-PT', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${unit}`;
+  const formatEnergyVolume = (list: Proposal[]) => {
+    if (!list.some(isEnergia)) return formatVolume(0, 'MWh');
+    if (isConsumptionError) return 'indisponível';
+    if (isConsumptionPending) return 'a calcular…';
+    return formatVolume(sumEnergyMWh(list), 'MWh');
+  };
+  const hasActiveFilters = Boolean(search.trim() || statusFilter !== 'all' || typeFilter !== 'all' || dateRange?.from || selectedMemberId);
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setDateRange(undefined);
+    setSelectedMemberId(null);
+  };
 
   return (
     <>
@@ -94,7 +125,7 @@ export default function Proposals() {
               <FileText className="h-6 w-6" />
               Propostas
             </h1>
-            <p className="text-muted-foreground">Gestão de propostas comerciais.</p>
+            <p className="text-muted-foreground">Gestão de propostas comerciais. Os indicadores acompanham os filtros da lista.</p>
           </div>
           {canCreateProposal && (
             <Button onClick={() => setCreateModalOpen(true)}>
@@ -105,7 +136,7 @@ export default function Proposals() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {!isLoading && !isProposalsError && <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-4">
               <p className="text-sm text-muted-foreground">Total Propostas</p>
@@ -125,9 +156,9 @@ export default function Proposals() {
               {isTelecom && (
                 <TypeSplit
                   energia={formatCurrency(sumValue(energiaProposals))}
-                  energiaUnit={`${(telecomMetrics?.totalMWh ?? 0).toFixed(1)} MWh`}
+                  energiaUnit={formatEnergyVolume(filteredProposals)}
                   servicos={formatCurrency(sumValue(servicosProposals))}
-                  servicosUnit={`${(telecomMetrics?.totalKWp ?? 0).toFixed(1)} kWp`}
+                  servicosUnit={formatVolume(sumServicesKWp(filteredProposals), 'kWp')}
                 />
               )}
             </CardContent>
@@ -135,13 +166,13 @@ export default function Proposals() {
           <Card>
             <CardContent className="pt-4">
               <p className="text-sm text-muted-foreground">Em Negociação</p>
-              <p className="text-2xl font-bold text-amber-500">{formatCurrency(pendingValue)}</p>
+              <p className="text-2xl font-bold text-amber-500">{formatCurrency(negotiatingValue)}</p>
               {isTelecom && (
                 <TypeSplit
-                  energia={formatCurrency(sumValue(pendingProposals.filter(isEnergia)))}
-                  energiaUnit={`${(telecomMetrics?.pendingMWh ?? 0).toFixed(1)} MWh`}
-                  servicos={formatCurrency(sumValue(pendingProposals.filter((p) => !isEnergia(p))))}
-                  servicosUnit={`${(telecomMetrics?.pendingKWp ?? 0).toFixed(1)} kWp`}
+                  energia={formatCurrency(sumValue(negotiatingProposals.filter(isEnergia)))}
+                  energiaUnit={formatEnergyVolume(negotiatingProposals)}
+                  servicos={formatCurrency(sumValue(negotiatingProposals.filter((p) => !isEnergia(p))))}
+                  servicosUnit={formatVolume(sumServicesKWp(negotiatingProposals), 'kWp')}
                 />
               )}
             </CardContent>
@@ -158,7 +189,7 @@ export default function Proposals() {
               )}
             </CardContent>
           </Card>
-        </div>
+        </div>}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -209,7 +240,16 @@ export default function Proposals() {
 
 
         {/* Proposals List */}
-        {isLoading ? (
+        {isProposalsError ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">Não foi possível carregar as propostas.</p>
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => void refetchProposals()}>
+                Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
@@ -218,10 +258,15 @@ export default function Proposals() {
             <CardContent className="py-12 text-center">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground">
-                {proposals.length === 0
-                  ? 'Ainda não existem propostas.'
-                  : 'Nenhuma proposta corresponde aos filtros.'}
+                {hasActiveFilters
+                  ? 'Nenhuma proposta corresponde aos filtros.'
+                  : 'Ainda não existem propostas visíveis para este utilizador.'}
               </p>
+              {hasActiveFilters && (
+                <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
+                  Limpar filtros
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
