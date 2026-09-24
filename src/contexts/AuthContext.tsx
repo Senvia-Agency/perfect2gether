@@ -54,6 +54,7 @@ interface AuthContextType {
   organizations: UserOrganizationMembership[];
   roles: AppRole[];
   isLoading: boolean;
+  userDataError: string | null;
   isSuperAdmin: boolean;
   needsOrgSelection: boolean;
   mfaStatus: MFAStatus;
@@ -61,6 +62,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refetchUserData: () => Promise<void>;
+  retryUserData: () => void;
   switchOrganization: (orgId: string) => Promise<void>;
   selectOrganization: (orgId: string) => Promise<void>;
 }
@@ -76,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+  const [userDataError, setUserDataError] = useState<string | null>(null);
+  const [userDataRetry, setUserDataRetry] = useState(0);
   const authUserIdRef = useRef<string | null>(null);
   const [needsOrgSelection, setNeedsOrgSelection] = useState(false);
   const [mfaStatus, setMfaStatus] = useState<MFAStatus>('none');
@@ -108,11 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load organization by ID
   const loadOrganization = useCallback(async (orgId: string) => {
-    const { data: orgData } = await supabase
+    const { data: orgData, error } = await supabase
       .from('organizations')
       .select('*')
       .eq('id', orgId)
       .maybeSingle();
+
+    if (error) throw error;
+    if (!orgData) throw new Error('Organização não encontrada');
     
     if (orgData) {
       setOrganization(orgData);
@@ -129,22 +136,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const fetchUserData = async (userId: string) => {
       setIsLoadingUserData(true);
+      setUserDataError(null);
       try {
         // Fetch profile
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userId)
           .maybeSingle();
+
+        if (profileError) throw profileError;
         
         if (cancelled) return;
         setProfile(profileData);
 
         // Fetch roles
-        const { data: rolesData } = await supabase
+        const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', userId);
+
+        if (rolesError) throw rolesError;
         
         if (cancelled) return;
         if (rolesData) {
@@ -152,8 +164,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Fetch user's organization memberships
-        const { data: orgsData } = await supabase
+        const { data: orgsData, error: orgsError } = await supabase
           .rpc('get_user_organizations', { _user_id: userId });
+
+        if (orgsError) throw orgsError;
         
         if (cancelled) return;
         
@@ -185,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        if (!cancelled) setUserDataError('Não foi possível carregar os dados da conta.');
       } finally {
         if (!cancelled) setIsLoadingUserData(false);
       }
@@ -199,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setOrganizations([]);
       setRoles([]);
       setNeedsOrgSelection(false);
+      setUserDataError(null);
       setMfaStatus('none');
       setIsLoadingUserData(false);
     }
@@ -206,7 +222,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, loadOrganization, checkMFAStatus]);
+  }, [user?.id, loadOrganization, checkMFAStatus, userDataRetry]);
+
+  const retryUserData = () => {
+    if (!user?.id) return;
+    setIsLoadingUserData(true);
+    setUserDataError(null);
+    setUserDataRetry((value) => value + 1);
+  };
 
   // Auth state listener
   useEffect(() => {
@@ -221,6 +244,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authUserIdRef.current !== nextUserId) {
         authUserIdRef.current = nextUserId;
         setIsLoadingUserData(Boolean(nextUserId));
+        setUserDataError(null);
+        setProfile(null);
+        setOrganization(null);
+        setOrganizations([]);
+        setRoles([]);
+        setNeedsOrgSelection(false);
       }
 
       setSession(nextSession);
@@ -265,6 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOrganizations([]);
     setRoles([]);
     setNeedsOrgSelection(false);
+    setUserDataError(null);
     setIsLoadingUserData(false);
     authUserIdRef.current = null;
     
@@ -280,11 +310,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       // Re-fetch profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
+
+      if (profileError) throw profileError;
 
       setProfile(profileData);
 
@@ -297,8 +329,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Re-fetch organizations list
-      const { data: orgsData } = await supabase
+      const { data: orgsData, error: orgsError } = await supabase
         .rpc('get_user_organizations', { _user_id: user.id });
+
+      if (orgsError) throw orgsError;
       
       setOrganizations((orgsData || []) as UserOrganizationMembership[]);
     } catch (error) {
@@ -343,6 +377,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organizations,
         roles,
         isLoading: isLoading || isLoadingUserData,
+        userDataError,
         isSuperAdmin,
         needsOrgSelection,
         mfaStatus,
@@ -350,6 +385,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signOut,
         refetchUserData,
+        retryUserData,
         switchOrganization,
         selectOrganization,
       }}
