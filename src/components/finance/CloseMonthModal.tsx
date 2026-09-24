@@ -232,12 +232,11 @@ export function CloseMonthModal({ month, open, onOpenChange }: CloseMonthModalPr
         let totalFinal = 0;
         for (const cpe of entry.cpes) {
           const multiplier = NEGOTIATION_MULTIPLIER[cpe.negotiation_type] ?? 1;
-          if (cpe.commission_recorded && cpe.comissao_indicativa === 0) {
-            cpe.comissao_final = 0;
-          } else if (cpe.commission_group_id) {
+          if (cpe.commission_recorded) {
+            // Preserve the recorded per-CPE proposal amount at month close.
             cpe.comissao_final = cpe.comissao_indicativa * multiplier;
           } else if (energyConfig && energyConfig.bands.length > 0) {
-            const final_ = calculateEnergyCommissionPure(cpe.margem, energyConfig, entry.tier);
+            const final_ = calculateEnergyCommissionPure(cpe.margem, energyConfig, getVolumeTier(cpe.consumo_anual));
             cpe.comissao_final = (final_ ?? cpe.comissao_indicativa) * multiplier;
           } else {
             cpe.comissao_final = cpe.comissao_indicativa * multiplier;

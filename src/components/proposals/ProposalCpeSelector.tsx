@@ -79,8 +79,12 @@ export function getProposalCpeDraftTotalCommission(cpes: ProposalCpeDraft[]) {
   return grouped + legacy;
 }
 
+export function getProposalCpeDraftTotalConsumption(cpes: ProposalCpeDraft[]) {
+  return cpes.reduce((sum, cpe) => sum + (Number(cpe.consumo_anual) || 0), 0);
+}
+
 export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCpeSelectorProps) {
-  const { data: clientCpes = [] } = useCpes(clientId);
+  const { data: clientCpes = [], isLoading: isLoadingCpes, isError: isCpesError, refetch: refetchCpes } = useCpes(clientId);
   const { calculateEnergyCommission, hasEnergyConfig } = useCommissionMatrix();
   
   const comercializadorOptions = ENERGY_COMERCIALIZADORES;
@@ -88,35 +92,37 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
   // State for existing CPE selection form
   const [selectedExistingCpeIds, setSelectedExistingCpeIds] = useState<string[]>([]);
   const [requestedCpeQuantity, setRequestedCpeQuantity] = useState('1');
-  const [updateConsumoAnual, setUpdateConsumoAnual] = useState('');
+  const [selectedCpeConsumptions, setSelectedCpeConsumptions] = useState<Record<string, string>>({});
+  const [selectedCpeCommissions, setSelectedCpeCommissions] = useState<Record<string, string>>({});
   const [updateDuracaoContrato, setUpdateDuracaoContrato] = useState('');
   const [updateDbl, setUpdateDbl] = useState('');
-  const [updateComissao, setUpdateComissao] = useState('');
   const [updateContratoInicio, setUpdateContratoInicio] = useState('');
   const [updateContratoFim, setUpdateContratoFim] = useState('');
   const [updateComercializador, setUpdateComercializador] = useState('');
   const [updateCustomComercializador, setUpdateCustomComercializador] = useState('');
 
-  // Auto-calculate margem for existing CPE
-  const updateMargem = useMemo(() => 
-    calculateMargem(updateConsumoAnual, updateDuracaoContrato, updateDbl), 
-    [updateConsumoAnual, updateDuracaoContrato, updateDbl]
-  );
-
-  // Auto-calculate commission from energy config
-  const updateAutoComissao = useMemo(() => {
-    if (!hasEnergyConfig || !updateMargem) return null;
-    const margem = parseFloat(updateMargem);
-    if (margem <= 0) return null;
-    return calculateEnergyCommission(margem, getVolumeTier(parseFloat(updateConsumoAnual) || 0));
-  }, [updateMargem, hasEnergyConfig, calculateEnergyCommission]);
-
-  // When auto-commission changes, update the field
   useEffect(() => {
-    if (updateAutoComissao !== null) {
-      setUpdateComissao(updateAutoComissao.toFixed(2));
-    }
-  }, [updateAutoComissao]);
+    setSelectedExistingCpeIds([]);
+    setSelectedCpeConsumptions({});
+    setSelectedCpeCommissions({});
+    setRequestedCpeQuantity('1');
+  }, [clientId]);
+
+  const selectedCpeDetails = useMemo(() => selectedExistingCpeIds.flatMap(id => {
+    const existingCpe = clientCpes.find(cpe => cpe.id === id);
+    if (!existingCpe) return [];
+    const consumption = Object.prototype.hasOwnProperty.call(selectedCpeConsumptions, id)
+      ? selectedCpeConsumptions[id]
+      : String(existingCpe.consumo_anual ?? '');
+    const margin = calculateMargem(consumption, updateDuracaoContrato, updateDbl);
+    const automaticCommission = hasEnergyConfig && margin
+      ? calculateEnergyCommission(Number(margin), getVolumeTier(Number(consumption) || 0))
+      : null;
+    const commission = hasEnergyConfig
+      ? (automaticCommission === null ? '' : automaticCommission.toFixed(2))
+      : (selectedCpeCommissions[id] ?? '');
+    return [{ existingCpe, consumption, margin, commission }];
+  }), [selectedExistingCpeIds, clientCpes, selectedCpeConsumptions, selectedCpeCommissions, updateDuracaoContrato, updateDbl, hasEnergyConfig, calculateEnergyCommission]);
 
   // Auto-calculate duracao when dates change
   useEffect(() => {
@@ -135,10 +141,10 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
   const resetForm = () => {
     setSelectedExistingCpeIds([]);
     setRequestedCpeQuantity('1');
-    setUpdateConsumoAnual('');
+    setSelectedCpeConsumptions({});
+    setSelectedCpeCommissions({});
     setUpdateDuracaoContrato('');
     setUpdateDbl('');
-    setUpdateComissao('');
     setUpdateContratoInicio('');
     setUpdateContratoFim('');
     setUpdateComercializador('');
@@ -146,35 +152,25 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
   };
 
   const handleAddExistingCpe = () => {
-    if (selectedExistingCpeIds.length === 0) return;
+    if (!canAddExisting) return;
 
-    const finalComercializador = updateComercializador === 'other' 
-      ? updateCustomComercializador 
-      : (updateComercializador === 'keep_current' || !updateComercializador ? existingCpe.comercializador : updateComercializador);
-
-    const commissionGroupKey = crypto.randomUUID();
-    const newCpes = selectedExistingCpeIds
-      .map(id => clientCpes.find(cpe => cpe.id === id))
-      .filter((cpe): cpe is NonNullable<typeof cpe> => !!cpe)
-      .map((existingCpe, index): ProposalCpeDraft => ({
+    const newCpes = selectedCpeDetails.map(({ existingCpe, consumption, margin, commission }): ProposalCpeDraft => ({
         id: crypto.randomUUID(),
         existing_cpe_id: existingCpe.id,
         equipment_type: existingCpe.equipment_type,
         serial_number: existingCpe.serial_number || '',
-        comercializador: finalComercializador,
+        comercializador: updateComercializador === 'other'
+          ? updateCustomComercializador.trim()
+          : updateComercializador === 'keep_current' ? existingCpe.comercializador : updateComercializador,
         fidelizacao_start: updateContratoInicio || existingCpe.fidelizacao_start || '',
         fidelizacao_end: updateContratoFim || existingCpe.fidelizacao_end || '',
         notes: '',
         isNew: false,
-        consumo_anual: updateConsumoAnual,
+        consumo_anual: consumption,
         duracao_contrato: updateDuracaoContrato,
         dbl: updateDbl,
-        margem: updateMargem,
-        // The database keeps this value on one technical anchor CPE only so
-        // older totals remain correct. The UI always presents it as a group.
-        comissao: index === 0 ? updateComissao : '0',
-        commission_group_key: commissionGroupKey,
-        commission_group_comissao: updateComissao,
+        margem: margin,
+        comissao: commission,
         contrato_inicio: updateContratoInicio,
         contrato_fim: updateContratoFim,
         service_type: existingCpe.service_type || (existingCpe.equipment_type === 'Gás' ? 'gas' : existingCpe.equipment_type === 'Energia' ? 'energia' : null),
@@ -198,28 +194,24 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
       if (['consumo_anual', 'duracao_contrato', 'dbl'].includes(field)) {
         updated.margem = calculateMargem(updated.consumo_anual, updated.duracao_contrato, updated.dbl);
         // Auto-calculate commission from energy config
-        if (hasEnergyConfig && updated.margem) {
+        if (hasEnergyConfig) {
           const margem = parseFloat(updated.margem);
           if (margem > 0) {
             const com = calculateEnergyCommission(margem, getVolumeTier(parseFloat(updated.consumo_anual) || 0));
-            if (com !== null) updated.comissao = com.toFixed(2);
-          }
+            updated.comissao = com === null ? '' : com.toFixed(2);
+          } else updated.comissao = '';
         }
       }
       // Auto-recalculate duracao_contrato when dates change
-      if ((field === 'contrato_inicio' || field === 'contrato_fim') && updated.contrato_inicio && updated.contrato_fim) {
-        const dur = calculateExactDuration(updated.contrato_inicio, updated.contrato_fim);
-        if (dur > 0) {
-          updated.duracao_contrato = dur.toString();
-          updated.margem = calculateMargem(updated.consumo_anual, updated.duracao_contrato, updated.dbl);
-          // Auto-calculate commission
-          if (hasEnergyConfig && updated.margem) {
-            const margem = parseFloat(updated.margem);
-            if (margem > 0) {
-              const com = calculateEnergyCommission(margem, getVolumeTier(parseFloat(updated.consumo_anual) || 0));
-              if (com !== null) updated.comissao = com.toFixed(2);
-            }
-          }
+      if (field === 'contrato_inicio' || field === 'contrato_fim') {
+        const dur = updated.contrato_inicio && updated.contrato_fim
+          ? calculateExactDuration(updated.contrato_inicio, updated.contrato_fim) : 0;
+        updated.duracao_contrato = dur > 0 ? dur.toString() : '';
+        updated.margem = calculateMargem(updated.consumo_anual, updated.duracao_contrato, updated.dbl);
+        if (hasEnergyConfig) {
+          const com = updated.margem
+            ? calculateEnergyCommission(Number(updated.margem), getVolumeTier(Number(updated.consumo_anual) || 0)) : null;
+          updated.comissao = com === null ? '' : com.toFixed(2);
         }
       }
       return updated;
@@ -276,10 +268,11 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
     : (!!updateComercializador && updateComercializador !== '');
 
   const canAddExisting = selectedExistingCpeIds.length === requestedQuantity
-    && !!updateConsumoAnual
-    && !!updateDuracaoContrato
-    && !!updateDbl
-    && !!updateComissao
+    && selectedCpeDetails.length === requestedQuantity
+    && selectedCpeDetails.every(({ consumption, commission }) =>
+      Number(consumption) > 0 && commission !== '' && Number.isFinite(Number(commission)) && Number(commission) >= 0)
+    && Number(updateDuracaoContrato) > 0
+    && Number(updateDbl) > 0
     && !!updateContratoInicio
     && !!updateContratoFim
     && hasValidComercializador;
@@ -324,7 +317,7 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                     <span className="text-sm font-semibold">Condições em lote #{index + 1}</span>
                     <Badge variant="outline" className="border-blue-300 bg-white/70 text-blue-800 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-200">{items.length} CPE{items.length === 1 ? '' : 's'}</Badge>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">O consumo indicado é repetido em cada CPE. A comissão pertence ao lote e é contabilizada uma única vez.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Registo anterior: o consumo foi repetido em cada CPE e a comissão pertence ao lote. Novos CPEs são calculados individualmente.</p>
                 </div>
                 <Button type="button" variant="ghost" size="sm" className="self-start text-muted-foreground hover:text-destructive" onClick={() => onCpesChange(cpes.filter(cpe => cpe.commission_group_key !== key))}>
                   <X className="mr-1 h-4 w-4" />Remover lote
@@ -510,6 +503,13 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
           <p className="text-sm text-muted-foreground text-center py-4">
             Selecione um cliente para ver os CPEs existentes
           </p>
+        ) : isLoadingCpes ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">A carregar os CPEs do cliente...</p>
+        ) : isCpesError ? (
+          <div className="space-y-2 py-4 text-center" role="alert">
+            <p className="text-sm text-destructive">Não foi possível carregar os CPEs do cliente.</p>
+            <Button type="button" variant="outline" onClick={() => refetchCpes()}>Tentar novamente</Button>
+          </div>
         ) : clientCpes.length === 0 ? (
           <div className="text-center py-4 space-y-2">
             <p className="text-sm text-muted-foreground">
@@ -607,20 +607,8 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
 
                 <Separator />
 
-                {/* Energy fields */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Consumo Anual (kWh) <span className="text-destructive">*</span></Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      min="0"
-                      value={updateConsumoAnual}
-                      onChange={(e) => setUpdateConsumoAnual(e.target.value)}
-                      className="h-8"
-                      placeholder="15000"
-                    />
-                  </div>
+                {/* Common conditions; consumption and commission belong to each CPE. */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label className="text-xs">DBL (€/MWh) <span className="text-destructive">*</span></Label>
                     <Input
@@ -629,7 +617,7 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                       min="0"
                       value={updateDbl}
                       onChange={(e) => setUpdateDbl(e.target.value)}
-                      className="h-8"
+                      className="h-9"
                       placeholder="5.50"
                     />
                   </div>
@@ -642,7 +630,7 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                       type="number"
                       step="any"
                       value={updateDuracaoContrato}
-                      className="h-8 bg-muted font-medium"
+                      className="h-9 bg-muted font-medium"
                       disabled
                       placeholder="Auto"
                     />
@@ -654,21 +642,34 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-xs flex items-center gap-1">
-                    Comissão (€) <span className="text-destructive">*</span>
-                    {hasEnergyConfig && <Badge variant="outline" className="text-[9px] ml-1">Auto</Badge>}
-                  </Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={updateComissao}
-                    onChange={(e) => setUpdateComissao(e.target.value)}
-                    className={`h-8 w-full sm:w-1/3 ${hasEnergyConfig ? 'bg-muted' : ''}`}
-                    readOnly={hasEnergyConfig}
-                    placeholder="150"
-                  />
+                <div className="space-y-2" aria-label="Consumo e comissão por CPE">
+                  <p className="text-xs text-muted-foreground">O consumo vem da ficha do cliente e pode ser ajustado nesta proposta. A comissão é calculada para cada CPE.</p>
+                  {selectedCpeDetails.map(({ existingCpe, consumption, commission }) => (
+                    <div key={existingCpe.id} className="rounded-lg border bg-background p-3">
+                      <p className="mb-2 break-all font-mono text-xs font-medium">{existingCpe.serial_number || existingCpe.equipment_type}</p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label htmlFor={`consumption-${existingCpe.id}`} className="text-xs">Consumo anual (kWh) *</Label>
+                          <Input id={`consumption-${existingCpe.id}`} type="number" min="1" step="1" value={consumption}
+                            onChange={event => setSelectedCpeConsumptions(current => ({ ...current, [existingCpe.id]: event.target.value }))}
+                            className="h-10" placeholder="Preencher consumo" />
+                          {!(Number(consumption) > 0) && <p className="text-xs text-destructive">Preencha o consumo deste CPE.</p>}
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor={`commission-${existingCpe.id}`} className="text-xs">Comissão (€) *{hasEnergyConfig && <Badge variant="outline" className="ml-2 text-[9px]">Auto</Badge>}</Label>
+                          <Input id={`commission-${existingCpe.id}`} type="number" min="0" step="0.01" value={commission}
+                            onChange={event => setSelectedCpeCommissions(current => ({ ...current, [existingCpe.id]: event.target.value }))}
+                            readOnly={hasEnergyConfig} className={`h-10 ${hasEnergyConfig ? 'bg-muted' : ''}`} placeholder="0,00" />
+                          {hasEnergyConfig && Number(consumption) > 0 && Number(updateDbl) > 0 && Number(updateDuracaoContrato) > 0 && commission === '' &&
+                            <p className="text-xs text-destructive">Sem comissão definida na matriz para este CPE.</p>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {selectedCpeDetails.length > 0 && <div className="flex flex-wrap justify-between gap-2 rounded-lg bg-muted p-3 text-sm font-medium">
+                    <span>Consumo anual: {selectedCpeDetails.reduce((sum, item) => sum + (Number(item.consumption) || 0), 0).toLocaleString('pt-PT')} kWh</span>
+                    <span>Comissão: {formatCurrency(String(selectedCpeDetails.reduce((sum, item) => sum + (Number(item.commission) || 0), 0)))}</span>
+                  </div>}
                 </div>
 
                 <Button
@@ -680,7 +681,7 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
                   className="w-full"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Aplicar condições ao lote
+                  Adicionar CPEs à proposta
                 </Button>
               </>
             )}

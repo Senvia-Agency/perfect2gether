@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { X, UserPlus, Zap, Wrench, Package, FileText, User, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,12 +17,13 @@ import { useModules } from '@/hooks/useModules';
 import { useClients } from '@/hooks/useClients';
 import { useActiveProducts } from '@/hooks/useProducts';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCommissionMatrix, getVolumeTier } from '@/hooks/useCommissionMatrix';
+import { useCommissionMatrix } from '@/hooks/useCommissionMatrix';
 import { CreateClientModal } from '@/components/clients/CreateClientModal';
 import {
   ProposalCpeSelector,
   getProposalCpeDraftCommissionGroups,
   getProposalCpeDraftTotalCommission,
+  getProposalCpeDraftTotalConsumption,
   type ProposalCpeDraft,
 } from './ProposalCpeSelector';
 import { useProposalCpeCommissionGroups, useProposalCpes, useUpdateProposalCpes } from '@/hooks/useProposalCpes';
@@ -58,7 +59,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
   const { data: existingProducts = [] } = useProposalProducts(proposal.id);
   const { organization } = useAuth();
   const { products: SERVICOS_PRODUCTS, configs: SERVICOS_PRODUCT_CONFIGS, catalog, isNewFormat } = useServicosProducts();
-  const { calculateCommission, isAutoCalculated, calculateEnergyCommission, hasEnergyConfig } = useCommissionMatrix();
+  const { calculateCommission, isAutoCalculated } = useCommissionMatrix();
   const updateProposal = useUpdateProposal();
   const updateProposalCpes = useUpdateProposalCpes();
   const updateProposalProducts = useUpdateProposalProducts();
@@ -140,12 +141,6 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
     }
   }, [open, proposal, isTelecom, existingProducts]);
 
-  // Stable ref to avoid useEffect re-triggering on every render
-  const calcRef = useRef(calculateEnergyCommission);
-  calcRef.current = calculateEnergyCommission;
-  const hasEnergyConfigRef = useRef(hasEnergyConfig);
-  hasEnergyConfigRef.current = hasEnergyConfig;
-
   useEffect(() => {
     if (open && existingCpes.length > 0) {
       const groupTotals = new Map(existingCpeGroups.map(group => [group.id, group.total_comissao]));
@@ -161,15 +156,9 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
             if (dur > 0) duracao_contrato = dur.toString();
           }
           
-          // Recalculate commission using current tier rules (runtime derivation)
-          let comissao = cpe.comissao?.toString() || '';
-          if (!cpe.commission_group_id && cpe.comissao !== 0 && hasEnergyConfigRef.current && margem) {
-            const margemNum = parseFloat(margem);
-            if (margemNum > 0) {
-              const calc = calcRef.current(margemNum, getVolumeTier(parseFloat(consumoAnual) || 0));
-              if (calc !== null) comissao = calc.toFixed(2);
-            }
-          }
+          // Keep the historical commission snapshot unless the CPE's inputs
+          // are deliberately changed in the editor.
+          const comissao = cpe.comissao?.toString() || '';
           
           return {
             id: cpe.id,
@@ -217,6 +206,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
     }
     return servicosProdutos.reduce((sum, p) => sum + (servicosDetails[p]?.comissao || 0), 0);
   }, [proposalType, proposalCpes, servicosProdutos, servicosDetails]);
+  const totalAnnualConsumption = useMemo(() => getProposalCpeDraftTotalConsumption(proposalCpes), [proposalCpes]);
 
   const totalValue = useMemo(() => {
     if (isTelecom) {
@@ -905,7 +895,11 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
                               <span className="font-medium">{proposalCpes.length}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Comissão Total</span>
+                              <span className="text-muted-foreground">Consumo Anual da Proposta</span>
+                              <span className="font-medium">{totalAnnualConsumption.toLocaleString('pt-PT')} kWh</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Comissão da Proposta</span>
                               <span className="font-medium">{formatCurrency(totalComissao)}</span>
                             </div>
                             <Separator />
@@ -927,7 +921,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
                           <p className="text-2xl font-bold text-primary">{formatCurrency(totalValue)}</p>
                           {isTelecom && proposalType === 'energia' && proposalCpes.length > 0 && (
                             <p className="text-xs text-muted-foreground mt-1">
-                              Soma das margens de {proposalCpes.length} CPE(s)
+                              Soma das comissões de {proposalCpes.length} CPE(s)
                             </p>
                           )}
                         </div>

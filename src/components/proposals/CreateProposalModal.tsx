@@ -22,6 +22,7 @@ import {
   ProposalCpeSelector,
   getProposalCpeDraftCommissionGroups,
   getProposalCpeDraftTotalCommission,
+  getProposalCpeDraftTotalConsumption,
   type ProposalCpeDraft,
 } from '@/components/proposals/ProposalCpeSelector';
 import { useAuth } from '@/contexts/AuthContext';
@@ -112,6 +113,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
     // Sum comissao from each active servicos product
     return servicosProdutos.reduce((sum, p) => sum + (servicosDetails[p]?.comissao || 0), 0);
   }, [proposalType, proposalCpes, servicosProdutos, servicosDetails]);
+  const totalAnnualConsumption = useMemo(() => getProposalCpeDraftTotalConsumption(proposalCpes), [proposalCpes]);
 
   const totalValue = useMemo(() => {
     if (isTelecom) return totalComissao;
@@ -237,9 +239,11 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
 
   const isEnergiaValid = useMemo(() => {
     if (!isTelecom || proposalType !== 'energia') return true;
-    return proposalCpes.length > 0 && proposalCpes.every(cpe => 
-      cpe.consumo_anual && cpe.duracao_contrato && cpe.dbl 
-      && cpe.comissao && cpe.contrato_inicio && cpe.contrato_fim
+    return proposalCpes.length > 0 && proposalCpes.every(cpe =>
+      Number(cpe.consumo_anual) > 0 && Number(cpe.duracao_contrato) > 0
+      && Number(cpe.dbl) > 0 && cpe.comissao !== ''
+      && Number.isFinite(Number(cpe.comissao)) && Number(cpe.comissao) >= 0
+      && cpe.contrato_inicio && cpe.contrato_fim
     );
   }, [isTelecom, proposalType, proposalCpes]);
 
@@ -742,7 +746,11 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
                               <span className="font-medium">{proposalCpes.length}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Comissão Total</span>
+                              <span className="text-muted-foreground">Consumo Anual da Proposta</span>
+                              <span className="font-medium">{totalAnnualConsumption.toLocaleString('pt-PT')} kWh</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Comissão da Proposta</span>
                               <span className="font-medium">{formatCurrency(totalComissao)}</span>
                             </div>
                             <Separator />
@@ -754,7 +762,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
                           <p className="text-2xl font-bold text-primary">{formatCurrency(totalValue)}</p>
                           {isTelecom && proposalType === 'energia' && proposalCpes.length > 0 && (
                             <p className="text-xs text-muted-foreground mt-1">
-                              Soma das margens de {proposalCpes.length} CPE(s)
+                              Soma das comissões de {proposalCpes.length} CPE(s)
                             </p>
                           )}
                         </div>

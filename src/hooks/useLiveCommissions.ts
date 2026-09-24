@@ -252,14 +252,12 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
         let servicosFinal = 0;
         for (const cpe of entry.cpes) {
           const multiplier = NEGOTIATION_MULTIPLIER[cpe.negotiation_type] ?? 1;
-          if (cpe.commission_recorded && cpe.comissao_indicativa === 0) {
-            // An explicitly stored zero must never become a payable commission
-            // merely because the current commission matrix yields a value.
-            cpe.comissao_final = 0;
-          } else if (cpe.commission_group_id) {
+          if (cpe.commission_recorded) {
+            // The proposal's per-CPE commission is the source of truth, including
+            // explicit zeroes and legacy group anchors. Only apply negotiation rules.
             cpe.comissao_final = cpe.comissao_indicativa * multiplier;
           } else if (energyConfig && energyConfig.bands.length > 0) {
-            const final_ = calculateEnergyCommissionPure(cpe.margem, energyConfig, entry.tier);
+            const final_ = calculateEnergyCommissionPure(cpe.margem, energyConfig, getVolumeTier(cpe.consumo_anual));
             cpe.comissao_final = (final_ ?? cpe.comissao_indicativa) * multiplier;
           } else {
             cpe.comissao_final = cpe.comissao_indicativa * multiplier;
