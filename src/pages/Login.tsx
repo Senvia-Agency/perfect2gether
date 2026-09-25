@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { AccountLoading } from '@/components/auth/AccountLoading';
 
 const p2gLogo = "/logo-p2gether.png";
 
@@ -137,11 +138,7 @@ export default function Login() {
   };
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AccountLoading />;
   }
 
   return (

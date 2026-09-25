@@ -4,7 +4,6 @@ import { useSales } from "@/hooks/useSales";
 import { useProposals } from "@/hooks/useProposals";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useClients } from "@/hooks/useClients";
-import { useEcommerceStats } from "@/hooks/ecommerce/useEcommerceStats";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { useDashboardPeriod } from "@/stores/useDashboardPeriod";
 import { WidgetType } from "@/lib/dashboard-templates";
@@ -29,7 +28,6 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
   const { data: proposals = [], isLoading: proposalsLoading } = useProposals();
   const { data: events = [], isLoading: eventsLoading } = useCalendarEvents();
   const { data: clients = [], isLoading: clientsLoading } = useClients();
-  const ecommerceStats = useEcommerceStats();
   const { data: stages = [] } = usePipelineStages();
   const { selectedMonth } = useDashboardPeriod();
 
@@ -401,30 +399,6 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
         };
       }
 
-      case 'orders_today': {
-        return {
-          value: ecommerceStats.data?.total_orders?.toString() || '0',
-          subtitle: 'encomendas totais',
-          isLoading: ecommerceStats.isLoading,
-        };
-      }
-
-      case 'revenue_today': {
-        return {
-          value: `€${(ecommerceStats.data?.total_revenue || 0).toLocaleString('pt-PT')}`,
-          subtitle: 'faturação total',
-          isLoading: ecommerceStats.isLoading,
-        };
-      }
-
-      case 'low_stock_products': {
-        return {
-          value: ecommerceStats.data?.low_stock_products?.toString() || '0',
-          subtitle: 'produtos com stock baixo',
-          isLoading: ecommerceStats.isLoading,
-        };
-      }
-
       default:
         return {
           value: '0',
@@ -432,5 +406,5 @@ export function useWidgetData(widgetType: WidgetType): WidgetData {
           isLoading: false,
         };
     }
-  }, [widgetType, leads, sales, proposals, events, clients, ecommerceStats, leadsLoading, salesLoading, proposalsLoading, eventsLoading, clientsLoading, selectedMonth]);
+  }, [widgetType, leads, sales, proposals, events, clients, stages, leadsLoading, salesLoading, proposalsLoading, eventsLoading, clientsLoading, selectedMonth]);
 }

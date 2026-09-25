@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { AccountLoading } from '@/components/auth/AccountLoading';
 import "@/styles/total-link.css";
 
 const loginSchema = z.object({
@@ -104,7 +105,7 @@ export default function TotalLinkLogin() {
   };
 
   if (authLoading) {
-    return <div className="total-link-shell flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#1659c9]" /></div>;
+    return <AccountLoading totalLink />;
   }
 
   return (

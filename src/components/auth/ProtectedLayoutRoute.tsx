@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { AccountLoading } from './AccountLoading';
 import { OrganizationSelector } from './OrganizationSelector';
 import { ChallengeMFA } from './ChallengeMFA';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
@@ -19,11 +19,7 @@ export function ProtectedLayoutRoute() {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AccountLoading />;
   }
 
   if (!user) {
@@ -53,11 +49,7 @@ export function ProtectedLayoutRoute() {
 
   // Keep the private shell behind the profile-permissions loading gate.
   if (isLoadingPermissions) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AccountLoading />;
   }
 
   if (!hasSystem('p2g')) {

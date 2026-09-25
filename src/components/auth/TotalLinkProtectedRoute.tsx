@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { AccountLoading } from './AccountLoading';
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChallengeMFA } from "./ChallengeMFA";
@@ -27,11 +27,7 @@ export function TotalLinkProtectedRoute() {
   const location = useLocation();
 
   if (isLoading) {
-    return (
-      <div className="total-link-shell flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1659c9]" />
-      </div>
-    );
+    return <AccountLoading totalLink />;
   }
 
   if (!user) {
@@ -55,11 +51,7 @@ export function TotalLinkProtectedRoute() {
   }
 
   if (isLoadingPermissions) {
-    return (
-      <div className="total-link-shell flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1659c9]" />
-      </div>
-    );
+    return <AccountLoading totalLink />;
   }
 
   if (!hasSystem('total_link')) {

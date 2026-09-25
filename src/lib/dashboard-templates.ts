@@ -7,7 +7,6 @@ import {
   Calendar,
   Heart,
   Hammer,
-  ShoppingCart,
   Home,
   Phone,
   Euro,
@@ -44,10 +43,6 @@ export type WidgetType =
   | 'active_projects'
   | 'pending_quotes'
   | 'completed_projects'
-  // E-commerce specific
-  | 'orders_today'
-  | 'revenue_today'
-  | 'low_stock_products'
   // Real estate specific
   | 'visits_this_week'
   | 'active_listings'
@@ -67,7 +62,7 @@ export interface WidgetTemplate {
   titleByNiche?: Partial<Record<NicheType, string>>;
   icon: LucideIcon;
   defaultVisible: boolean;
-  requiredModule?: 'proposals' | 'calendar' | 'sales' | 'ecommerce';
+  requiredModule?: 'proposals' | 'calendar' | 'sales';
   chartType: ChartType;
   description?: string;
 }
@@ -297,34 +292,6 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetTemplate> = {
     chartType: 'area',
     description: 'Total de obras entregues',
   },
-  // E-commerce specific
-  orders_today: {
-    type: 'orders_today',
-    title: 'Encomendas Hoje',
-    icon: ShoppingCart,
-    defaultVisible: true,
-    requiredModule: 'ecommerce',
-    chartType: 'none',
-    description: 'Pedidos recebidos hoje',
-  },
-  revenue_today: {
-    type: 'revenue_today',
-    title: 'Faturação Hoje',
-    icon: Euro,
-    defaultVisible: true,
-    requiredModule: 'ecommerce',
-    chartType: 'area',
-    description: 'Receita do dia',
-  },
-  low_stock_products: {
-    type: 'low_stock_products',
-    title: 'Produtos em Falta',
-    icon: Package,
-    defaultVisible: true,
-    requiredModule: 'ecommerce',
-    chartType: 'none',
-    description: 'Produtos com stock baixo',
-  },
   // Real estate specific
   visits_this_week: {
     type: 'visits_this_week',
@@ -452,9 +419,6 @@ export const NICHE_DEFAULT_WIDGETS: Record<NicheType, WidgetType[]> = {
     'sales_active',
   ],
   ecommerce: [
-    'orders_today',
-    'revenue_today',
-    'low_stock_products',
     'leads_total',
     'conversion_rate',
     'sales_delivered',
