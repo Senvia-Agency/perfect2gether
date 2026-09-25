@@ -12,6 +12,7 @@ export function useOrganization() {
 
   return useQuery({
     queryKey: ['organization', organization?.id],
+    staleTime: 60_000,
     queryFn: async () => {
       if (!organization?.id) return null;
 

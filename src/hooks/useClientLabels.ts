@@ -3,13 +3,15 @@ import { useOrganization } from './useOrganization';
 import { getClientLabels, NicheLabels, NICHE_CLIENT_LABELS } from '@/lib/niche-labels';
 import { NicheType } from '@/lib/pipeline-templates';
 import { useModules } from './useModules';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useClientLabels(): NicheLabels {
   const { data: org } = useOrganization();
+  const { organization } = useAuth();
   const { modules } = useModules();
   
   return useMemo(() => {
-    const niche = (org?.niche as NicheType) || 'generic';
+    const niche = ((org?.niche ?? organization?.niche) as NicheType) || 'generic';
     const labels = getClientLabels(niche);
 
     // When energy module is off for telecom, revert to generic status labels
@@ -28,5 +30,5 @@ export function useClientLabels(): NicheLabels {
     }
 
     return labels;
-  }, [org?.niche, modules.energy]);
+  }, [org?.niche, organization?.niche, modules.energy]);
 }

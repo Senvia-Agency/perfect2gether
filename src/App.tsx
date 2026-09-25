@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { queryRetryDelay, shouldRetryQuery } from '@/lib/query-resilience';
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedLayoutRoute } from "@/components/auth/ProtectedLayoutRoute";
@@ -68,12 +69,8 @@ const ReleaseNotes = lazy(() => import("./pages/ReleaseNotes"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount, error) => {
-        // Don't retry on auth errors — session expired, retrying is pointless
-        const msg = error instanceof Error ? error.message : String(error);
-        if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('403')) return false;
-        return failureCount < 3;
-      },
+      retry: shouldRetryQuery,
+      retryDelay: queryRetryDelay,
     },
   },
 });

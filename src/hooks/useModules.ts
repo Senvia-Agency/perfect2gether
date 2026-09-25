@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
+import { requireReadSuccess } from '@/lib/query-resilience';
 
 export interface EnabledModules {
   proposals: boolean;
@@ -35,6 +36,14 @@ export function useModules() {
 
   const { data: modules, isLoading } = useQuery({
     queryKey: ['modules', organizationId],
+    staleTime: 60_000,
+    // Auth already loaded this org successfully. Never replace that known
+    // configuration with generic defaults when a later request fails.
+    initialData: organization ? {
+      ...DEFAULT_MODULES,
+      ...(organization.enabled_modules as Partial<EnabledModules> | null ?? {}),
+    } : undefined,
+    initialDataUpdatedAt: 0,
     queryFn: async () => {
       if (!organizationId) return DEFAULT_MODULES;
 
@@ -44,10 +53,7 @@ export function useModules() {
         .eq('id', organizationId)
         .single();
 
-      if (error) {
-        console.error('Error fetching modules:', error);
-        return DEFAULT_MODULES;
-      }
+      requireReadSuccess({ data, error });
 
       const enabledModules = data?.enabled_modules as Record<string, boolean> | null;
       

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { requireReadSuccess } from '@/lib/query-resilience';
 
 export function useClientProposalTypes() {
   const { organization } = useAuth();
@@ -8,6 +9,7 @@ export function useClientProposalTypes() {
 
   const { data: clientTypesMap = {} } = useQuery({
     queryKey: ['client-proposal-types', organization?.id],
+    staleTime: 30_000,
     enabled: !!organization?.id && isTelecom,
     queryFn: async () => {
       // Fetch distinct proposal_type per client_id from proposals
@@ -18,9 +20,7 @@ export function useClientProposalTypes() {
         .not('client_id', 'is', null)
         .not('proposal_type', 'is', null);
 
-      if (proposalError) {
-        console.error('[useClientProposalTypes] Error fetching proposals:', proposalError);
-      }
+      requireReadSuccess({ data: proposalRows, error: proposalError });
 
       // Fetch distinct proposal_type per client_id from sales
       const { data: saleRows, error: saleError } = await supabase
@@ -30,9 +30,7 @@ export function useClientProposalTypes() {
         .not('client_id', 'is', null)
         .not('proposal_type', 'is', null);
 
-      if (saleError) {
-        console.error('[useClientProposalTypes] Error fetching sales:', saleError);
-      }
+      requireReadSuccess({ data: saleRows, error: saleError });
 
       // Fetch distinct equipment_type per client_id from cpes
       // (imported clients have CPEs but no proposals/sales)
@@ -43,9 +41,7 @@ export function useClientProposalTypes() {
         .not('client_id', 'is', null)
         .not('equipment_type', 'is', null);
 
-      if (cpeError) {
-        console.error('[useClientProposalTypes] Error fetching cpes:', cpeError);
-      }
+      requireReadSuccess({ data: cpeRows, error: cpeError });
 
       const map: Record<string, Set<string>> = {};
 
