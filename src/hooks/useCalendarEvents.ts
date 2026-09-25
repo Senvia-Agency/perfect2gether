@@ -38,6 +38,7 @@ export function useCalendarEvents(startDate?: Date, endDate?: Date) {
 
   return useQuery({
     queryKey: ['calendar-events', organization?.id, effectiveUserId, startDate?.toISOString(), endDate?.toISOString()],
+    staleTime: 30_000,
     queryFn: async () => {
       if (!organization?.id) return [];
 

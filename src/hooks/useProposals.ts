@@ -12,6 +12,7 @@ export function useProposals() {
 
   return useQuery({
     queryKey: ['proposals', organization?.id, effectiveUserIds],
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('proposals')

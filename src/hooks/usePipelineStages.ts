@@ -23,6 +23,7 @@ export function usePipelineStages() {
 
   return useQuery({
     queryKey: ["pipeline-stages", organization?.id],
+    staleTime: 60_000,
     queryFn: async () => {
       if (!organization?.id) return [];
       

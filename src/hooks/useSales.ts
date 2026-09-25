@@ -11,6 +11,7 @@ export function useSales({ unfiltered = false }: { unfiltered?: boolean } = {}) 
 
   return useQuery({
     queryKey: ["sales", organization?.id],
+    staleTime: 30_000,
     queryFn: async (): Promise<SaleWithDetails[]> => {
       if (!organization?.id) return [];
 

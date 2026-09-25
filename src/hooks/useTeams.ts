@@ -24,6 +24,7 @@ export function useTeams() {
 
   return useQuery({
     queryKey: ['teams', organization?.id],
+    staleTime: 60_000,
     queryFn: async (): Promise<Team[]> => {
       if (!organization?.id) return [];
 
@@ -63,6 +64,7 @@ export function useAllTeamMembersEntries() {
 
   return useQuery({
     queryKey: ['all-team-members-entries', organization?.id],
+    staleTime: 60_000,
     queryFn: async (): Promise<TeamMemberEntry[]> => {
       if (!organization?.id) return [];
 

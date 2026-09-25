@@ -36,9 +36,15 @@ Deno.serve(async (req) => {
 
     if (authError || !userId) {
       console.error('auth.getUser failed:', authError)
+      // An Auth outage is not an invalid session. Returning 401 here makes the
+      // client refresh a valid token and retry, adding load to the same outage.
+      const authUnavailable = authError && (
+        (authError.status ?? 0) >= 500 || authError.status === 429 ||
+        authError.name === 'AuthRetryableFetchError'
+      )
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: authUnavailable ? 'Serviço de autenticação temporariamente indisponível' : 'Unauthorized' }),
+        { status: authUnavailable ? 503 : 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -165,36 +171,21 @@ Deno.serve(async (req) => {
       orgProfiles = opData || []
     }
 
-    const teamMembers = await Promise.all(
-      members.map(async (member) => {
+    // One DB read, not getUserById + listFactors for every member in parallel.
+    // Never return false security flags when the lookup itself failed.
+    const { data: securityFlags, error: securityError } = await adminClient
+      .rpc('get_team_member_security_flags', { p_user_ids: userIds })
+    if (securityError) throw securityError
+    const securityByUser = new Map<string, { is_banned: boolean; has_mfa: boolean }>(
+      (securityFlags || []).map((flags) => [flags.user_id, flags])
+    )
+
+    const teamMembers = members.map((member) => {
         const profileItem = profiles?.find((p) => p.id === member.user_id)
         const userRole = roles?.find((r) => r.user_id === member.user_id)
         const orgProfile = orgProfiles.find((op) => op.id === member.profile_id)
-
-        const { data: authUser, error: authError } = await adminClient.auth.admin.getUserById(
-          member.user_id
-        )
-
-        if (authError) {
-          console.error(`Error fetching auth user ${member.user_id}:`, authError)
-        }
-
-        const isBanned = authUser?.user?.banned_until
-          ? new Date(authUser.user.banned_until) > new Date()
-          : false
-
-        // Check MFA status
-        let hasMfa = false
-        try {
-          const { data: mfaFactors } = await adminClient.auth.admin.mfa.listFactors({
-            userId: member.user_id,
-          })
-          hasMfa = (mfaFactors?.factors || []).some(
-            (f: any) => f.factor_type === 'totp' && f.status === 'verified'
-          )
-        } catch {
-          // MFA check failed, default to false
-        }
+        const security = securityByUser.get(member.user_id)
+        if (!security) throw new Error('Member security state unavailable')
 
         return {
           id: member.user_id,
@@ -205,14 +196,13 @@ Deno.serve(async (req) => {
           organization_id: organizationId,
           user_id: member.user_id,
           role: userRole?.role || member.role || 'viewer',
-          is_banned: isBanned,
-          has_mfa: hasMfa,
+          is_banned: security.is_banned,
+          has_mfa: security.has_mfa,
           profile_id: member.profile_id || null,
           profile_name: orgProfile?.name || null,
           profile_data_scope: orgProfile?.data_scope || null,
         }
       })
-    )
 
     // If requester is super_admin, also include other super_admin users not in organization_members
     if (isSuperAdmin) {
@@ -241,6 +231,7 @@ Deno.serve(async (req) => {
             user_id: p.id,
             role: 'super_admin',
             is_banned: false,
+            has_mfa: false,
             profile_id: null,
             profile_name: null,
             profile_data_scope: null,

@@ -13,6 +13,7 @@ export function useClients() {
 
   return useQuery({
     queryKey: ['crm-clients', organizationId, effectiveUserIds],
+    staleTime: 30_000,
     queryFn: async () => {
       if (!organizationId) return [];
 

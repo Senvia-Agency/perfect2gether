@@ -13,6 +13,7 @@ export function useLeads() {
   
   return useQuery({
     queryKey: ['leads', organization?.id, effectiveUserIds],
+    staleTime: 30_000,
     queryFn: async () => {
       if (!organization?.id) return [];
       

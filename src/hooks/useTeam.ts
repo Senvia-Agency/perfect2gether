@@ -52,6 +52,9 @@ export function useTeamMembers(options?: { excludeAdmins?: boolean; includeSuppo
       return data || [];
     },
     enabled: !!organization?.id,
+    // Shared by filters and dashboard panels; mounting another consumer must
+    // not fan out into another team/security lookup. Mutations invalidate it.
+    staleTime: 60_000,
     retry: false,
   });
 
