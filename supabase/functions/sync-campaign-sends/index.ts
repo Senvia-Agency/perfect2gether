@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { p2gMfaGate } from '../_shared/p2g-mfa-guard.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +21,9 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const mfaResponse = await p2gMfaGate(req, corsHeaders);
+  if (mfaResponse) return mfaResponse;
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -34,6 +38,33 @@ serve(async (req: Request): Promise<Response> => {
         JSON.stringify({ error: "Missing campaignId or organizationId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    const token = req.headers.get('Authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1];
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      return Response.json({ error: 'Não autorizado' }, { status: 401, headers: corsHeaders });
+    }
+
+    const { data: member, error: memberError } = await supabase
+      .from('organization_members')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (memberError) throw memberError;
+    if (!member) {
+      const { data: superAdmin, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'super_admin')
+        .maybeSingle();
+      if (roleError) throw roleError;
+      if (!superAdmin) {
+        return Response.json({ error: 'Sem acesso a esta organização' }, { status: 403, headers: corsHeaders });
+      }
     }
 
     // Get campaign details

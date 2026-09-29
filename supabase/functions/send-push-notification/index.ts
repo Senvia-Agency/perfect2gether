@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { p2gMfaGate } from '../_shared/p2g-mfa-guard.ts';
 
 interface PushNotificationRequest {
   organization_id: string;
@@ -255,6 +256,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const mfaResponse = await p2gMfaGate(req, corsHeaders);
+  if (mfaResponse) return mfaResponse;
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {

@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { hasInvoiceScope } from '../_shared/invoice-scope.ts'
+import { p2gMfaGate } from '../_shared/p2g-mfa-guard.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,6 +63,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
+
+  const mfaResponse = await p2gMfaGate(req, corsHeaders)
+  if (mfaResponse) return mfaResponse
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!

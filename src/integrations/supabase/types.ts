@@ -4657,6 +4657,7 @@ export type Database = {
     }
     Functions: {
       delete_cancelled_p2g_proposal: { Args: { p_proposal_id: string }; Returns: undefined }
+      p2g_mfa_required: { Args: Record<string, never>; Returns: boolean }
       accept_invite: {
         Args: { _token: string; _user_id: string }
         Returns: boolean

@@ -26,6 +26,10 @@ function loadHandler(name, fixture = {}) {
       calls.push({ kind: 'auth', token });
       return token === 'valid-user' ? { data: { user: { id: 'user-1' } }, error: null } : { data: { user: null }, error: { message: 'Invalid JWT' } };
     } },
+    async rpc(name) {
+      calls.push({ kind: 'rpc', name });
+      return { data: fixture.mfaAllowed ?? true, error: null };
+    },
     from(table) {
       calls.push({ kind: 'table', table });
       const filters = [];
@@ -51,7 +55,7 @@ function loadHandler(name, fixture = {}) {
   const globals = {
     Request, Response, Headers, URL,
     console: { log() {}, error() {} },
-    Deno: { env: { get: name => ({ SUPABASE_URL: 'https://supabase.example.test', SUPABASE_SERVICE_ROLE_KEY: 'fake-service' })[name] }, serve: callback => { handler = callback; } },
+    Deno: { env: { get: name => ({ SUPABASE_URL: 'https://supabase.example.test', SUPABASE_SERVICE_ROLE_KEY: 'fake-service', SUPABASE_ANON_KEY: 'fake-anon' })[name] }, serve: callback => { handler = callback; } },
     fetch: async (url, options) => {
       calls.push({ kind: 'fetch', url, body: JSON.parse(options.body) });
       return Response.json(name === 'send-proposal-email' ? { messageId: 'fake-message' } : { Status: 1, Sid: 'fake-session' });
@@ -64,7 +68,12 @@ function loadHandler(name, fixture = {}) {
     cache.set(path, module.exports);
     vm.runInNewContext(output, { ...globals, module, exports: module.exports, require: specifier => {
       if (specifier.includes('edge-runtime.d.ts')) return {};
-      if (specifier.includes('supabase-js')) return { createClient: () => client };
+      if (specifier.includes('supabase-js')) return { createClient: (_url, key, options) => key === 'fake-anon' ? {
+        async rpc(name) {
+          calls.push({ kind: 'rpc', name, key, authorization: options?.global?.headers?.Authorization });
+          return { data: fixture.mfaAllowed ?? true, error: null };
+        },
+      } : client };
       return specifier.startsWith('.') ? load(resolve(dirname(path), specifier)) : require(specifier);
     } }, { filename: path });
     return module.exports;
@@ -79,6 +88,15 @@ function loadHandler(name, fixture = {}) {
 
 function assertNoPrivilegedWork(calls) {
   assert.equal(calls.some(call => call.kind === 'fetch' || (call.kind === 'table' && call.table === 'organizations')), false);
+}
+
+for (const name of ['send-proposal-email', 'keyinvoice-auth']) {
+  test(`${name} denies AAL1 before privileged work`, async () => {
+    const app = loadHandler(name, { mfaAllowed: false });
+    assert.equal((await app.send()).status, 403);
+    assert.deepEqual(app.calls.filter(call => call.kind === 'rpc').map(call => [call.key, call.authorization]), [['fake-anon', 'Bearer valid-user']]);
+    assertNoPrivilegedWork(app.calls);
+  });
 }
 
 for (const name of ['send-proposal-email', 'keyinvoice-auth']) {

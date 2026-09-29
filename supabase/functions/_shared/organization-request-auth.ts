@@ -1,4 +1,4 @@
-import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 export class RequestAccessError extends Error {
   constructor(readonly status: 400 | 401 | 403, message: string) {
@@ -12,6 +12,17 @@ export async function requireUser(client: SupabaseClient, req: Request): Promise
   if (!bearer?.[1]) throw new RequestAccessError(401, 'Não autorizado')
   const { data: { user }, error } = await client.auth.getUser(bearer[1])
   if (error || !user) throw new RequestAccessError(401, 'Não autorizado')
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!supabaseUrl || !anonKey) throw new RequestAccessError(403, 'Não foi possível confirmar a segurança da conta')
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${bearer[1]}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  const { data: mfaAllowed, error: mfaError } = await userClient.rpc('p2g_mfa_ok')
+  if (mfaError || mfaAllowed !== true) {
+    throw new RequestAccessError(403, 'Confirme a autenticação de dois fatores para continuar.')
+  }
   return user.id
 }
 

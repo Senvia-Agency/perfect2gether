@@ -24,7 +24,7 @@ export function ChallengeMFA({ onSuccess, onCancel }: ChallengeMFAProps) {
     setIsVerifying(true);
     try {
       const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totpFactor = factors?.totp?.[0];
+      const totpFactor = factors?.totp?.find(factor => factor.status === 'verified');
 
       if (!totpFactor) {
         throw new Error('Nenhum fator TOTP encontrado');
