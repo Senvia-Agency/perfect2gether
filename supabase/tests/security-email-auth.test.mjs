@@ -26,6 +26,10 @@ function loadHandler(name, fixture = {}) {
       calls.push({ kind: 'auth', token });
       return token === 'valid-user' ? { data: { user: { id: 'user-1' } }, error: null } : { data: { user: null }, error: { message: 'Invalid JWT' } };
     } },
+    async rpc(name) {
+      calls.push({ kind: 'rpc', name });
+      return { data: fixture.mfaAllowed ?? true, error: null };
+    },
     from(table) {
       calls.push({ kind: 'table', table });
       const filters = [];
@@ -79,6 +83,14 @@ function loadHandler(name, fixture = {}) {
 
 function assertNoPrivilegedWork(calls) {
   assert.equal(calls.some(call => call.kind === 'fetch' || (call.kind === 'table' && call.table === 'organizations')), false);
+}
+
+for (const name of ['send-proposal-email', 'keyinvoice-auth']) {
+  test(`${name} denies AAL1 before privileged work`, async () => {
+    const app = loadHandler(name, { mfaAllowed: false });
+    assert.equal((await app.send()).status, 403);
+    assertNoPrivilegedWork(app.calls);
+  });
 }
 
 for (const name of ['send-proposal-email', 'keyinvoice-auth']) {

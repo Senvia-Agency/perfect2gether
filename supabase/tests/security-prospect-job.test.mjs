@@ -7,7 +7,7 @@ import ts from 'typescript';
 const source = readFileSync(new URL('../functions/check-prospect-job/index.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 
-function fixture({ visible = true, status = 'completed', valid = true, apify = 'RUNNING' } = {}) {
+function fixture({ visible = true, status = 'completed', valid = true, apify = 'RUNNING', mfaBlocked = false } = {}) {
   let handler;
   const calls = [];
   const job = { id: 'job-1', organization_id: 'org-1', status, result: { total: 3 }, apify_run_id: 'run-1' };
@@ -29,7 +29,9 @@ function fixture({ visible = true, status = 'completed', valid = true, apify = '
     },
   });
   vm.runInNewContext(compiled, {
-    exports: {}, require: () => ({ createClient: (_url, key) => client(key === 'service') }),
+    exports: {}, require: specifier => specifier.includes('p2g-mfa-guard')
+      ? { p2gMfaGate: async () => mfaBlocked ? Response.json({ error: '2FA required' }, { status: 403 }) : null }
+      : { createClient: (_url, key) => client(key === 'service') },
     Request, Response, console: { error() {} },
     Deno: { serve: callback => { handler = callback; }, env: { get: key => ({ SUPABASE_SERVICE_ROLE_KEY: 'service', SUPABASE_ANON_KEY: 'anon', APIFY_API_TOKEN: 'fake-apify' })[key] } },
     fetch: async () => { calls.push({ kind: 'external' }); return Response.json({ data: { status: apify } }); },
@@ -76,4 +78,9 @@ test('anonymous requests fail before database reads', async () => {
 test('CORS preflight remains available', async () => {
   const f = fixture();
   assert.equal((await f.send(null, 'OPTIONS')).status, 200);
+});
+test('AAL1 cannot read a cached prospect job', async () => {
+  const f = fixture({ mfaBlocked: true });
+  assert.equal((await f.send()).status, 403);
+  assert.equal(f.calls.length, 0);
 });
