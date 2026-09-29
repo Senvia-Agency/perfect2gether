@@ -363,3 +363,29 @@ export function useDeleteProposal() {
     },
   });
 }
+
+export function useDeleteCancelledP2gProposal() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (proposalId: string) => {
+      const { error } = await supabase.rpc('delete_cancelled_p2g_proposal', {
+        p_proposal_id: proposalId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics-proposals-ops'] });
+      toast({ title: 'Proposta e venda cancelada eliminadas' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Não foi possível eliminar', description: error.message, variant: 'destructive' });
+    },
+  });
+}

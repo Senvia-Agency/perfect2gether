@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useUpdateProposal, useDeleteProposal, useProposalProducts } from '@/hooks/useProposals';
+import { useUpdateProposal, useDeleteProposal, useDeleteCancelledP2gProposal, useProposalProducts } from '@/hooks/useProposals';
 import { useProposalCpes } from '@/hooks/useProposalCpes';
 import { useUpdateLeadStatus, useUpdateLead } from '@/hooks/useLeads';
 import { useFinalStages } from '@/hooks/usePipelineStages';
@@ -74,11 +74,12 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   const { configs: SERVICOS_PRODUCT_CONFIGS } = useServicosProducts();
   const updateProposal = useUpdateProposal();
   const deleteProposal = useDeleteProposal();
+  const deleteCancelledProposal = useDeleteCancelledP2gProposal();
   const updateLeadStatus = useUpdateLeadStatus();
   const updateLead = useUpdateLead();
   const { finalPositiveStage, finalNegativeStage } = useFinalStages();
   const sendProposalEmail = useSendProposalEmail();
-  const { can } = usePermissions();
+  const { can, isAdmin } = usePermissions();
   const canEditProposal = can('proposals', 'proposals', 'edit');
   const canDeleteProposal = can('proposals', 'proposals', 'delete');
   const canSendProposal = can('proposals', 'proposals', 'send');
@@ -125,6 +126,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   });
 
   const hasLinkedSale = !!linkedSale || !!proposal?.has_sale;
+  const canDeleteWithSale = isAdmin && linkedSale?.status === 'cancelled' && organization?.id === '96a3950e-31be-4c6d-abed-b82968c0d7e9';
   const canChangeProposal = canEditProposal && !loadingLinkedSale && !hasLinkedSale;
 
   // Sincronizar estado quando proposal muda
@@ -368,7 +370,8 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   };
 
   const handleDelete = () => {
-    deleteProposal.mutate(proposal.id, {
+    const mutation = hasLinkedSale ? deleteCancelledProposal : deleteProposal;
+    mutation.mutate(proposal.id, {
       onSuccess: () => {
         setShowDeleteConfirm(false);
         onOpenChange(false);
@@ -813,7 +816,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                             {!isBrevoConfigured ? 'Configurar Email' : 'Enviar Email'}
                           </Button>
                         )}
-                        {canDeleteProposal && !hasLinkedSale && !loadingLinkedSale && (
+                        {canDeleteProposal && !loadingLinkedSale && (!hasLinkedSale || canDeleteWithSale) && (
                           <Button
                             variant="destructive"
                             size="sm"
@@ -821,7 +824,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                             onClick={() => setShowDeleteConfirm(true)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Eliminar
+                            {hasLinkedSale ? 'Eliminar proposta e venda cancelada' : 'Eliminar'}
                           </Button>
                         )}
                       </CardContent>
@@ -848,7 +851,9 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar proposta?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem a certeza que pretende eliminar esta proposta? Esta ação não pode ser revertida.
+              {hasLinkedSale
+                ? 'Esta ação elimina a proposta e a venda cancelada associada. Não pode ser revertida.'
+                : 'Tem a certeza que pretende eliminar esta proposta? Esta ação não pode ser revertida.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
