@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { p2gMfaGate } from '../_shared/p2g-mfa-guard.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,7 +7,7 @@ const corsHeaders = {
 };
 
 interface ManageMemberRequest {
-  action: 'change_password' | 'change_role' | 'toggle_status' | 'update_profile' | 'delete_member' | 'enroll_mfa' | 'verify_mfa' | 'unenroll_mfa';
+  action: 'change_password' | 'change_role' | 'toggle_status' | 'update_profile' | 'delete_member' | 'send_mfa_setup' | 'unenroll_mfa';
   user_id: string;
   new_password?: string;
   new_role?: 'admin' | 'viewer' | 'salesperson';
@@ -14,11 +15,6 @@ interface ManageMemberRequest {
   full_name?: string;
   email?: string;
   phone?: string;
-  // MFA fields
-  factor_id?: string;
-  code?: string;
-  user_email?: string;
-  user_password?: string;
 }
 
 Deno.serve(async (req) => {
@@ -26,6 +22,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const mfaResponse = await p2gMfaGate(req, corsHeaders);
+  if (mfaResponse) return mfaResponse;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -85,7 +84,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: ManageMemberRequest = await req.json();
-    const { action, user_id, new_password, new_role, profile_id, full_name, email, phone, factor_id, code, user_email, user_password } = body;
+    const { action, user_id, new_password, new_role, profile_id, full_name, email, phone } = body;
 
     console.log(`Action: ${action}, Target user: ${user_id}`);
 
@@ -515,175 +514,66 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case 'enroll_mfa': {
-        // Admin enrolls MFA for a user — no password needed
-        // Look up user's auth email
-        const { data: enrollTarget, error: enrollTargetErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
-        if (enrollTargetErr || !enrollTarget?.user?.email) {
-          return new Response(
-            JSON.stringify({ error: 'Utilizador não encontrado ou sem email' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+      case 'send_mfa_setup': {
+        const p2gOrganizationId = '96a3950e-31be-4c6d-abed-b82968c0d7e9';
+        const { data: targetMembership, error: membershipError } = await supabaseAdmin
+          .from('organization_members')
+          .select('id')
+          .eq('organization_id', p2gOrganizationId)
+          .eq('user_id', user_id)
+          .eq('is_active', true)
+          .maybeSingle();
+        const { data: adminMembership } = isSuperAdmin ? { data: true } : await supabaseAdmin
+          .from('organization_members')
+          .select('id')
+          .eq('organization_id', p2gOrganizationId)
+          .eq('user_id', currentUser.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (membershipError || !targetMembership || !adminMembership) {
+          return new Response(JSON.stringify({ error: 'Membro P2G não encontrado nesta organização' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
-
-        // Remove any existing TOTP factors via admin API BEFORE generating session
-        // (aal1 sessions can't unenroll verified factors, so we use the admin API)
-        const { data: priorFactors } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: user_id });
-        if (priorFactors?.factors && priorFactors.factors.length > 0) {
-          for (const f of priorFactors.factors) {
-            if (f.factor_type === 'totp') {
-              await supabaseAdmin.auth.admin.mfa.deleteFactor({ id: f.id, userId: user_id });
-            }
-          }
+        const { data: target, error: targetError } = await supabaseAdmin.auth.admin.getUserById(user_id);
+        if (targetError || !target?.user?.email) {
+          return new Response(JSON.stringify({ error: 'Utilizador sem email de acesso' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
-
-        // Generate a magic link to obtain a session token without the user's password
-        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
-          email: enrollTarget.user.email,
-        });
-
-        if (linkError || !linkData?.properties?.hashed_token) {
-          console.error('MFA generateLink error:', linkError);
-          return new Response(
-            JSON.stringify({ error: `Erro ao gerar sessão: ${linkError?.message || 'Unknown'}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+        const { data: org, error: orgError } = await supabaseAdmin
+          .from('organizations')
+          .select('brevo_api_key, brevo_sender_email, name')
+          .eq('id', p2gOrganizationId)
+          .single();
+        if (orgError || !org) {
+          return new Response(JSON.stringify({ error: 'Organização não encontrada' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
-
-        // Verify the OTP to get a user session
-        const enrollUserClient = createClient(supabaseUrl, supabaseAnonKey, {
-          auth: { persistSession: false },
-        });
-
-        const { data: otpData, error: otpError } = await enrollUserClient.auth.verifyOtp({
-          token_hash: linkData.properties.hashed_token,
-          type: 'magiclink',
-        });
-
-        if (otpError || !otpData.session) {
-          console.error('MFA OTP verify error:', otpError);
-          return new Response(
-            JSON.stringify({ error: `Erro ao criar sessão: ${otpError?.message || 'Unknown'}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+        const apiKey = org.brevo_api_key || Deno.env.get('BREVO_API_KEY');
+        if (!apiKey) {
+          return new Response(JSON.stringify({ error: 'Integração de email não configurada' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
-
-        // Create a client with the user's session to enroll MFA
-        const mfaClient = createClient(supabaseUrl, supabaseAnonKey, {
-          global: { headers: { Authorization: `Bearer ${otpData.session.access_token}` } },
-          auth: { persistSession: false },
-        });
-
-        // Enroll new TOTP factor
-        const { data: enrollData, error: enrollError } = await mfaClient.auth.mfa.enroll({
-          factorType: 'totp',
-          friendlyName: 'Perfect2Gether',
-          issuer: 'Perfect2Gether',
-        });
-
-        if (enrollError || !enrollData) {
-          console.error('MFA enroll error:', enrollError);
-          return new Response(
-            JSON.stringify({ error: `Erro ao ativar MFA: ${enrollError?.message || 'Unknown'}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        console.log(`MFA enrolled for user ${user_id}, factor: ${enrollData.id}`);
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            factor_id: enrollData.id,
-            totp_uri: enrollData.totp.uri,
-            qr_code: enrollData.totp.qr_code,
+        const loginUrl = 'https://app.perfect2gether.pt/';
+        const emailResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: { accept: 'application/json', 'api-key': apiKey, 'content-type': 'application/json' },
+          body: JSON.stringify({
+            sender: { email: org.brevo_sender_email || 'noreply@perfect2gether.pt', name: 'Perfect2Gether' },
+            to: [{ email: target.user.email }],
+            subject: 'Perfect2Gether — Ative a autenticação de dois fatores',
+            htmlContent: '<p>Para proteger o seu acesso ao Perfect2Gether, entre na sua conta e ative a autenticação de dois fatores.</p>' +
+              '<p>Depois de iniciar sessão, verá o código QR no seu próprio ecrã. Digitalize-o com a sua aplicação de autenticação e confirme o código de seis dígitos.</p>' +
+              '<p><a href="' + loginUrl + '">Entrar no Perfect2Gether</a></p>' +
+              '<p>Se não pediu este acesso, contacte o administrador.</p>',
           }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      case 'verify_mfa': {
-        // Admin verifies the TOTP code to complete enrollment — no password needed
-        if (!factor_id || !code) {
-          return new Response(
-            JSON.stringify({ error: 'factor_id e code são obrigatórios' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Look up user's auth email
-        const { data: verifyTarget, error: verifyTargetErr } = await supabaseAdmin.auth.admin.getUserById(user_id);
-        if (verifyTargetErr || !verifyTarget?.user?.email) {
-          return new Response(
-            JSON.stringify({ error: 'Utilizador não encontrado' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Generate magic link to get session
-        const { data: verifyLinkData, error: verifyLinkErr } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
-          email: verifyTarget.user.email,
         });
-
-        if (verifyLinkErr || !verifyLinkData?.properties?.hashed_token) {
-          return new Response(
-            JSON.stringify({ error: `Erro ao gerar sessão: ${verifyLinkErr?.message}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+        if (!emailResponse.ok) {
+          console.error('Brevo MFA setup email failed:', emailResponse.status);
+          return new Response(JSON.stringify({ error: 'Não foi possível enviar o email de ativação' }),
+            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
-
-        const verifyUserClient = createClient(supabaseUrl, supabaseAnonKey, {
-          auth: { persistSession: false },
-        });
-
-        const { data: verifyOtpData, error: verifyOtpErr } = await verifyUserClient.auth.verifyOtp({
-          token_hash: verifyLinkData.properties.hashed_token,
-          type: 'magiclink',
-        });
-
-        if (verifyOtpErr || !verifyOtpData.session) {
-          return new Response(
-            JSON.stringify({ error: `Erro ao criar sessão: ${verifyOtpErr?.message}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const verifyMfaClient = createClient(supabaseUrl, supabaseAnonKey, {
-          global: { headers: { Authorization: `Bearer ${verifyOtpData.session.access_token}` } },
-          auth: { persistSession: false },
-        });
-
-        // Create challenge and verify
-        const { data: challengeData, error: challengeError } = await verifyMfaClient.auth.mfa.challenge({
-          factorId: factor_id,
-        });
-
-        if (challengeError || !challengeData) {
-          console.error('MFA challenge error:', challengeError);
-          return new Response(
-            JSON.stringify({ error: `Erro ao criar challenge: ${challengeError?.message}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const { error: verifyError } = await verifyMfaClient.auth.mfa.verify({
-          factorId: factor_id,
-          challengeId: challengeData.id,
-          code: code,
-        });
-
-        if (verifyError) {
-          console.error('MFA verify error:', verifyError);
-          return new Response(
-            JSON.stringify({ error: 'Código inválido. Verifique o código na aplicação de autenticação.' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        console.log(`MFA verified for user ${user_id}, factor: ${factor_id}`);
-        break;
+        return new Response(JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       case 'unenroll_mfa': {

@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { useMfaCheckpoint } from './MfaCheckpoint';
 
 interface SuperAdminRouteProps {
   children: React.ReactNode;
@@ -8,6 +9,7 @@ interface SuperAdminRouteProps {
 
 export function SuperAdminRoute({ children }: SuperAdminRouteProps) {
   const { user, isSuperAdmin, isLoading } = useAuth();
+  const mfaCheckpoint = useMfaCheckpoint();
 
   if (isLoading) {
     return (
@@ -20,6 +22,8 @@ export function SuperAdminRoute({ children }: SuperAdminRouteProps) {
   if (!user) {
     return <Navigate to="/" replace />;
   }
+
+  if (mfaCheckpoint) return mfaCheckpoint;
 
   if (!isSuperAdmin) {
     return <Navigate to="/dashboard" replace />;

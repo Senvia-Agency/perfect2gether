@@ -12,6 +12,10 @@ export async function requireUser(client: SupabaseClient, req: Request): Promise
   if (!bearer?.[1]) throw new RequestAccessError(401, 'Não autorizado')
   const { data: { user }, error } = await client.auth.getUser(bearer[1])
   if (error || !user) throw new RequestAccessError(401, 'Não autorizado')
+  const { data: mfaAllowed, error: mfaError } = await client.rpc('p2g_mfa_ok')
+  if (mfaError || mfaAllowed !== true) {
+    throw new RequestAccessError(403, 'Confirme a autenticação de dois fatores para continuar.')
+  }
   return user.id
 }
 

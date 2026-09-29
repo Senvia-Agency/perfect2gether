@@ -2,10 +2,9 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode, useC
 import type { User, Session } from '@supabase/auth-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole } from '@/types';
+import { resolveMfaStatus, type MFAStatus } from '@/lib/mfaAccess';
 
 const ACTIVE_ORG_KEY = 'p2g_active_organization_id';
-
-type MFAStatus = 'none' | 'pending' | 'verified';
 
 interface Profile {
   id: string;
@@ -59,6 +58,7 @@ interface AuthContextType {
   needsOrgSelection: boolean;
   mfaStatus: MFAStatus;
   completeMfaChallenge: () => void;
+  retryMfaCheck: () => void;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refetchUserData: () => Promise<void>;
@@ -82,33 +82,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userDataRetry, setUserDataRetry] = useState(0);
   const authUserIdRef = useRef<string | null>(null);
   const [needsOrgSelection, setNeedsOrgSelection] = useState(false);
-  const [mfaStatus, setMfaStatus] = useState<MFAStatus>('none');
+  const [mfaStatus, setMfaStatus] = useState<MFAStatus>('checking');
 
   const isSuperAdmin = roles.includes('super_admin');
 
-  // Check MFA assurance level
   const checkMFAStatus = useCallback(async () => {
     try {
-      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (error || !data) {
-        setMfaStatus('none');
-        return;
-      }
-      if (data.nextLevel === 'aal2' && data.currentLevel !== 'aal2') {
-        setMfaStatus('pending');
-      } else if (data.currentLevel === 'aal2') {
-        setMfaStatus('verified');
-      } else {
-        setMfaStatus('none');
-      }
+      setMfaStatus('checking');
+      const { data: required, error: requirementError } = await supabase.rpc('p2g_mfa_required');
+      if (requirementError) throw requirementError;
+      const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError || !assurance) throw assuranceError ?? new Error('Estado 2FA indisponível');
+      setMfaStatus(resolveMfaStatus(required, assurance));
     } catch {
-      setMfaStatus('none');
+      setMfaStatus('error');
     }
   }, []);
 
   const completeMfaChallenge = useCallback(() => {
-    setMfaStatus('verified');
-  }, []);
+    void checkMFAStatus();
+  }, [checkMFAStatus]);
 
   // Load organization by ID
   const loadOrganization = useCallback(async (orgId: string) => {
@@ -205,10 +198,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    if (user?.id) {
+    if (user?.id && (mfaStatus === 'none' || mfaStatus === 'verified')) {
       fetchUserData(user.id);
-      checkMFAStatus();
-    } else {
+    } else if (!user?.id) {
       setProfile(null);
       setOrganization(null);
       setOrganizations([]);
@@ -222,7 +214,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, loadOrganization, checkMFAStatus, userDataRetry]);
+  }, [user?.id, loadOrganization, mfaStatus, userDataRetry]);
+
+  useEffect(() => {
+    if (user?.id) void checkMFAStatus();
+  }, [user?.id, checkMFAStatus]);
 
   const retryUserData = () => {
     if (!user?.id) return;
@@ -250,6 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setOrganizations([]);
         setRoles([]);
         setNeedsOrgSelection(false);
+        setMfaStatus(nextUserId ? 'checking' : 'none');
       }
 
       setSession(nextSession);
@@ -296,6 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNeedsOrgSelection(false);
     setUserDataError(null);
     setIsLoadingUserData(false);
+    setMfaStatus('none');
     authUserIdRef.current = null;
     
     // Limpar localStorage
@@ -376,12 +374,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organization,
         organizations,
         roles,
-        isLoading: isLoading || isLoadingUserData,
+        isLoading: isLoading || (isLoadingUserData && (mfaStatus === 'none' || mfaStatus === 'verified')),
         userDataError,
         isSuperAdmin,
         needsOrgSelection,
         mfaStatus,
         completeMfaChallenge,
+        retryMfaCheck: () => { void checkMFAStatus(); },
         signIn,
         signOut,
         refetchUserData,

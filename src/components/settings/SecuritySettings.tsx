@@ -43,6 +43,7 @@ export function SecuritySettings({
 }: SecuritySettingsProps) {
   const { toast } = useToast();
   const [hasMFA, setHasMFA] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isDisabling, setIsDisabling] = useState(false);
   const [showEnroll, setShowEnroll] = useState(false);
@@ -50,6 +51,9 @@ export function SecuritySettings({
   const checkMFAStatus = async () => {
     setIsLoading(true);
     try {
+      const { data: required, error: requiredError } = await supabase.rpc('p2g_mfa_required');
+      if (requiredError) throw requiredError;
+      setMfaRequired(required);
       const { data } = await supabase.auth.mfa.listFactors();
       const verifiedFactors = data?.totp?.filter(f => f.status === 'verified') || [];
       setHasMFA(verifiedFactors.length > 0);
@@ -67,6 +71,9 @@ export function SecuritySettings({
   const handleDisableMFA = async () => {
     setIsDisabling(true);
     try {
+      const { data: required, error: requiredError } = await supabase.rpc('p2g_mfa_required');
+      if (requiredError) throw requiredError;
+      if (required) throw new Error('O 2FA é obrigatório. Contacte o administrador para recuperar o acesso.');
       const { data } = await supabase.auth.mfa.listFactors();
       const totpFactors = data?.totp || [];
 
@@ -150,7 +157,11 @@ export function SecuritySettings({
               : 'Ative a autenticação de dois fatores para adicionar uma camada extra de segurança à sua conta.'}
           </p>
 
-          {hasMFA ? (
+          {hasMFA && mfaRequired && (
+            <p className="text-sm text-muted-foreground">O 2FA é obrigatório para esta conta. Se perder o dispositivo, contacte o administrador.</p>
+          )}
+
+          {hasMFA && !mfaRequired ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm" disabled={isDisabling}>
@@ -176,11 +187,11 @@ export function SecuritySettings({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          ) : (
+          ) : !hasMFA ? (
             <Button onClick={() => setShowEnroll(true)} size="sm">
               Ativar 2FA
             </Button>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 

@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-import { Users, UserPlus, Copy, X, Check, Clock, Loader2, RefreshCw, Eye, EyeOff, MoreHorizontal, Key, UserCog, Ban, CheckCircle, Mail, Pencil, Phone, Trash2, Bell, ShieldCheck, ShieldOff, Smartphone, QrCode } from 'lucide-react';
+import { Users, UserPlus, Copy, X, Check, Clock, Loader2, RefreshCw, Eye, EyeOff, MoreHorizontal, Key, UserCog, Ban, CheckCircle, Mail, Pencil, Phone, Trash2, Bell, ShieldCheck, ShieldOff } from 'lucide-react';
 
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -112,11 +112,6 @@ export function TeamTab() {
   const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
 
   // MFA state
-  const [mfaModalOpen, setMfaModalOpen] = useState(false);
-  const [mfaStep, setMfaStep] = useState<'loading' | 'qr' | 'verify'>('loading');
-  const [mfaQrCode, setMfaQrCode] = useState('');
-  const [mfaFactorId, setMfaFactorId] = useState('');
-  const [mfaVerifyCode, setMfaVerifyCode] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
   const [unenrollConfirmOpen, setUnenrollConfirmOpen] = useState(false);
 
@@ -456,44 +451,16 @@ export function TeamTab() {
   };
 
   // MFA handlers
-  const openMfaEnrollModal = async (member: TeamMember) => {
-    setSelectedMember(member);
-    setMfaStep('loading');
-    setMfaQrCode('');
-    setMfaFactorId('');
-    setMfaVerifyCode('');
-    setMfaModalOpen(true);
-
-    // Start enrollment immediately — no password needed
-    try {
-      const data = await invokeFunction<{ qr_code: string; factor_id: string }>('manage-team-member', {
-        action: 'enroll_mfa',
-        user_id: member.user_id,
-      });
-      setMfaQrCode(data.qr_code);
-      setMfaFactorId(data.factor_id);
-      setMfaStep('qr');
-    } catch (err: any) {
-      toast({ title: 'Erro ao ativar 2FA', description: err.message, variant: 'destructive' });
-      setMfaModalOpen(false);
-    }
-  };
-
-  const handleMfaVerify = async () => {
-    if (!selectedMember || !mfaFactorId || !mfaVerifyCode) return;
+  const sendMfaSetupEmail = async (member: TeamMember) => {
     setMfaLoading(true);
     try {
       await invokeFunction('manage-team-member', {
-        action: 'verify_mfa',
-        user_id: selectedMember.user_id,
-        factor_id: mfaFactorId,
-        code: mfaVerifyCode,
+        action: 'send_mfa_setup',
+        user_id: member.user_id,
       });
-      toast({ title: '2FA ativado', description: `A autenticação de dois fatores foi ativada para ${selectedMember.full_name}.` });
-      setMfaModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['team-members'] });
-    } catch (err: any) {
-      toast({ title: 'Código inválido', description: err.message || 'Verifique o código e tente novamente.', variant: 'destructive' });
+      toast({ title: 'Convite 2FA enviado', description: 'O utilizador recebe um link e ativa o 2FA na própria conta.' });
+    } catch (error) {
+      toast({ title: 'Erro ao enviar convite 2FA', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     } finally {
       setMfaLoading(false);
     }
@@ -899,7 +866,7 @@ export function TeamTab() {
                               Desativar 2FA
                             </DropdownMenuItem>
                           ) : (
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => openMfaEnrollModal(member)}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => { void sendMfaSetupEmail(member); }} disabled={mfaLoading}>
                               <ShieldCheck className="mr-2 h-4 w-4" />
                               Ativar 2FA
                             </DropdownMenuItem>
@@ -1392,85 +1359,6 @@ export function TeamTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* MFA Enrollment Modal */}
-      <Dialog open={mfaModalOpen} onOpenChange={(open) => { if (!open) setMfaModalOpen(false); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Smartphone className="h-5 w-5" />
-              Ativar Autenticação de Dois Fatores
-            </DialogTitle>
-            <DialogDescription>
-              {mfaStep === 'loading' && `A gerar código QR para ${selectedMember?.full_name}...`}
-              {mfaStep === 'qr' && 'Leia o código QR com a aplicação de autenticação (Microsoft Authenticator, Google Authenticator, etc.)'}
-              {mfaStep === 'verify' && 'Introduza o código de 6 dígitos apresentado na aplicação para confirmar a ativação.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4 space-y-4">
-            {mfaStep === 'loading' && (
-              <div className="flex flex-col items-center gap-3 py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">A gerar código QR...</p>
-              </div>
-            )}
-
-            {mfaStep === 'qr' && mfaQrCode && (
-              <div className="space-y-4">
-                <div className="flex justify-center p-4 bg-white rounded-lg">
-                  <img
-                    src={mfaQrCode}
-                    alt="QR Code para autenticação"
-                    className="w-48 h-48"
-                  />
-                </div>
-                <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-                  <QrCode className="h-4 w-4 mt-0.5 shrink-0" />
-                  <p>Abra a aplicação de autenticação no telemóvel e leia este código QR. Depois clique em "Verificar" para confirmar.</p>
-                </div>
-              </div>
-            )}
-
-            {mfaStep === 'verify' && (
-              <div className="space-y-2">
-                <Label htmlFor="mfa-verify-code">Código de verificação</Label>
-                <Input
-                  id="mfa-verify-code"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={mfaVerifyCode}
-                  onChange={(e) => setMfaVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  onKeyDown={(e) => e.key === 'Enter' && mfaVerifyCode.length === 6 && handleMfaVerify()}
-                  className="text-center text-2xl tracking-[0.5em] font-mono"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Introduza o código de 6 dígitos da aplicação de autenticação.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMfaModalOpen(false)}>
-              Cancelar
-            </Button>
-            {mfaStep === 'qr' && (
-              <Button onClick={() => setMfaStep('verify')}>
-                Verificar
-              </Button>
-            )}
-            {mfaStep === 'verify' && (
-              <Button onClick={handleMfaVerify} disabled={mfaVerifyCode.length !== 6 || mfaLoading}>
-                {mfaLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Confirmar Ativação
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Unenroll MFA Confirmation */}
       <AlertDialog open={unenrollConfirmOpen} onOpenChange={setUnenrollConfirmOpen}>

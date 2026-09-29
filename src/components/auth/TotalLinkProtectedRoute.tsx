@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { AccountLoading } from './AccountLoading';
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
-import { ChallengeMFA } from "./ChallengeMFA";
+import { useMfaCheckpoint } from './MfaCheckpoint';
 import { OrganizationSelector } from "./OrganizationSelector";
 import { AccountLoadError } from './AccountLoadError';
 
@@ -19,12 +19,11 @@ export function TotalLinkProtectedRoute() {
     needsOrgSelection,
     organizations,
     selectOrganization,
-    mfaStatus,
-    completeMfaChallenge,
     organization,
   } = useAuth();
   const { isLoadingPermissions, hasSystem } = usePermissions();
   const location = useLocation();
+  const mfaCheckpoint = useMfaCheckpoint();
 
   if (isLoading) {
     return <AccountLoading totalLink />;
@@ -34,9 +33,7 @@ export function TotalLinkProtectedRoute() {
     return <Navigate to="/total-link/login" state={{ from: location }} replace />;
   }
 
-  if (mfaStatus === "pending") {
-    return <ChallengeMFA onSuccess={completeMfaChallenge} />;
-  }
+  if (mfaCheckpoint) return mfaCheckpoint;
 
   if (userDataError) {
     return <AccountLoadError retry={retryUserData} failed />;

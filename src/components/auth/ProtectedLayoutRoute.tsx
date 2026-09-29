@@ -3,7 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AccountLoading } from './AccountLoading';
 import { OrganizationSelector } from './OrganizationSelector';
-import { ChallengeMFA } from './ChallengeMFA';
+import { useMfaCheckpoint } from './MfaCheckpoint';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
 import { usePermissions } from '@/hooks/usePermissions';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
@@ -12,8 +12,9 @@ import { WhatsNewDialog } from '@/components/announcements/WhatsNewDialog';
 import { AccountLoadError } from './AccountLoadError';
 
 export function ProtectedLayoutRoute() {
-  const { user, isLoading, userDataError, retryUserData, needsOrgSelection, organizations, selectOrganization, mfaStatus, completeMfaChallenge, organization, profile } = useAuth();
+  const { user, isLoading, userDataError, retryUserData, needsOrgSelection, organizations, selectOrganization, organization, profile } = useAuth();
   const location = useLocation();
+  const mfaCheckpoint = useMfaCheckpoint();
   const { data: pipelineStages, isLoading: stagesLoading } = usePipelineStages();
   const { isAdmin, isLoadingPermissions, hasSystem } = usePermissions();
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -26,9 +27,7 @@ export function ProtectedLayoutRoute() {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  if (mfaStatus === 'pending') {
-    return <ChallengeMFA onSuccess={completeMfaChallenge} />;
-  }
+  if (mfaCheckpoint) return mfaCheckpoint;
 
   if (userDataError) {
     return <AccountLoadError retry={retryUserData} failed />;

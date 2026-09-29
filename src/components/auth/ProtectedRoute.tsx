@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { OrganizationSelector } from './OrganizationSelector';
-import { ChallengeMFA } from './ChallengeMFA';
+import { useMfaCheckpoint } from './MfaCheckpoint';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
 import { usePermissions } from '@/hooks/usePermissions';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
@@ -13,8 +13,9 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading, needsOrgSelection, organizations, selectOrganization, mfaStatus, completeMfaChallenge, organization } = useAuth();
+  const { user, isLoading, needsOrgSelection, organizations, selectOrganization, organization } = useAuth();
   const location = useLocation();
+  const mfaCheckpoint = useMfaCheckpoint();
   const { data: pipelineStages, isLoading: stagesLoading } = usePipelineStages();
   const { isAdmin } = usePermissions();
   const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -32,9 +33,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // MFA challenge required
-  if (mfaStatus === 'pending') {
-    return <ChallengeMFA onSuccess={completeMfaChallenge} />;
-  }
+  if (mfaCheckpoint) return mfaCheckpoint;
 
   // Show organization selector if user needs to choose
   if (needsOrgSelection && organizations.length > 1) {
