@@ -1,6 +1,7 @@
+-- Bring the already-installed RPC to the tighter P2G admin and sale-lock rules.
 -- The P2G administrator can remove a cancelled sale with its proposal in one
 -- transaction. Financial documents and active sales must be handled separately.
-CREATE FUNCTION public.delete_cancelled_p2g_proposal(p_proposal_id uuid)
+CREATE OR REPLACE FUNCTION public.delete_cancelled_p2g_proposal(p_proposal_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
