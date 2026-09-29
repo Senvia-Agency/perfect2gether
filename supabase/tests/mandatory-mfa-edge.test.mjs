@@ -31,7 +31,8 @@ for (const [label, token, result, status] of [
   ['unverified P2G session', 'user-jwt', { data: false, error: null }, 403],
   ['database MFA denial', 'user-jwt', { data: null, error: { code: '42501' } }, 403],
   ['unknown database failure', 'user-jwt', { data: null, error: { code: '500' } }, 503],
-  ['public request', null, { data: false, error: null }, null],
+  ['missing user token', null, { data: false, error: null }, 401],
+  ['public anon key', 'anon-key', { data: true, error: null }, 401],
   ['service request', 'service-key', { data: false, error: null }, null],
 ]) {
   test(`Edge MFA gate handles ${label}`, async () => {

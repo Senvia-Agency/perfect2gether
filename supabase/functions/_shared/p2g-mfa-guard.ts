@@ -9,7 +9,13 @@ export async function p2gMfaGate(
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-  if (!token || token === anonKey || token === serviceKey) return null;
+  if (token === serviceKey) return null;
+  if (!token || token === anonKey) {
+    return Response.json(
+      { error: 'Não autorizado' },
+      { status: 401, headers: corsHeaders },
+    );
+  }
 
   if (!url || !anonKey) {
     return Response.json(

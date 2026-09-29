@@ -4,6 +4,7 @@ import test from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 
 const migration = new URL('../migrations/20260929120000_require_p2g_mfa.sql', import.meta.url);
+const checkpointMigration = new URL('../migrations/20260929180000_fix_p2g_mfa_checkpoint.sql', import.meta.url);
 const p2g = '96a3950e-31be-4c6d-abed-b82968c0d7e9';
 const otherOrg = '00000000-0000-4000-8000-000000000002';
 const member = '00000000-0000-4000-8000-000000000011';
@@ -33,18 +34,21 @@ async function setup() {
     create table auth.mfa_factors(id uuid primary key, user_id uuid, factor_type text, status text);
     create table public.leads(id uuid primary key);
     create table public.proposals(id uuid primary key);
+    create table public.proposal_cpes(id uuid primary key);
     create table public.sales(id uuid primary key);
     create table storage.objects(id uuid primary key);
     alter table public.leads enable row level security;
     alter table public.proposals enable row level security;
+    alter table public.proposal_cpes enable row level security;
     alter table public.sales enable row level security;
     alter table storage.objects enable row level security;
     create policy old_leads on public.leads for all to authenticated using (true) with check (true);
     create policy old_proposals on public.proposals for all to authenticated using (true) with check (true);
+    create policy old_proposal_cpes on public.proposal_cpes for all to authenticated using (true) with check (true);
     create policy old_sales on public.sales for all to authenticated using (true) with check (true);
     create policy old_storage on storage.objects for all to authenticated using (true) with check (true);
     grant usage on schema public, auth, storage to authenticated, anon, service_role;
-    grant all on public.leads, public.proposals, public.sales, storage.objects to authenticated;
+    grant all on public.leads, public.proposals, public.proposal_cpes, public.sales, storage.objects to authenticated;
     insert into public.organizations values ('${p2g}'), ('${otherOrg}');
     insert into public.organization_members values
       ('${member}', '${p2g}', true),
@@ -52,10 +56,12 @@ async function setup() {
     insert into public.user_roles values ('${superAdmin}', 'super_admin');
     insert into public.leads values ('00000000-0000-4000-8000-000000000101');
     insert into public.proposals values ('00000000-0000-4000-8000-000000000102');
+    insert into public.proposal_cpes values ('00000000-0000-4000-8000-000000000105');
     insert into public.sales values ('00000000-0000-4000-8000-000000000103');
     insert into storage.objects values ('00000000-0000-4000-8000-000000000104');
   `);
   await db.exec(await readFile(migration, 'utf8'));
+  await db.exec(await readFile(checkpointMigration, 'utf8'));
   return db;
 }
 
@@ -100,12 +106,12 @@ test('activated MFA blocks unverified P2G sessions at API and realtime/storage b
     await asUser(db, { user: member }, async () => {
       assert.equal((await db.query('select public.p2g_mfa_required() required')).rows[0].required, true);
       await expectDenied(db);
-      for (const table of ['leads', 'proposals', 'sales']) {
+      for (const table of ['leads', 'proposals', 'proposal_cpes', 'sales']) {
         assert.equal((await db.query(`select count(*)::int n from public.${table}`)).rows[0].n, 0);
       }
       assert.equal((await db.query('select count(*)::int n from storage.objects')).rows[0].n, 0);
     });
-    await asUser(db, { user: member, path: 'rpc/p2g_mfa_required' }, async () => {
+    await asUser(db, { user: member, path: '/rpc/p2g_mfa_required' }, async () => {
       await db.exec('select public.enforce_p2g_mfa()');
     });
     await asUser(db, { user: member, aal: 'aal2' }, async () => {
