@@ -4656,6 +4656,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_cancelled_p2g_proposal: { Args: { p_proposal_id: string }; Returns: undefined }
       accept_invite: {
         Args: { _token: string; _user_id: string }
         Returns: boolean
