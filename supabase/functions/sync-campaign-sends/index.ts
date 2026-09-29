@@ -40,6 +40,33 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    const token = req.headers.get('Authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1];
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      return Response.json({ error: 'Não autorizado' }, { status: 401, headers: corsHeaders });
+    }
+
+    const { data: member, error: memberError } = await supabase
+      .from('organization_members')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (memberError) throw memberError;
+    if (!member) {
+      const { data: superAdmin, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'super_admin')
+        .maybeSingle();
+      if (roleError) throw roleError;
+      if (!superAdmin) {
+        return Response.json({ error: 'Sem acesso a esta organização' }, { status: 403, headers: corsHeaders });
+      }
+    }
+
     // Get campaign details
     const { data: campaign, error: campaignError } = await supabase
       .from("email_campaigns")
