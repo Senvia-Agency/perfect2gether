@@ -221,7 +221,8 @@ export function SalesPerformancePanel() {
             </div>
             <div className="flex items-center gap-1">
               <PrintCardButton targetRef={cardRef} />
-              {isAdmin && (
+              {/* Same rule as the DB (can_manage_org_commitments): admins by role or profile, or Gestão > Compromissos > Gerir */}
+              {(isAdmin || can('gestao', 'commitments', 'manage')) && (
                 <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)}>
                   <Pencil className="h-4 w-4" />
                 </Button>
