@@ -145,7 +145,8 @@ export function CalendarView() {
         allOptionLabel={allOptionLabel}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[7fr_3fr] lg:items-start">
+      {/* minmax(0, …) keeps the split fixed at 70/30 regardless of content width */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:items-start">
       <div className="min-w-0">
       {view === 'month' && (
         <MonthView
