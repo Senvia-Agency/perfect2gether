@@ -1,5 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules } from "@/hooks/useModules";
+import { useProfileName } from "@/hooks/useProfileName";
 import { usePermissions } from "@/hooks/usePermissions";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import {
@@ -38,6 +39,7 @@ interface ClientDetailsModalProps {
 
 export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: ClientDetailsModalProps) {
   const { organization } = useAuth();
+  const { data: createdByName } = useProfileName(client?.created_by);
   const isTelecom = organization?.niche === 'telecom';
   const isP2G = isPerfect2GetherOrg(organization?.id);
   const { modules } = useModules();
@@ -115,7 +117,7 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
 
             <div className="flex items-center gap-3 text-sm">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>Criado: {formatDateTime(client.created_at)}</span>
+              <span>Criado: {formatDateTime(client.created_at)}{createdByName ? ` por ${createdByName}` : ''}</span>
             </div>
           </div>
 

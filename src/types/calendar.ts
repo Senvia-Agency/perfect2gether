@@ -1,4 +1,5 @@
-export type EventType = 'meeting' | 'call' | 'task' | 'follow_up';
+// 'visit' is created by check-fidelization-alerts for contract renewals
+export type EventType = 'meeting' | 'call' | 'task' | 'follow_up' | 'visit';
 export type EventStatus = 'pending' | 'completed' | 'cancelled';
 
 export interface CalendarEvent {
@@ -34,6 +35,7 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   call: 'Chamada',
   task: 'Tarefa',
   follow_up: 'Follow-up',
+  visit: 'Renovação',
 };
 
 export const EVENT_TYPE_COLORS: Record<EventType, string> = {
@@ -41,6 +43,7 @@ export const EVENT_TYPE_COLORS: Record<EventType, string> = {
   call: 'bg-green-500',
   task: 'bg-yellow-500',
   follow_up: 'bg-purple-500',
+  visit: 'bg-orange-500',
 };
 
 export const EVENT_TYPE_TEXT_COLORS: Record<EventType, string> = {
@@ -48,6 +51,7 @@ export const EVENT_TYPE_TEXT_COLORS: Record<EventType, string> = {
   call: 'text-green-500',
   task: 'text-yellow-500',
   follow_up: 'text-purple-500',
+  visit: 'text-orange-500',
 };
 
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {

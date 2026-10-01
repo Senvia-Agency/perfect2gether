@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Wallet, CalendarDays, FileText, Upload, Loader2 } from 'lucide-react';
+import { Wallet, CalendarDays, FileText, Upload, Loader2, X } from 'lucide-react';
+import { REQUEST_ACCEPTED_FILES } from '@/types/internal-requests';
 import type { RequestType } from '@/types/internal-requests';
 import { useInternalRequests } from '@/hooks/useInternalRequests';
 import { cn } from '@/lib/utils';
@@ -21,7 +22,7 @@ const TYPE_OPTIONS: { value: RequestType; label: string; icon: typeof Wallet }[]
 ];
 
 export function SubmitRequestModal({ open, onOpenChange }: Props) {
-  const { submitRequest, uploadFile } = useInternalRequests();
+  const { submitRequest } = useInternalRequests();
   const [type, setType] = useState<RequestType>('expense');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -29,8 +30,7 @@ export function SubmitRequestModal({ open, onOpenChange }: Props) {
   const [expenseDate, setExpenseDate] = useState('');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
 
   const reset = () => {
     setType('expense');
@@ -40,17 +40,12 @@ export function SubmitRequestModal({ open, onOpenChange }: Props) {
     setExpenseDate('');
     setPeriodStart('');
     setPeriodEnd('');
-    setFile(null);
+    setFiles([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUploading(true);
     try {
-      let fileUrl: string | undefined;
-      if (file) {
-        fileUrl = await uploadFile(file);
-      }
       await submitRequest.mutateAsync({
         request_type: type,
         title,
@@ -59,12 +54,12 @@ export function SubmitRequestModal({ open, onOpenChange }: Props) {
         expense_date: expenseDate || undefined,
         period_start: periodStart || undefined,
         period_end: periodEnd || undefined,
-        file_url: fileUrl,
+        files,
       });
       reset();
       onOpenChange(false);
-    } finally {
-      setUploading(false);
+    } catch {
+      // toast shown by the mutation
     }
   };
 
@@ -143,18 +138,46 @@ export function SubmitRequestModal({ open, onOpenChange }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label>Anexo (PDF, Excel, Imagem)</Label>
+            <Label>Documentos (PDF, Excel, Imagem)</Label>
             <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-4 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-muted/50">
               <Upload className="h-5 w-5" />
-              {file ? file.name : 'Clique para anexar ficheiro'}
-              <input type="file" className="hidden" accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.webp" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              {files.length > 0 ? 'Adicionar mais ficheiros' : 'Clique para anexar ficheiros'}
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                accept={REQUEST_ACCEPTED_FILES}
+                onChange={(e) => {
+                  const picked = Array.from(e.target.files || []);
+                  e.target.value = '';
+                  setFiles((prev) => [...prev, ...picked]);
+                }}
+              />
             </label>
+            {files.length > 0 && (
+              <ul className="space-y-1">
+                {files.map((f, i) => (
+                  <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-sm">
+                    <span className="truncate">{f.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={!title || uploading || submitRequest.isPending}>
-              {(uploading || submitRequest.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={!title || submitRequest.isPending}>
+              {submitRequest.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Submeter
             </Button>
           </div>

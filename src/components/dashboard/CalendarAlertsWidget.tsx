@@ -17,6 +17,7 @@ const EVENT_TYPE_ICONS: Record<EventType, React.ElementType> = {
   call: Phone,
   task: CheckSquare,
   follow_up: RotateCcw,
+  visit: RotateCcw,
 };
 
 export function CalendarAlertsWidget() {

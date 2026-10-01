@@ -18,7 +18,7 @@ export function DayEventsList({ selectedDate, events, onEventClick, onCreateEven
   const canCreateEvent = can('calendar', 'events', 'create');
 
   return (
-    <div className="mt-4 bg-card rounded-lg border p-4">
+    <div className="bg-card rounded-lg border p-4 lg:sticky lg:top-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">
           Eventos de {format(selectedDate, "d 'de' MMMM", { locale: pt })}

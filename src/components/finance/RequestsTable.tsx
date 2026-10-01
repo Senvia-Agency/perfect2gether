@@ -14,14 +14,15 @@ interface Props {
   requests: InternalRequest[];
   isLoading: boolean;
   onSelect: (r: InternalRequest) => void;
-  onDelete: (id: string) => void;
+  onDelete: (r: InternalRequest) => void;
+  canDeleteAny: boolean;
   filterType: RequestType | 'all';
   filterStatus: RequestStatus | 'all';
   onFilterType: (v: RequestType | 'all') => void;
   onFilterStatus: (v: RequestStatus | 'all') => void;
 }
 
-export function RequestsTable({ requests, isLoading, onSelect, onDelete, filterType, filterStatus, onFilterType, onFilterStatus }: Props) {
+export function RequestsTable({ requests, isLoading, onSelect, onDelete, canDeleteAny, filterType, filterStatus, onFilterType, onFilterStatus }: Props) {
   const { session } = useAuth();
 
   if (isLoading) {
@@ -89,12 +90,12 @@ export function RequestsTable({ requests, isLoading, onSelect, onDelete, filterT
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {r.status === 'pending' && r.submitted_by === session?.user.id && (
+                    {(canDeleteAny || (r.status === 'pending' && r.submitted_by === session?.user.id)) && (
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        onClick={(e) => { e.stopPropagation(); onDelete(r.id); }}
+                        onClick={(e) => { e.stopPropagation(); onDelete(r); }}
                       >
                         <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>

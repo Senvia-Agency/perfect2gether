@@ -34,7 +34,7 @@ export function usePermissions() {
 
       const { data: profile } = await supabase
         .from('organization_profiles')
-        .select('name, module_permissions, data_scope, systems, dashboard_widgets')
+        .select('name, base_role, module_permissions, data_scope, systems, dashboard_widgets')
         .eq('id', member.profile_id)
         .single();
 
@@ -46,6 +46,7 @@ export function usePermissions() {
         systems: (p.systems as SystemKey[]) || ['p2g'],
         dashboardWidgets: p.dashboard_widgets as Array<{ type: string; is_visible: boolean }> | null,
         profileName: p.name as string | null,
+        baseRole: p.base_role as string | null,
       };
     },
     enabled: !!user?.id && !!organization?.id && !isSuperAdmin,
@@ -53,6 +54,8 @@ export function usePermissions() {
 
   const modulePermissions = profileData?.permissions ?? null;
   const isBackOffice = profileData?.profileName === 'Back Office';
+  // Admin pelo perfil (base_role) sem o papel global 'admin' em user_roles
+  const isProfileAdmin = profileData?.baseRole === 'admin';
   const dataScope: 'own' | 'team' | 'all' = isSuperAdmin || isAdmin
     ? 'all'
     : (profileData?.dataScope as 'own' | 'team' | 'all') || 'own';
@@ -68,7 +71,8 @@ export function usePermissions() {
     if (!mod?.subareas) return isAdmin;
     const sub = mod.subareas[subarea];
     if (!sub) return isAdmin;
-    return sub[action] ?? isAdmin;
+    // Ações novas ainda não gravadas no perfil ficam disponíveis para administradores
+    return sub[action] ?? (isAdmin || isProfileAdmin);
   }
 
   // Check if any subarea in module has view

@@ -1,4 +1,5 @@
 import { Lead, STATUS_LABELS, LeadStatus, LeadTemperature, LeadTipologia, TEMPERATURE_LABELS, TEMPERATURE_STYLES, TIPOLOGIA_LABELS, TIPOLOGIA_STYLES, FormSettings, CustomField } from "@/types";
+import { useProfileName } from '@/hooks/useProfileName';
 import { getRoleLabel } from "@/lib/roles";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import { LeadAttachments } from "@/components/leads/LeadAttachments";
@@ -128,6 +129,7 @@ export function LeadDetailsModal({
   onUpdate
 }: LeadDetailsModalProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { data: createdByName } = useProfileName(lead?.created_by);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const { canDeleteLeads, isAdmin, can } = usePermissions();
   const canEditLeads = can('leads', 'kanban', 'edit');
@@ -796,7 +798,7 @@ export function LeadDetailsModal({
 
                       <div className="flex items-center gap-3 text-sm">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>Criada: {formatDateTime(lead.created_at)}</span>
+                        <span>Criada: {formatDateTime(lead.created_at)}{createdByName ? ` por ${createdByName}` : ''}</span>
                       </div>
 
                       <div className="flex items-center gap-3 text-sm">

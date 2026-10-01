@@ -7,6 +7,7 @@ export type BillingTarget = 'client' | 'company';
 export interface CrmClient {
   id: string;
   organization_id: string;
+  created_by?: string | null;
   code?: string | null;
   lead_id?: string | null;
   assigned_to?: string | null;

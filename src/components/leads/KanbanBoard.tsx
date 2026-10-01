@@ -208,6 +208,7 @@ export function KanbanBoard({ leads, leadEvents = {}, onStatusChange, onTemperat
         {stages.map((stage) => {
           const columnLeads = getLeadsByStatus(stage.key);
           const isOver = dragOverColumn === stage.key;
+          const columnMwh = columnLeads.reduce((sum, lead) => sum + (Number(lead.consumo_anual) || 0), 0) / 1000;
 
           return (
             <div
@@ -234,6 +235,9 @@ export function KanbanBoard({ leads, leadEvents = {}, onStatusChange, onTemperat
                     {columnLeads.length}
                   </span>
                 </div>
+                <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                  {new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 1 }).format(columnMwh)} MWh
+                </span>
               </div>
 
               {/* Cards Container */}

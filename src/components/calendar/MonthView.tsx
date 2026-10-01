@@ -85,9 +85,13 @@ export function MonthView({ currentDate, events, selectedDay, onDayClick, onEven
                   />
                 ))}
                 {dayEvents.length > 2 && (
-                  <p className="text-xs text-muted-foreground text-center">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onDayClick(day); }}
+                    className="w-full text-xs text-primary text-center hover:underline"
+                  >
                     +{dayEvents.length - 2} mais
-                  </p>
+                  </button>
                 )}
               </div>
             </div>

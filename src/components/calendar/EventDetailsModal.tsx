@@ -41,6 +41,7 @@ const EVENT_TYPE_ICONS: Record<EventType, React.ElementType> = {
   call: Phone,
   task: CheckSquare,
   follow_up: RefreshCw,
+  visit: RefreshCw,
 };
 
 interface EventDetailsModalProps {
@@ -64,8 +65,9 @@ export function EventDetailsModal({ open, onOpenChange, event, onEdit }: EventDe
 
   if (!event) return null;
 
-  const Icon = EVENT_TYPE_ICONS[event.event_type];
-  const colorClass = EVENT_TYPE_COLORS[event.event_type];
+  // Fallbacks keep unknown types from crashing the modal (blank page)
+  const Icon = EVENT_TYPE_ICONS[event.event_type] ?? Calendar;
+  const colorClass = EVENT_TYPE_COLORS[event.event_type] ?? 'bg-slate-500';
 
   const handleDeleteClick = () => {
     if (event.lead_id) {
@@ -156,7 +158,7 @@ export function EventDetailsModal({ open, onOpenChange, event, onEdit }: EventDe
               <div className="flex-1">
                 <DialogTitle className="text-lg">{event.title}</DialogTitle>
                 <Badge variant="secondary" className="mt-1">
-                  {EVENT_TYPE_LABELS[event.event_type]}
+                  {EVENT_TYPE_LABELS[event.event_type] ?? 'Evento'}
                 </Badge>
               </div>
             </div>
@@ -203,7 +205,7 @@ export function EventDetailsModal({ open, onOpenChange, event, onEdit }: EventDe
 
             <div className="flex items-center gap-3">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">Comercial: {event.user?.full_name || 'Comercial não identificado'}</span>
+              <span className="text-sm">Responsável: {event.user?.full_name || 'Não identificado'}</span>
             </div>
 
             {/* Lead */}

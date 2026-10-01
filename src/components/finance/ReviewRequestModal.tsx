@@ -5,21 +5,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Loader2 } from 'lucide-react';
-import { useInternalRequests } from '@/hooks/useInternalRequests';
+import { ExternalLink, Loader2, Trash2, Upload } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { useInternalRequests, useInternalRequestAttachments, openInternalRequestFile } from '@/hooks/useInternalRequests';
 import { formatCurrency, formatDate } from '@/lib/format';
-import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS } from '@/types/internal-requests';
-import type { InternalRequest } from '@/types/internal-requests';
+import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS, REQUEST_ACCEPTED_FILES } from '@/types/internal-requests';
+import type { InternalRequest, InternalRequestAttachment } from '@/types/internal-requests';
 
 interface Props {
   request: InternalRequest | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   canApprove: boolean;
+  canDeleteAny: boolean;
+  onDelete: (request: InternalRequest) => void;
 }
 
-export function ReviewRequestModal({ request, open, onOpenChange, canApprove }: Props) {
+export function ReviewRequestModal({ request, open, onOpenChange, canApprove, canDeleteAny, onDelete }: Props) {
+  const { session } = useAuth();
   const { reviewRequest } = useInternalRequests();
+  const { attachments, isLoading: loadingAttachments, addAttachments, removeAttachment } = useInternalRequestAttachments(request?.id);
   const [notes, setNotes] = useState('');
   const [paymentRef, setPaymentRef] = useState('');
 
@@ -28,6 +34,11 @@ export function ReviewRequestModal({ request, open, onOpenChange, canApprove }: 
   const isPending = request.status === 'pending';
   const isApproved = request.status === 'approved';
   const canReview = canApprove && (isPending || isApproved);
+  const isOwner = request.submitted_by === session?.user.id;
+  const canAddDocs = canApprove || (isOwner && isPending);
+  const canDeleteRequest = canDeleteAny || (isOwner && isPending);
+  const canRemoveDoc = (att: InternalRequestAttachment) =>
+    canDeleteAny || (isOwner && isPending && att.uploaded_by === session?.user.id);
 
   const handleAction = async (status: 'approved' | 'rejected' | 'paid') => {
     await reviewRequest.mutateAsync({
@@ -39,6 +50,10 @@ export function ReviewRequestModal({ request, open, onOpenChange, canApprove }: 
     setNotes('');
     setPaymentRef('');
     onOpenChange(false);
+  };
+
+  const handleRemoveDoc = (att: InternalRequestAttachment) => {
+    if (window.confirm(`Eliminar o documento "${att.file_name}"?`)) removeAttachment.mutate(att);
   };
 
   return (
@@ -96,13 +111,60 @@ export function ReviewRequestModal({ request, open, onOpenChange, canApprove }: 
             </div>
           )}
 
-          {request.file_url && (
-            <div>
-              <a href={request.file_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-                <ExternalLink className="h-4 w-4" /> Ver ficheiro anexo
-              </a>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Documentos ({attachments.length})</span>
+              {canAddDocs && (
+                <label className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-primary hover:underline">
+                  {addAttachments.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Adicionar
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    accept={REQUEST_ACCEPTED_FILES}
+                    disabled={addAttachments.isPending}
+                    onChange={(e) => {
+                      const picked = Array.from(e.target.files || []);
+                      e.target.value = '';
+                      if (picked.length > 0) addAttachments.mutate(picked);
+                    }}
+                  />
+                </label>
+              )}
             </div>
-          )}
+            {loadingAttachments ? (
+              <p className="text-sm text-muted-foreground">A carregar...</p>
+            ) : attachments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem documentos anexados</p>
+            ) : (
+              <ul className="space-y-1">
+                {attachments.map((att) => (
+                  <li key={att.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5">
+                    <button
+                      type="button"
+                      className="inline-flex min-w-0 items-center gap-1.5 text-sm text-primary hover:underline"
+                      onClick={() => openInternalRequestFile(att.file_path).catch(() => toast.error('Erro ao abrir documento'))}
+                    >
+                      <ExternalLink className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{att.file_name}</span>
+                    </button>
+                    {canRemoveDoc(att) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        disabled={removeAttachment.isPending}
+                        onClick={() => handleRemoveDoc(att)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           {request.review_notes && (
             <div className="rounded-lg border p-3">
@@ -152,6 +214,14 @@ export function ReviewRequestModal({ request, open, onOpenChange, canApprove }: 
                 )}
               </div>
             </>
+          )}
+
+          {canDeleteRequest && (
+            <div className="flex justify-end border-t pt-3">
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDelete(request)}>
+                <Trash2 className="mr-1.5 h-4 w-4" /> Eliminar pedido
+              </Button>
+            </div>
           )}
         </div>
       </DialogContent>

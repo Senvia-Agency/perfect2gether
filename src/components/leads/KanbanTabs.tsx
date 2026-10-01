@@ -129,7 +129,7 @@ export function KanbanTabs({
                   className="ml-auto"
                   style={getBadgeStyle(activeStage.color)}
                 >
-                  {getLeadsByStatus(activeStatus).length}
+                  {getLeadsByStatus(activeStatus).length} · {new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 1 }).format(getLeadsByStatus(activeStatus).reduce((sum, lead) => sum + (Number(lead.consumo_anual) || 0), 0) / 1000)} MWh
                 </Badge>
               </>
             ) : (

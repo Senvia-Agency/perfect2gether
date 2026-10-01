@@ -23,6 +23,7 @@ const EVENT_TYPE_ICONS: Record<EventType, React.ReactNode> = {
   call: <Phone className="h-4 w-4" />,
   task: <CheckSquare className="h-4 w-4" />,
   follow_up: <RefreshCw className="h-4 w-4" />,
+  visit: <RefreshCw className="h-4 w-4" />,
 };
 
 interface CreateEventModalProps {

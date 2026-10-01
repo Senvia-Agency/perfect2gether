@@ -145,6 +145,8 @@ export function CalendarView() {
         allOptionLabel={allOptionLabel}
       />
 
+      <div className="grid gap-4 lg:grid-cols-[7fr_3fr] lg:items-start">
+      <div className="min-w-0">
       {view === 'month' && (
         <MonthView
           currentDate={currentDate}
@@ -173,6 +175,8 @@ export function CalendarView() {
         />
       )}
 
+      </div>
+
       <DayEventsList
         selectedDate={selectedDayForList}
         events={selectedDayEvents}
@@ -183,6 +187,7 @@ export function CalendarView() {
           setCreateModalOpen(true);
         }}
       />
+      </div>
 
       <CreateEventModal
         open={createModalOpen}

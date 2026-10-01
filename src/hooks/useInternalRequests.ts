@@ -2,11 +2,36 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import type { InternalRequest, RequestType, RequestStatus } from '@/types/internal-requests';
+import type { InternalRequest, InternalRequestAttachment, RequestType, RequestStatus } from '@/types/internal-requests';
+
+const BUCKET = 'internal-requests';
 
 interface Filters {
   type?: RequestType;
   status?: RequestStatus;
+}
+
+// Files go in the uploader's folder (required by the bucket INSERT policy)
+async function uploadAttachments(organizationId: string, userId: string, requestId: string, files: File[]) {
+  for (const [index, file] of files.entries()) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${userId}/${requestId}/${Date.now()}-${index}-${safeName}`;
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file);
+    if (uploadError) throw uploadError;
+    const { error } = await supabase.from('internal_request_attachments' as any).insert({
+      organization_id: organizationId,
+      request_id: requestId,
+      file_path: path,
+      file_name: file.name,
+      file_size: file.size,
+      file_type: file.type || null,
+      uploaded_by: userId,
+    });
+    if (error) {
+      await supabase.storage.from(BUCKET).remove([path]);
+      throw error;
+    }
+  }
 }
 
 export function useInternalRequests(filters?: Filters) {
@@ -52,7 +77,7 @@ export function useInternalRequests(filters?: Filters) {
   });
 
   const submitRequest = useMutation({
-    mutationFn: async (input: {
+    mutationFn: async ({ files = [], ...input }: {
       request_type: RequestType;
       title: string;
       description?: string;
@@ -60,19 +85,36 @@ export function useInternalRequests(filters?: Filters) {
       expense_date?: string;
       period_start?: string;
       period_end?: string;
-      file_url?: string;
+      files?: File[];
     }) => {
       if (!organizationId || !session?.user.id) throw new Error('Sem sessão');
-      const { error } = await supabase.from('internal_requests').insert({
-        organization_id: organizationId,
-        submitted_by: session.user.id,
-        ...input,
-      });
+      const { data, error } = await supabase
+        .from('internal_requests')
+        .insert({
+          organization_id: organizationId,
+          submitted_by: session.user.id,
+          ...input,
+        })
+        .select('id')
+        .single();
       if (error) throw error;
-      return input;
+
+      let uploadFailed = false;
+      if (files.length > 0) {
+        try {
+          await uploadAttachments(organizationId, session.user.id, data.id, files);
+        } catch {
+          uploadFailed = true;
+        }
+      }
+      return { input, uploadFailed };
     },
-    onSuccess: (_, input) => {
-      toast.success('Pedido submetido com sucesso');
+    onSuccess: ({ input, uploadFailed }) => {
+      if (uploadFailed) {
+        toast.warning('Pedido submetido, mas alguns documentos não foram anexados. Pode adicioná-los no detalhe do pedido.');
+      } else {
+        toast.success('Pedido submetido com sucesso');
+      }
       queryClient.invalidateQueries({ queryKey: ['internal-requests'] });
       // Notify finance email silently
       supabase.functions.invoke('notify-finance-request', {
@@ -131,8 +173,17 @@ export function useInternalRequests(filters?: Filters) {
 
   const deleteRequest = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('internal_requests').delete().eq('id', id);
+      // Files first: the storage DELETE policy authorizes through the attachment rows
+      const { data: attachments } = await supabase
+        .from('internal_request_attachments' as any)
+        .select('file_path')
+        .eq('request_id', id);
+      const paths = ((attachments || []) as unknown as { file_path: string }[]).map(a => a.file_path);
+      if (paths.length > 0) await supabase.storage.from(BUCKET).remove(paths);
+
+      const { data, error } = await supabase.from('internal_requests').delete().eq('id', id).select('id');
       if (error) throw error;
+      if (!data?.length) throw new Error('Sem permissão para eliminar este pedido');
     },
     onSuccess: () => {
       toast.success('Pedido eliminado');
@@ -140,16 +191,6 @@ export function useInternalRequests(filters?: Filters) {
     },
     onError: () => toast.error('Erro ao eliminar pedido'),
   });
-
-  const uploadFile = async (file: File): Promise<string> => {
-    if (!session?.user.id) throw new Error('Sem sessão');
-    const ext = file.name.split('.').pop();
-    const path = `${session.user.id}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('internal-requests').upload(path, file);
-    if (error) throw error;
-    const { data } = supabase.storage.from('internal-requests').getPublicUrl(path);
-    return data.publicUrl;
-  };
 
   const pendingCount = requests.filter(r => r.status === 'pending').length;
 
@@ -159,7 +200,61 @@ export function useInternalRequests(filters?: Filters) {
     submitRequest,
     reviewRequest,
     deleteRequest,
-    uploadFile,
     pendingCount,
   };
+}
+
+export function useInternalRequestAttachments(requestId: string | null | undefined) {
+  const { session, organization } = useAuth();
+  const queryClient = useQueryClient();
+  const queryKey = ['internal-request-attachments', requestId];
+
+  const { data: attachments = [], isLoading } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('internal_request_attachments' as any)
+        .select('*')
+        .eq('request_id', requestId!)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data || []) as unknown as InternalRequestAttachment[];
+    },
+    enabled: !!requestId && !!session,
+  });
+
+  const addAttachments = useMutation({
+    mutationFn: async (files: File[]) => {
+      if (!requestId || !organization?.id || !session?.user.id) throw new Error('Sem sessão');
+      await uploadAttachments(organization.id, session.user.id, requestId, files);
+    },
+    onSuccess: () => toast.success('Documentos anexados'),
+    onError: () => toast.error('Erro ao anexar documentos'),
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  const removeAttachment = useMutation({
+    mutationFn: async (attachment: InternalRequestAttachment) => {
+      await supabase.storage.from(BUCKET).remove([attachment.file_path]);
+      const { data, error } = await supabase
+        .from('internal_request_attachments' as any)
+        .delete()
+        .eq('id', attachment.id)
+        .select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('Sem permissão para eliminar este documento');
+    },
+    onSuccess: () => toast.success('Documento eliminado'),
+    onError: () => toast.error('Erro ao eliminar documento'),
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  return { attachments, isLoading, addAttachments, removeAttachment };
+}
+
+// The bucket is private, so documents open through a short-lived signed URL
+export async function openInternalRequestFile(path: string) {
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 300);
+  if (error || !data?.signedUrl) throw new Error('Erro ao gerar link');
+  window.open(data.signedUrl, '_blank');
 }

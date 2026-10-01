@@ -325,7 +325,7 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
               </div>
 
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {items.map(cpe => <Badge key={cpe.id} variant="secondary" className="max-w-full truncate font-mono text-[11px]">{cpe.serial_number || cpe.equipment_type}</Badge>)}
+                {items.map(cpe => <Badge key={cpe.id} variant="secondary" className="max-w-full break-all font-mono text-[11px]">{cpe.serial_number || cpe.equipment_type}</Badge>)}
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -544,14 +544,23 @@ export function ProposalCpeSelector({ clientId, cpes, onCpesChange }: ProposalCp
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-3"><Label className="text-xs">Selecionar os CPEs</Label><span className="text-[11px] text-muted-foreground">{selectedExistingCpeIds.length}/{requestedQuantity}</span></div>
-                <div className="grid max-h-32 gap-1 overflow-y-auto rounded-md border p-2 sm:grid-cols-2">
+                <div className="grid max-h-64 gap-1 overflow-y-auto rounded-md border p-2">
                   {availableExistingCpes.map((cpe) => {
                     const checked = selectedExistingCpeIds.includes(cpe.id);
                     const limitReached = selectedExistingCpeIds.length >= requestedQuantity && !checked;
+                    const details = [
+                      cpe.comercializador,
+                      cpe.nivel_tensao,
+                      cpe.consumo_anual ? `${Number(cpe.consumo_anual).toLocaleString('pt-PT')} kWh/ano` : null,
+                      cpe.fidelizacao_end ? `Fim: ${new Date(cpe.fidelizacao_end).toLocaleDateString('pt-PT')}` : null,
+                    ].filter(Boolean).join(' · ');
                     return (
-                      <label key={cpe.id} className={`flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-xs transition-colors ${limitReached ? 'opacity-50' : 'hover:bg-muted'}`}>
-                        <Checkbox checked={checked} disabled={limitReached} onCheckedChange={(value) => toggleExistingCpe(cpe.id, value === true)} />
-                        <span className="truncate">{cpe.serial_number || cpe.equipment_type} <span className="text-muted-foreground">· {cpe.comercializador}</span></span>
+                      <label key={cpe.id} className={`flex cursor-pointer items-start gap-2 rounded px-1.5 py-1.5 text-xs transition-colors ${limitReached ? 'opacity-50' : 'hover:bg-muted'}`}>
+                        <Checkbox className="mt-0.5" checked={checked} disabled={limitReached} onCheckedChange={(value) => toggleExistingCpe(cpe.id, value === true)} />
+                        <span className="min-w-0">
+                          <span className="block break-all font-mono font-medium">{cpe.serial_number || cpe.equipment_type}</span>
+                          {details && <span className="block text-muted-foreground">{details}</span>}
+                        </span>
                       </label>
                     );
                   })}

@@ -47,6 +47,7 @@ export interface UserRole {
 export interface Lead {
   id: string;
   organization_id: string;
+  created_by?: string | null;
   form_id?: string | null;
   name: string;
   phone: string;

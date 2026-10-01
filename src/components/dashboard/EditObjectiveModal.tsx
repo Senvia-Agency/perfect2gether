@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,18 +45,26 @@ export function EditObjectiveModal({ open, onOpenChange, objectives, preselected
     total_comissao: 0,
   });
 
+  // Initialise once per opening: `members` is a new array on every render, so
+  // re-running this on each change wiped whatever the user was typing.
+  const initializedRef = useRef(false);
   useEffect(() => {
-    if (open) {
-      const uid = preselectedUserId || members[0]?.user_id || "";
-      setSelectedUserId(uid);
-      const existing = objectives.find((o) => o.user_id === uid);
-      setTotals(existing ? {
-        total_nifs: Number(existing.total_nifs),
-        total_energia_mwh: Number(existing.total_energia_mwh),
-        total_solar_kwp: Number(existing.total_solar_kwp),
-        total_comissao: Number(existing.total_comissao),
-      } : { total_nifs: 0, total_energia_mwh: 0, total_solar_kwp: 0, total_comissao: 0 });
+    if (!open) {
+      initializedRef.current = false;
+      return;
     }
+    if (initializedRef.current) return;
+    const uid = preselectedUserId || members[0]?.user_id || "";
+    if (!uid) return; // wait for the team list to load
+    initializedRef.current = true;
+    setSelectedUserId(uid);
+    const existing = objectives.find((o) => o.user_id === uid);
+    setTotals(existing ? {
+      total_nifs: Number(existing.total_nifs),
+      total_energia_mwh: Number(existing.total_energia_mwh),
+      total_solar_kwp: Number(existing.total_solar_kwp),
+      total_comissao: Number(existing.total_comissao),
+    } : { total_nifs: 0, total_energia_mwh: 0, total_solar_kwp: 0, total_comissao: 0 });
   }, [open, preselectedUserId, members, objectives]);
 
   const handleUserChange = (uid: string) => {

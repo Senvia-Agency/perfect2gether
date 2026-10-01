@@ -91,7 +91,7 @@ export const MODULE_SCHEMA: Record<string, ModuleSchema> = {
       expenses: { label: 'Despesas', actions: ['view', 'add', 'edit', 'delete'] },
       expense_categories: { label: 'Categorias de Despesa', actions: ['view', 'manage'] },
       payments: { label: 'Pagamentos', actions: ['view'] },
-      requests: { label: 'Pedidos Internos', actions: ['view', 'submit', 'approve'] },
+      requests: { label: 'Pedidos Internos', actions: ['view', 'submit', 'approve', 'delete'] },
       commissions: { label: 'Comissões', actions: ['view', 'manage'] },
       bank_accounts: { label: 'Contas Bancárias', actions: ['view', 'manage'] },
     },

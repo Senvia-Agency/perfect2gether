@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import { usePersistedState } from "@/hooks/usePersistedState";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Plus } from 'lucide-react';
 import { useInternalRequests } from '@/hooks/useInternalRequests';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -15,6 +24,7 @@ export default function InternalRequests() {
   const [filterStatus, setFilterStatus] = usePersistedState<RequestStatus | 'all'>('requests-status-v1', 'all');
   const [showSubmit, setShowSubmit] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<InternalRequest | null>(null);
+  const [requestToDelete, setRequestToDelete] = useState<InternalRequest | null>(null);
 
   const filters = {
     ...(filterType !== 'all' && { type: filterType }),
@@ -27,6 +37,14 @@ export default function InternalRequests() {
   const { can } = usePermissions();
   const canApprove = can('finance', 'requests', 'approve');
   const canSubmit = can('finance', 'requests', 'submit');
+  const canDeleteAny = can('finance', 'requests', 'delete');
+
+  const confirmDelete = () => {
+    if (!requestToDelete) return;
+    deleteRequest.mutate(requestToDelete.id);
+    if (selectedRequest?.id === requestToDelete.id) setSelectedRequest(null);
+    setRequestToDelete(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -48,7 +66,8 @@ export default function InternalRequests() {
         requests={requests}
         isLoading={isLoading}
         onSelect={setSelectedRequest}
-        onDelete={(id) => deleteRequest.mutate(id)}
+        onDelete={setRequestToDelete}
+        canDeleteAny={canDeleteAny}
         filterType={filterType}
         filterStatus={filterStatus}
         onFilterType={setFilterType}
@@ -61,7 +80,26 @@ export default function InternalRequests() {
         open={!!selectedRequest}
         onOpenChange={(open) => !open && setSelectedRequest(null)}
         canApprove={canApprove}
+        canDeleteAny={canDeleteAny}
+        onDelete={setRequestToDelete}
       />
+
+      <AlertDialog open={!!requestToDelete} onOpenChange={(open) => !open && setRequestToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar pedido?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O pedido "{requestToDelete?.title}" e todos os documentos anexados serão eliminados. Esta ação não pode ser revertida.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDelete}>
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
