@@ -72,6 +72,7 @@ interface CreateClientData {
   phone?: string;
   company?: string;
   nif?: string;
+  decision_maker_name?: string;
   company_nif?: string;
   billing_target?: string;
   status?: ClientStatus;

@@ -1,3 +1,4 @@
+import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
@@ -48,6 +49,7 @@ interface CreateClientModalProps {
 export function CreateClientModal({ open, onOpenChange, onCreated, initialData }: CreateClientModalProps) {
   const labels = useClientLabels();
   const { organization } = useAuth();
+  const isP2g = isPerfect2GetherOrg(organization?.id);
   const { data: teamMembers = [] } = useTeamMembers();
   const { data: fieldSettings } = useClientFieldsSettings();
   const invoicingEnabled = isBillingActive(organization);
@@ -59,6 +61,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
   const [phone, setPhone] = useState("");
   const [company, setCompany] = useState("");
   const [nif, setNif] = useState("");
+  const [decisionMakerName, setDecisionMakerName] = useState("");
   const [companyNif, setCompanyNif] = useState("");
   const [billingTarget, setBillingTarget] = useState<BillingTarget>("client");
   const [status, setStatus] = useState<ClientStatus>("active");
@@ -78,7 +81,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
   const createClient = useCreateClient();
 
   const nifValidation = useNifValidation({
-    nif,
+    nif: isP2g ? '' : nif,
     organizationId: organization?.id,
   });
 
@@ -98,19 +101,20 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
   }, [open, initialData]);
 
   const isValid = useMemo(() => {
+    if (isP2g && !decisionMakerName.trim()) return false;
     if (settings.name.visible && settings.name.required && !name.trim()) return false;
     if (!email.trim()) return false;
     if (!phone.trim()) return false;
     if (settings.company.visible && settings.company.required && !company.trim()) return false;
-    if (settings.nif.visible && settings.nif.required && !nif.trim()) return false;
+    if (!isP2g && settings.nif.visible && settings.nif.required && !nif.trim()) return false;
     if (settings.company_nif?.visible && settings.company_nif?.required && !companyNif.trim()) return false;
     if (settings.address.visible && settings.address.required && !addressLine1.trim()) return false;
     if (settings.notes.visible && settings.notes.required && !notes.trim()) return false;
     if (!distrito.trim()) return false;
     if (!conselho.trim()) return false;
-    if (nifValidation.isDuplicate || companyNifValidation.isDuplicate) return false;
+    if ((!isP2g && nifValidation.isDuplicate) || companyNifValidation.isDuplicate) return false;
     return true;
-  }, [name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
+  }, [isP2g, decisionMakerName, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +126,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
         company: company.trim() || undefined,
-        nif: nif.trim() || undefined,
+        ...(isP2g ? { decision_maker_name: decisionMakerName.trim() } : { nif: nif.trim() || undefined }),
         company_nif: companyNif.trim() || undefined,
         billing_target: billingTarget,
         status,
@@ -155,6 +159,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
     setPhone("");
     setCompany("");
     setNif("");
+    setDecisionMakerName("");
     setCompanyNif("");
     setBillingTarget("client");
     setStatus("active");
@@ -237,7 +242,19 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
                         </div>
                       )}
 
-                      {settings.nif.visible && (
+                      {isP2g && (
+                        <div className="space-y-2">
+                          <Label htmlFor="decision-maker-name">Nome Decisor/Contato *</Label>
+                          <Input
+                            id="decision-maker-name"
+                            value={decisionMakerName}
+                            onChange={(e) => setDecisionMakerName(e.target.value)}
+                            placeholder="Nome do decisor ou contacto"
+                            required
+                          />
+                        </div>
+                      )}
+                      {!isP2g && settings.nif.visible && (
                         <div className="space-y-2">
                           <Label htmlFor="nif">
                             NIF (Cliente) {settings.nif.required && '*'}

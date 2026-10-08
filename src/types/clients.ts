@@ -18,6 +18,7 @@ export interface CrmClient {
   phone?: string | null;
   company?: string | null;
   nif?: string | null;
+  decision_maker_name?: string | null;
   company_nif?: string | null;
   billing_target?: BillingTarget;
   

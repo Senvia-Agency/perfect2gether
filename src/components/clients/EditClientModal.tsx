@@ -1,3 +1,4 @@
+import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
@@ -42,6 +43,7 @@ interface EditClientModalProps {
 export function EditClientModal({ client, open, onOpenChange }: EditClientModalProps) {
   const labels = useClientLabels();
   const { organization } = useAuth();
+  const isP2g = isPerfect2GetherOrg(organization?.id);
   const { dataScope } = usePermissions();
   const { currentUserId, teamMemberIds } = useTeamFilter();
   const { data: teamMembers = [] } = useTeamMembers();
@@ -55,6 +57,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
   const [phone, setPhone] = useState("");
   const [company, setCompany] = useState("");
   const [nif, setNif] = useState("");
+  const [decisionMakerName, setDecisionMakerName] = useState("");
   const [companyNif, setCompanyNif] = useState("");
   const [billingTarget, setBillingTarget] = useState<BillingTarget>("client");
   const [status, setStatus] = useState<ClientStatus>("active");
@@ -74,7 +77,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
   const updateClient = useUpdateClient();
 
   const nifValidation = useNifValidation({
-    nif,
+    nif: isP2g ? '' : nif,
     organizationId: organization?.id,
     excludeClientId: client?.id,
   });
@@ -92,6 +95,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
       setPhone(client.phone || "");
       setCompany(client.company || "");
       setNif(client.nif || "");
+      setDecisionMakerName(client.decision_maker_name || "");
       setCompanyNif(client.company_nif || "");
       setBillingTarget((client.billing_target as BillingTarget) || "client");
       setStatus(client.status);
@@ -110,6 +114,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
   }, [client]);
 
   const isValid = useMemo(() => {
+    if (isP2g && !decisionMakerName.trim()) return false;
     // Imported/legacy clients can have incomplete records. Allow staff to
     // complete those fields over several visits without requiring every
     // missing value at once, but do not let them blank previously filled
@@ -118,15 +123,15 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
     if (client?.email?.trim() && !email.trim()) return false;
     if (client?.phone?.trim() && !phone.trim()) return false;
     if (settings.company.visible && settings.company.required && client?.company?.trim() && !company.trim()) return false;
-    if (settings.nif.visible && settings.nif.required && client?.nif?.trim() && !nif.trim()) return false;
+    if (!isP2g && settings.nif.visible && settings.nif.required && client?.nif?.trim() && !nif.trim()) return false;
     if (settings.company_nif?.visible && settings.company_nif?.required && client?.company_nif?.trim() && !companyNif.trim()) return false;
     if (settings.address.visible && settings.address.required && client?.address_line1?.trim() && !addressLine1.trim()) return false;
     if (settings.notes.visible && settings.notes.required && client?.notes?.trim() && !notes.trim()) return false;
     if (client?.distrito?.trim() && !distrito.trim()) return false;
     if (client?.conselho?.trim() && !conselho.trim()) return false;
-    if (nifValidation.isDuplicate || companyNifValidation.isDuplicate) return false;
+    if ((!isP2g && nifValidation.isDuplicate) || companyNifValidation.isDuplicate) return false;
     return true;
-  }, [client, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
+  }, [client, isP2g, decisionMakerName, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,7 +144,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
         email: email.trim() || null,
         phone: phone.trim() || null,
         company: company.trim() || null,
-        nif: nif.trim() || null,
+        ...(isP2g ? { decision_maker_name: decisionMakerName.trim() } : { nif: nif.trim() || null }),
         company_nif: companyNif.trim() || null,
         billing_target: billingTarget,
         status,
@@ -227,7 +232,19 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
                         </div>
                       )}
 
-                      {settings.nif.visible && (
+                      {isP2g && (
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-decision-maker-name">Nome Decisor/Contato *</Label>
+                          <Input
+                            id="edit-decision-maker-name"
+                            value={decisionMakerName}
+                            onChange={(e) => setDecisionMakerName(e.target.value)}
+                            placeholder="Nome do decisor ou contacto"
+                            required
+                          />
+                        </div>
+                      )}
+                      {!isP2g && settings.nif.visible && (
                         <div className="space-y-2">
                           <Label htmlFor="edit-nif">NIF (Cliente) {settings.nif.required && client.nif?.trim() && '*'}</Label>
                           <Input
