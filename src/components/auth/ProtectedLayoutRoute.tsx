@@ -1,3 +1,4 @@
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,8 +71,14 @@ export function ProtectedLayoutRoute() {
 
   return (
     <AppLayout userName={profile?.full_name} organizationName={organization?.name}>
+      <PushSubscriptionRefresh />
       <Outlet />
       <WhatsNewDialog organizationId={organization?.id} />
     </AppLayout>
   );
+}
+
+function PushSubscriptionRefresh() {
+  usePushNotifications();
+  return null;
 }

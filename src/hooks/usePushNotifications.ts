@@ -3,8 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-// VAPID public key for push notifications
-const VAPID_PUBLIC_KEY = 'BPheJr4xGbGEdqLeawCOx4bahUlERq9bOvn1dGznjrei6yRo4GfRYCJaj-WD_zVvMHekax5FQYUV-Uw89jyWFhA';
+import { VAPID_PUBLIC_KEY } from "@/lib/push-key";
+import { ensurePushSubscription, subscriptionUsesKey } from "@/lib/push-subscription";
 
 export function usePushNotifications() {
   const [isSupported, setIsSupported] = useState(false);
@@ -17,14 +17,15 @@ export function usePushNotifications() {
   // Check support and current subscription status
   useEffect(() => {
     const checkSupport = async () => {
+      setIsSubscribed(false);
       const supported = 'serviceWorker' in navigator && 
                        'PushManager' in window && 
                        'Notification' in window;
       
       setIsSupported(supported);
-      setPermission(Notification.permission);
+      if (supported) setPermission(Notification.permission);
 
-      if (!supported || !user) {
+      if (!supported || !user || !organization) {
         setIsLoading(false);
         return;
       }
@@ -39,10 +40,16 @@ export function usePushNotifications() {
             .from('push_subscriptions')
             .select('id')
             .eq('user_id', user.id)
+            .eq('organization_id', organization.id)
             .eq('endpoint', subscription.endpoint)
             .maybeSingle();
           
-          setIsSubscribed(!error && !!data);
+          if (!error && data && Notification.permission === 'granted' && !subscriptionUsesKey(subscription, VAPID_PUBLIC_KEY)) {
+            const renewed = await ensurePushSubscription(registration.pushManager, VAPID_PUBLIC_KEY);
+            await saveSubscription(renewed, user.id, organization.id);
+            if (renewed.endpoint !== subscription.endpoint) await supabase.from('push_subscriptions').delete().eq('user_id', user.id).eq('organization_id', organization.id).eq('endpoint', subscription.endpoint);
+            setIsSubscribed(true);
+          } else setIsSubscribed(!error && !!data && subscriptionUsesKey(subscription, VAPID_PUBLIC_KEY));
         }
       } catch (error) {
         console.error('Error checking push subscription:', error);
@@ -52,23 +59,7 @@ export function usePushNotifications() {
     };
 
     checkSupport();
-  }, [user]);
-
-  // Convert VAPID key from base64 to Uint8Array
-  const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  };
+  }, [user, organization]);
 
   const subscribe = useCallback(async () => {
     if (!isSupported || !user || !organization) {
@@ -100,48 +91,10 @@ export function usePushNotifications() {
       // Get service worker registration
       const registration = await navigator.serviceWorker.ready;
 
-      // Subscribe to push manager
-      const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
-      });
-
-      // Extract keys from subscription
-      const p256dh = subscription.getKey('p256dh');
-      const auth = subscription.getKey('auth');
-
-      if (!p256dh || !auth) {
-        throw new Error('Falha ao obter chaves de subscrição');
-      }
-
-      // Convert ArrayBuffer to base64
-      const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        return window.btoa(binary);
-      };
-
-      // Save subscription to database
-      const { error } = await supabase
-        .from('push_subscriptions')
-        .upsert({
-          user_id: user.id,
-          organization_id: organization.id,
-          endpoint: subscription.endpoint,
-          p256dh: arrayBufferToBase64(p256dh),
-          auth: arrayBufferToBase64(auth),
-        }, {
-          onConflict: 'endpoint',
-        });
-
-      if (error) {
-        console.error('Error saving subscription:', error);
-        throw new Error('Erro ao guardar subscrição');
-      }
+      const previous = await registration.pushManager.getSubscription();
+      const subscription = await ensurePushSubscription(registration.pushManager, VAPID_PUBLIC_KEY);
+      await saveSubscription(subscription, user.id, organization.id);
+      if (previous && previous.endpoint !== subscription.endpoint) await supabase.from('push_subscriptions').delete().eq('user_id', user.id).eq('organization_id', organization.id).eq('endpoint', previous.endpoint);
 
       setIsSubscribed(true);
       toast({
@@ -221,4 +174,14 @@ export function usePushNotifications() {
     unsubscribe,
     toggle,
   };
+}
+
+
+async function saveSubscription(subscription: PushSubscription, userId: string, organizationId: string): Promise<void> {
+  const p256dh = subscription.getKey('p256dh');
+  const auth = subscription.getKey('auth');
+  if (!p256dh || !auth) throw new Error('Falha ao obter chaves de subscrição');
+  const encode = (buffer: ArrayBuffer): string => btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  const { error } = await supabase.from('push_subscriptions').upsert({user_id: userId, organization_id: organizationId, endpoint: subscription.endpoint, p256dh: encode(p256dh), auth: encode(auth)}, {onConflict: 'endpoint'});
+  if (error) throw new Error('Erro ao guardar subscrição');
 }

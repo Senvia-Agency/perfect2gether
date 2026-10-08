@@ -17,7 +17,7 @@ const corsHeaders = {
 };
 
 // VAPID public key
-const VAPID_PUBLIC_KEY = 'BPheJr4xGbGEdqLeawCOx4bahUlERq9bOvn1dGznjrei6yRo4GfRYCJaj-WD_zVvMHekax5FQYUV-Uw89jyWFhA';
+const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || 'BB11hDwjExAJzcOrzgBs44yfty8GrHN_5v3jvdvWB2ONTOgveKfRwEuE-zRhZxDPryGovLEFwK2ZBqb2w0uzAqE';
 
 // Helper to convert Uint8Array to ArrayBuffer
 function toArrayBuffer(arr: Uint8Array): ArrayBuffer {
@@ -280,6 +280,31 @@ Deno.serve(async (req) => {
       });
     }
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const token = req.headers.get('Authorization')?.match(/^Bearer +(.+)$/i)?.[1];
+    let recipientUserIds = user_ids;
+    let trustedService = token === supabaseKey;
+    if (token && !trustedService) {
+      try {
+        const claims = JSON.parse(new TextDecoder().decode(base64UrlDecode(token.split('.')[1] || '')));
+        if (claims.role === 'service_role') {
+          const verifier = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || supabaseKey, {global: {headers: {Authorization: 'Bearer ' + token}}, auth: {persistSession: false, autoRefreshToken: false}});
+          const verified = await verifier.rpc('p2g_mfa_ok');
+          trustedService = !verified.error && verified.data === true;
+        }
+      } catch { trustedService = false; }
+    }
+    if (!trustedService) {
+      if (!token) return Response.json({error: 'Utilizador não autenticado'}, {status: 401, headers: corsHeaders});
+      const {data: auth, error: authError} = await supabase.auth.getUser(token);
+      if (authError || !auth.user) return Response.json({error: 'Utilizador não autenticado'}, {status: 401, headers: corsHeaders});
+      const {data: member, error: memberError} = await supabase.from('organization_members').select('user_id').eq('organization_id', organization_id).eq('user_id', auth.user.id).eq('is_active', true).maybeSingle();
+      if (memberError || !member) return Response.json({error: 'Sem acesso à organização'}, {status: 403, headers: corsHeaders});
+      recipientUserIds = [auth.user.id];
+    }
+
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     if (!vapidPrivateKey) {
       console.error('VAPID_PRIVATE_KEY not configured');
@@ -289,18 +314,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+
 
     let query = supabase
       .from('push_subscriptions')
       .select('*')
       .eq('organization_id', organization_id);
 
-    if (user_ids && user_ids.length > 0) {
-      query = query.in('user_id', user_ids);
-      console.log(`Filtering push to ${user_ids.length} specific users`);
+    if (recipientUserIds && recipientUserIds.length > 0) {
+      query = query.in('user_id', recipientUserIds);
+      console.log(`Filtering push to ${recipientUserIds.length} specific users`);
     }
 
     const { data: subscriptions, error: fetchError } = await query;
