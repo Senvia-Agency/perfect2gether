@@ -10,12 +10,13 @@ import { Json } from '@/integrations/supabase/types';
 
 export function useLeads() {
   const { organization, user } = useAuth();
-  const { isAdmin, isProfileAdmin, isLoadingPermissions } = usePermissions();
+  const { isAdmin, isProfileAdmin, isLoadingPermissions, profileName } = usePermissions();
   const isP2g = organization?.id === '96a3950e-31be-4c6d-abed-b82968c0d7e9';
+  const canSeeCommercial = isP2g && (profileName === 'CE' || profileName === 'Diretor Comercial');
   const { effectiveUserIds } = useTeamFilter();
   
   return useQuery({
-    queryKey: ['leads', organization?.id, user?.id, isAdmin, isProfileAdmin, effectiveUserIds],
+    queryKey: ['leads', organization?.id, user?.id, isAdmin, isProfileAdmin, canSeeCommercial, effectiveUserIds],
     staleTime: 30_000,
     queryFn: async () => {
       if (!organization?.id || !user?.id) return [];
@@ -28,9 +29,9 @@ export function useLeads() {
       
       // Filter by user IDs (admin with filter, leader with team, or single user)
       // Include unassigned leads so they don't vanish during reassignment
-      if (isP2g && !isAdmin && !isProfileAdmin) {
+      if (isP2g && !isAdmin && !isProfileAdmin && !canSeeCommercial) {
         query = query.eq('assigned_to', user.id);
-      } else if (effectiveUserIds) {
+      } else if (effectiveUserIds && !canSeeCommercial) {
         const orFilters = effectiveUserIds
           .map(id => `assigned_to.eq.${id}`)
           .concat('assigned_to.is.null')
