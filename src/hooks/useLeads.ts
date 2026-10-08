@@ -2,20 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamFilter } from '@/hooks/useTeamFilter';
+import { usePermissions } from '@/hooks/usePermissions';
 import { usePipelineStages } from '@/hooks/usePipelineStages';
 import type { Lead, LeadStatus, LeadTemperature, LeadTipologia } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Json } from '@/integrations/supabase/types';
 
 export function useLeads() {
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
+  const { isAdmin, isProfileAdmin, isLoadingPermissions } = usePermissions();
+  const isP2g = organization?.id === '96a3950e-31be-4c6d-abed-b82968c0d7e9';
   const { effectiveUserIds } = useTeamFilter();
   
   return useQuery({
-    queryKey: ['leads', organization?.id, effectiveUserIds],
+    queryKey: ['leads', organization?.id, user?.id, isAdmin, isProfileAdmin, effectiveUserIds],
     staleTime: 30_000,
     queryFn: async () => {
-      if (!organization?.id) return [];
+      if (!organization?.id || !user?.id) return [];
       
       let query = supabase
         .from('leads')
@@ -25,7 +28,9 @@ export function useLeads() {
       
       // Filter by user IDs (admin with filter, leader with team, or single user)
       // Include unassigned leads so they don't vanish during reassignment
-      if (effectiveUserIds) {
+      if (isP2g && !isAdmin && !isProfileAdmin) {
+        query = query.eq('assigned_to', user.id);
+      } else if (effectiveUserIds) {
         const orFilters = effectiveUserIds
           .map(id => `assigned_to.eq.${id}`)
           .concat('assigned_to.is.null')
@@ -37,7 +42,7 @@ export function useLeads() {
       if (error) throw error;
       return data as Lead[];
     },
-    enabled: !!organization?.id,
+    enabled: !!organization?.id && !!user?.id && (!isP2g || !isLoadingPermissions),
   });
 }
 
@@ -138,7 +143,9 @@ export function useDeleteLead() {
 
 export function useCreateLead() {
   const queryClient = useQueryClient();
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
+  const { isAdmin, isProfileAdmin, isLoadingPermissions } = usePermissions();
+  const isP2g = organization?.id === '96a3950e-31be-4c6d-abed-b82968c0d7e9';
   const { toast } = useToast();
   
   return useMutation({
@@ -161,7 +168,8 @@ export function useCreateLead() {
     }) => {
       if (!organization?.id) throw new Error('Sem organização');
 
-      let assignedTo = leadData.assigned_to || null;
+      if (isP2g && isLoadingPermissions) throw new Error('Aguarde pelo carregamento das permissões.');
+      let assignedTo = leadData.assigned_to || (isP2g && !isAdmin && !isProfileAdmin ? user?.id : null) || null;
 
       // Round-robin auto-assign if no assigned_to provided
       if (!assignedTo) {

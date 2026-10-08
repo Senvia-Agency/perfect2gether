@@ -98,6 +98,7 @@ export function usePermissions() {
     canManageIntegrations: can('settings', 'general', 'edit'),
 
     isAdmin,
+    isProfileAdmin,
     isBackOffice,
     isViewer,
     isSuperAdmin,
