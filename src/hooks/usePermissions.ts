@@ -124,7 +124,7 @@ function buildDefaultFallback(isViewer: boolean): GranularPermissions {
     for (const [subKey, subSchema] of Object.entries(schema.subareas)) {
       const actions: Record<string, boolean> = {};
       for (const action of subSchema.actions) {
-        if (moduleKey === 'settings' || moduleKey === 'gestao') {
+        if (moduleKey === 'settings' || moduleKey === 'gestao' || moduleKey === 'rh') {
           actions[action] = false;
         } else if (action === 'view') {
           actions[action] = true;

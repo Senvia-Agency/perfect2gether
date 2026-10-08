@@ -63,6 +63,7 @@ const SystemAdminOrganizations = lazy(() => import("./pages/system-admin/Organiz
 const SystemAdminUsers = lazy(() => import("./pages/system-admin/Users"));
 const SystemAdminAnnouncements = lazy(() => import("./pages/system-admin/Announcements"));
 const FinanceInternalRequests = lazy(() => import("./pages/finance/InternalRequests"));
+const RhWorkspace = lazy(() => import("./pages/RhWorkspace").then(m => ({ default: m.RhWorkspace })));
 const Gestao = lazy(() => import("./pages/Gestao"));
 const ReleaseNotes = lazy(() => import("./pages/ReleaseNotes"));
 
@@ -127,6 +128,7 @@ const App = () => (
                   <Route path="/marketing/campaigns" element={<MarketingCampaigns />} />
                   <Route path="/marketing/reports" element={<MarketingReports />} />
                   <Route path="/marketing/lists" element={<MarketingLists />} />
+                  <Route path="/rh" element={<RhWorkspace />} />
                   <Route path="/gestao" element={<Gestao />} />
                   <Route path="/notas-atualizacao" element={<ReleaseNotes />} />
                 </Route>

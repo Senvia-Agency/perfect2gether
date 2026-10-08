@@ -2,7 +2,7 @@ import type { ElementType } from 'react';
 import {
   LayoutDashboard, Users, UserCheck, FileText, ShoppingBag,
   Wallet, Calendar, Mail, Search, Store, Settings, BarChart3,
-  Building2,
+  Building2, UsersRound,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModules, EnabledModules } from '@/hooks/useModules';
@@ -33,6 +33,7 @@ const MAIN_NAV: NavItem[] = [
   { to: '/marketing', icon: Mail, label: 'Marketing', moduleKey: 'marketing' },
   { to: '/prospects', icon: Search, label: 'Prospects', moduleKey: 'prospects' },
   { to: '/ecommerce', icon: Store, label: 'E-commerce', shortLabel: 'Loja', moduleKey: 'ecommerce' },
+  { to: '/rh', icon: UsersRound, label: 'Recursos Humanos', shortLabel: 'RH' },
   { to: '/settings', icon: Settings, label: 'Definições', isAdminOnly: true },
   { to: '/gestao', icon: BarChart3, label: 'Gestão', permissionKey: 'gestao' },
 ];

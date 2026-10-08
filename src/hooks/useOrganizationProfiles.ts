@@ -119,6 +119,15 @@ export const MODULE_SCHEMA: Record<string, ModuleSchema> = {
       reports: { label: 'Relatórios', actions: ['view'] },
     },
   },
+  rh: { label: 'Recursos Humanos', subareas: {
+    absences: { label: 'Ausências', actions: ['view', 'manage', 'approve'] },
+    calendar: { label: 'Calendário', actions: ['view', 'manage'] },
+    balances: { label: 'Saldos', actions: ['view', 'manage'] },
+    employees: { label: 'Colaboradores', actions: ['view', 'manage'] },
+    documents: { label: 'Documentos', actions: ['view', 'manage'] },
+    support: { label: 'Suporte interno', actions: ['view', 'manage'] },
+    communication: { label: 'Comunicação e administração', actions: ['view', 'manage'] },
+  } },
   portal_total_link: {
     label: 'Portal Total Link',
     subareas: {

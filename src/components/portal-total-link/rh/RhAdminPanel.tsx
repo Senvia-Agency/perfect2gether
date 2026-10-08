@@ -85,7 +85,7 @@ export default function RhAdminPanel() {
                     <TableHead>Membro</TableHead>
                     <TableHead className="text-center">Total</TableHead>
                     <TableHead className="text-center">Utilizados</TableHead>
-                    <TableHead className="text-center">Disponíveis</TableHead>
+                    <TableHead className="text-center">Pendentes</TableHead><TableHead className="text-center">Disponíveis</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -93,9 +93,9 @@ export default function RhAdminPanel() {
                     <TableRow key={b.id}>
                       <TableCell className="font-medium">{b.user_name}</TableCell>
                       <TableCell className="text-center">{b.total_days}</TableCell>
-                      <TableCell className="text-center">{b.used_days}</TableCell>
+                      <TableCell className="text-center">{b.used_days}</TableCell><TableCell className="text-center">{b.pending_days ?? 0}</TableCell>
                       <TableCell className="text-center font-semibold text-primary">
-                        {b.total_days - b.used_days}
+                        {b.total_days - b.used_days - (b.pending_days ?? 0)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -178,7 +178,7 @@ export default function RhAdminPanel() {
                     <div>
                       <p className="text-sm font-medium">{b.user_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {b.total_days} totais · {b.used_days} utilizados · {b.total_days - b.used_days} disponíveis
+                        {b.total_days} totais · {b.used_days} utilizados · {b.pending_days ?? 0} pendentes · {b.total_days - b.used_days - (b.pending_days ?? 0)} disponíveis
                       </p>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => setEditBalance({ userId: b.user_id, userName: b.user_name, totalDays: b.total_days })}>

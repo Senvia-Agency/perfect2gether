@@ -37,7 +37,7 @@ export default function RhVacationBalance() {
     );
   }
 
-  const availableDays = balance.total_days - balance.used_days;
+  const availableDays = balance.total_days - balance.used_days - (balance.pending_days ?? 0);
 
   return (
     <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
@@ -55,6 +55,7 @@ export default function RhVacationBalance() {
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs lg:text-sm text-muted-foreground">
               <span>{formatDays(balance.total_days)} dias totais</span>
               <span>{formatDays(balance.used_days)} dias utilizados</span>
+              <span>{formatDays(balance.pending_days ?? 0)} dias pendentes</span>
             </div>
           </div>
         </div>

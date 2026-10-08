@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useRhWorkspace } from "@/hooks/useRhWorkspace";
 import { useRhHolidays } from "@/hooks/useRhHolidays";
 import { useMyAbsences, useDeleteAbsence } from "@/hooks/useRhAbsences";
 import RhVacationBalance from "@/components/portal-total-link/rh/RhVacationBalance";
@@ -14,7 +15,8 @@ export default function Rh() {
   const [showRequestForm, setShowRequestForm] = useState(false);
   const { can } = usePermissions();
   const canAddAbsence = can('portal_total_link', 'rh', 'add');
-  const canManageRh = can('portal_total_link', 'rh', 'edit');
+  const workspace = useRhWorkspace();
+  const canManageRh = workspace.data?.permissions["administration.manage"] === true;
   const { data: holidays = [] } = useRhHolidays();
   const { data: myAbsences = [], isLoading } = useMyAbsences();
   const deleteAbsence = useDeleteAbsence();
@@ -50,7 +52,7 @@ export default function Rh() {
               <RhAbsenceCard
                 key={absence.id}
                 absence={absence}
-                onCancel={() => handleCancel(absence.id)}
+                onCancel={canManageRh ? () => handleCancel(absence.id) : undefined}
                 isCancelling={cancellingId === absence.id}
               />
             ))}
@@ -58,7 +60,7 @@ export default function Rh() {
         )}
       </div>
 
-      {/* Admin Panel (management = rh edit; admins always pass can()) */}
+      {/* Administração de RH */}
       {canManageRh && (
         <div className="pt-4 border-t">
           <RhAdminPanel />

@@ -63,7 +63,7 @@ export default function RhAbsenceApprovalDialog({ open, onOpenChange, absence, m
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5">Motivo (opcional)</label>
+                <label className="block text-sm font-medium mb-1.5">Motivo (obrigatório)</label>
                 <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Motivo da rejeição..." rows={3} />
               </div>
             </div>
@@ -75,7 +75,7 @@ export default function RhAbsenceApprovalDialog({ open, onOpenChange, absence, m
           <Button
             variant={mode === "approve" ? "default" : "destructive"}
             onClick={handleConfirm}
-            disabled={isLoading}
+            disabled={isLoading || (mode === "reject" && !reason.trim())}
           >
             {isLoading ? "A processar..." : mode === "approve" ? "Aprovar" : "Rejeitar"}
           </Button>

@@ -1,10 +1,12 @@
+import { absenceSchema } from "@/lib/rh/schema";
+import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { DatePeriod, RhHoliday } from "@/lib/rh-utils";
-import { countBusinessDays } from "@/lib/rh-utils";
+import { rhClient } from "@/lib/rh/api";
 
 export interface RhAbsence {
   id: string;
@@ -45,6 +47,8 @@ export interface RhVacationBalance {
   year: number;
   total_days: number;
   used_days: number;
+  pending_days: number;
+  company_reserved_days: number;
 }
 
 // Fetch user's own absences
@@ -125,7 +129,7 @@ export function useMyVacationBalance() {
         .maybeSingle();
 
       if (error) throw error;
-      return data as RhVacationBalance | null;
+      if(!data)return null;const counters=z.object({pending_days:z.coerce.number().default(0),company_reserved_days:z.coerce.number().default(0)}).parse(data);return {...data,pending_days:counters.pending_days??0,company_reserved_days:counters.company_reserved_days??0};
     },
     enabled: !!user?.id && !!organization?.id,
   });
@@ -151,44 +155,14 @@ export function useCreateAbsence() {
     }) => {
       if (!user?.id || !organization?.id) throw new Error("Não autenticado");
 
-      const allDates = periods.flatMap(p => [p.from, p.to]);
-      const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-      const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
-
-      const { data: absence, error: absError } = await supabase
-        .from("rh_absences")
-        .insert({
-          organization_id: organization.id,
-          user_id: user.id,
-          absence_type: absenceType,
-          start_date: format(minDate, "yyyy-MM-dd"),
-          end_date: format(maxDate, "yyyy-MM-dd"),
-          notes: notes || null,
-        })
-        .select()
-        .single();
-
-      if (absError) throw absError;
-
-      const periodsToInsert = periods.map(p => ({
-        absence_id: absence.id,
-        start_date: format(p.from, "yyyy-MM-dd"),
-        end_date: format(p.to, "yyyy-MM-dd"),
-        business_days:
-          p.periodType === "partial" && p.businessDays !== undefined
-            ? p.businessDays
-            : countBusinessDays(p.from, p.to, holidays),
-        period_type: p.periodType,
-        start_time: p.startTime || null,
-        end_time: p.endTime || null,
-      }));
-
-      const { error: periodsError } = await supabase
-        .from("rh_absence_periods")
-        .insert(periodsToInsert);
-
-      if (periodsError) throw periodsError;
-      return absence;
+      const { data, error } = await rhClient.rpc('rh_absence_mutate', {
+        _org: organization.id, _action: 'create', _payload: {
+          user_id: user.id, absence_type: absenceType, notes,
+          periods: periods.map(p => ({ start_date: format(p.from, 'yyyy-MM-dd'), end_date: format(p.to, 'yyyy-MM-dd'), period_type: p.periodType, start_time: p.startTime ?? null, end_time: p.endTime ?? null }))
+        }
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       toast({ title: "Pedido submetido com sucesso!" });
@@ -204,19 +178,22 @@ export function useCreateAbsence() {
 
 // Delete (cancel) own pending absence
 export function useDeleteAbsence() {
+  const { organization } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: async (absenceId: string) => {
-      await supabase.from("rh_absence_periods").delete().eq("absence_id", absenceId);
-      const { error } = await supabase.from("rh_absences").delete().eq("id", absenceId);
+      const { error } = await rhClient.rpc('rh_absence_mutate', { _org: organization?.id ?? '', _action: 'cancel', _payload: { id: absenceId } });
       if (error) throw error;
     },
     onSuccess: () => {
       toast({ title: "Pedido cancelado" });
       qc.invalidateQueries({ queryKey: ["rh-my-absences"] });
       qc.invalidateQueries({ queryKey: ["rh-org-absences"] });
+      qc.invalidateQueries({ queryKey: ["rh-vacation-balance"] });
+      qc.invalidateQueries({ queryKey: ["rh-org-balances"] });
+      qc.invalidateQueries({ queryKey: ["rh-workspace"] });
     },
     onError: (err: Error) => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -226,7 +203,7 @@ export function useDeleteAbsence() {
 
 // Approve absence (admin)
 export function useApproveAbsence() {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -234,23 +211,8 @@ export function useApproveAbsence() {
     mutationFn: async ({ absenceId, mode }: { absenceId: string; mode: "approve" | "reject"; rejectionReason?: string }) => {
       if (!user?.id) throw new Error("Não autenticado");
 
-      if (mode === "approve") {
-        const { error } = await supabase
-          .from("rh_absences")
-          .update({
-            status: "approved",
-            approved_by: user.id,
-            approved_at: new Date().toISOString(),
-          })
-          .eq("id", absenceId);
-        if (error) throw error;
-
-        // Mark all periods as approved
-        await supabase
-          .from("rh_absence_periods")
-          .update({ status: "approved" })
-          .eq("absence_id", absenceId);
-      }
+      const { error } = await rhClient.rpc('rh_absence_mutate', { _org: organization?.id ?? '', _action: mode, _payload: { id: absenceId } });
+      if (error) throw error;
     },
     onSuccess: () => {
       toast({ title: "Pedido aprovado" });
@@ -266,28 +228,15 @@ export function useApproveAbsence() {
 
 // Reject absence (admin)
 export function useRejectAbsence() {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ absenceId, reason }: { absenceId: string; reason?: string }) => {
       if (!user?.id) throw new Error("Não autenticado");
-      const { error } = await supabase
-        .from("rh_absences")
-        .update({
-          status: "rejected",
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-          rejection_reason: reason || null,
-        })
-        .eq("id", absenceId);
+      const { error } = await rhClient.rpc('rh_absence_mutate', { _org: organization?.id ?? '', _action: 'reject', _payload: { id: absenceId, reason: reason ?? '' } });
       if (error) throw error;
-
-      await supabase
-        .from("rh_absence_periods")
-        .update({ status: "rejected" })
-        .eq("absence_id", absenceId);
     },
     onSuccess: () => {
       toast({ title: "Pedido rejeitado" });
@@ -318,17 +267,7 @@ export function useUpdateVacationBalance() {
       year: number;
       totalDays: number;
     }) => {
-      const { error } = await supabase
-        .from("rh_vacation_balances")
-        .upsert(
-          {
-            organization_id: organizationId,
-            user_id: userId,
-            year,
-            total_days: totalDays,
-          },
-          { onConflict: "organization_id,user_id,year" }
-        );
+      const { error } = await rhClient.rpc('rh_balance_set', { _org: organizationId, _user: userId, _year: year, _total: totalDays });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -416,50 +355,21 @@ export function useTeamOverlappingAbsences(
 
       const teammateIds = [...new Set(teammates.map(t => t.user_id))];
 
-      // 3. Get approved/pending absences from teammates
-      const { data: absences } = await supabase
-        .from("rh_absences")
-        .select("*, rh_absence_periods(*)")
-        .eq("organization_id", organizationId)
-        .in("user_id", teammateIds)
-        .in("status", ["approved", "pending"]);
-
-      if (!absences || absences.length === 0) return [];
-
-      // 4. Check overlap: startA <= endB AND endA >= startB
-      const overlapping: typeof absences = [];
-      for (const absence of absences) {
-        const absPeriods = absence.rh_absence_periods || [];
-        const hasOverlap = absPeriods.some((ap: any) =>
-          periods.some(p => {
-            const pStart = format(p.from, "yyyy-MM-dd");
-            const pEnd = format(p.to, "yyyy-MM-dd");
-            return ap.start_date <= pEnd && ap.end_date >= pStart;
-          })
-        );
-        if (hasOverlap) overlapping.push(absence);
-      }
-
+      const {data: calendar, error} = await rhClient.rpc("rh_calendar", {_org: organizationId});
+      if (error) throw error;
+      const absences = z.array(absenceSchema).parse(calendar);
+      const overlapping = absences.filter(a => teammateIds.includes(a.user_id) &&
+        ["approved", "pending", "partially_approved"].includes(a.status) && a.periods.some(ap =>
+          ["approved", "pending"].includes(ap.status) && periods.some(p =>
+            ap.start_date <= format(p.to, "yyyy-MM-dd") && ap.end_date >= format(p.from, "yyyy-MM-dd"))));
       if (overlapping.length === 0) return [];
-
-      // 5. Get profile names
-      const userIds = [...new Set(overlapping.map(a => a.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", userIds);
-
-      const profileMap = new Map(profiles?.map(p => [p.id, p.full_name || "Desconhecido"]) || []);
-
+      const {data: directory, error: directoryError} = await rhClient.rpc("rh_directory", {_org:organizationId});
+      if (directoryError) throw directoryError;
+      const people = z.array(z.object({user_id:z.string(),full_name:z.string().nullable()})).parse(directory);
+      const names = new Map(people.map(p=>[p.user_id,p.full_name || "Desconhecido"]));
       return overlapping.map(a => ({
-        userName: profileMap.get(a.user_id) || "Desconhecido",
-        userId: a.user_id,
-        absenceType: a.absence_type,
-        status: a.status,
-        periods: (a.rh_absence_periods || []).map((p: any) => ({
-          startDate: p.start_date,
-          endDate: p.end_date,
-        })),
+        userName:names.get(a.user_id) || "Desconhecido", userId:a.user_id, absenceType:a.absence_type,status:a.status,
+        periods:a.periods.filter(p=>["approved","pending"].includes(p.status)).map(p=>({startDate:p.start_date,endDate:p.end_date})),
       }));
     },
     enabled: !!userId && !!organizationId && periods.length > 0,
