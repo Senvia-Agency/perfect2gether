@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import type { MarketingContact } from '@/types/marketing';
 
@@ -10,15 +11,18 @@ interface ConvertOptions {
 }
 
 export function useConvertProspectToLead() {
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
+  const { isAdmin, isProfileAdmin, isLoadingPermissions } = usePermissions();
+  const isP2g = organization?.id === '96a3950e-31be-4c6d-abed-b82968c0d7e9';
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ contacts, assignedTo }: ConvertOptions) => {
       if (!organization?.id) throw new Error('Sem organização');
 
-      // Resolve round-robin if no assignedTo
-      let resolvedAssignedTo = assignedTo || null;
+      if (isP2g && isLoadingPermissions) throw new Error('Aguarde pelo carregamento das permissões.');
+      // Personal creation uses the same default owner as the lead form.
+      const resolvedAssignedTo = assignedTo || (isP2g && !isAdmin && !isProfileAdmin ? user?.id : null) || null;
       let salesSettings: any = {};
       let members: { user_id: string }[] = [];
 
