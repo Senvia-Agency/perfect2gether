@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { automationEmailWasSent } from '../_shared/automation-email.ts';
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -333,6 +335,7 @@ serve(async (req: Request): Promise<Response> => {
           }
 
           const { data: sendData, error: sendError } = await supabase.functions.invoke("send-template-email", {
+            headers: { Authorization: `Bearer ${supabaseServiceKey}`, apikey: supabaseServiceKey },
             body: {
               organizationId: sale.organization_id,
               templateId: template.id,
@@ -346,7 +349,7 @@ serve(async (req: Request): Promise<Response> => {
             },
           });
 
-          const sendFailed = Boolean(sendError) || Number(sendData?.summary?.failed || 0) > 0;
+          const sendFailed = Boolean(sendError) || !automationEmailWasSent(sendData);
           if (sendFailed) {
             await supabase.rpc("mark_renewal_automation_run", {
               p_run_id: runId,

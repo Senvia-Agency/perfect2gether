@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { automationEmailWasSent } from '../_shared/automation-email.ts';
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -51,7 +53,8 @@ serve(async (req: Request): Promise<Response> => {
         const variables = (item.variables as Record<string, unknown>) || {};
         const clientId = typeof variables.client_id === "string" && variables.client_id ? variables.client_id : undefined;
 
-        const { error: sendError } = await supabase.functions.invoke("send-template-email", {
+        const { data: sendData, error: sendError } = await supabase.functions.invoke("send-template-email", {
+          headers: { Authorization: `Bearer ${supabaseServiceKey}`, apikey: supabaseServiceKey },
           body: {
             organizationId: item.organization_id,
             templateId: item.template_id,
@@ -65,7 +68,7 @@ serve(async (req: Request): Promise<Response> => {
           },
         });
 
-        if (sendError) {
+        if (sendError || !automationEmailWasSent(sendData)) {
           console.error(`Failed to send queued item ${item.id}:`, sendError);
           await supabase.from("automation_queue").update({ status: "failed" }).eq("id", item.id);
           failed++;
@@ -81,7 +84,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, processed: items.length, sent, failed }),
+      JSON.stringify({ success: failed === 0, processed: items.length, sent, failed }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

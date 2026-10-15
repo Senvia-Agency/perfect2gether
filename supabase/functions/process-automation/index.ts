@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { automationEmailWasSent, matchesAutomationTrigger } from '../_shared/automation-email.ts';
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -106,11 +108,12 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     let triggered = 0;
+    let failed = 0;
 
     for (const template of templates) {
       // Check trigger_config conditions
-      const config = (template.automation_trigger_config as Record<string, unknown>) || {};
-      if (!matchesTriggerConfig(config, record, old_record)) {
+      const config: unknown = template.automation_trigger_config;
+      if (!matchesAutomationTrigger(config, record, old_record)) {
         continue;
       }
 
@@ -159,10 +162,12 @@ serve(async (req: Request): Promise<Response> => {
         });
         console.log(`Queued template ${template.id} for ${recipientEmail} at ${scheduledFor.toISOString()}`);
       } else {
-        const { error: sendError } = await supabase.functions.invoke("send-template-email", {
+        const { data: sendData, error: sendError } = await supabase.functions.invoke("send-template-email", {
+          headers: { Authorization: `Bearer ${supabaseServiceKey}`, apikey: supabaseServiceKey },
           body: {
             organizationId: organization_id,
             templateId: template.id,
+            automationId: template.id,
             recipients: [{
               email: recipientEmail,
               name: recipientName,
@@ -172,8 +177,10 @@ serve(async (req: Request): Promise<Response> => {
           },
         });
 
-        if (sendError) {
-          console.error(`Failed to send template ${template.id} to ${recipientEmail}:`, sendError);
+        if (sendError || !automationEmailWasSent(sendData)) {
+          failed++;
+          console.error(`Failed to send template ${template.id} to ${recipientEmail}:`, sendError || sendData);
+          continue;
         } else {
           console.log(`Sent template ${template.id} to ${recipientEmail}`);
         }
@@ -183,8 +190,8 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, triggered }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: failed === 0, triggered, failed }),
+      { status: failed > 0 ? 502 : 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in process-automation:", error);
@@ -194,14 +201,3 @@ serve(async (req: Request): Promise<Response> => {
     );
   }
 });
-
-function matchesTriggerConfig(
-  config: Record<string, unknown> | null,
-  record: Record<string, unknown>,
-  oldRecord?: Record<string, unknown>
-): boolean {
-  if (!config || Object.keys(config).length === 0) return true;
-  if (config.to_status && record.status !== config.to_status) return false;
-  if (config.from_status && oldRecord && oldRecord.status !== config.from_status) return false;
-  return true;
-}

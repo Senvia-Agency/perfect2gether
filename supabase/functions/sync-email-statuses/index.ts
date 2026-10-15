@@ -11,7 +11,7 @@ async function syncOrganization(supabase: any, orgId: string, brevoApiKey: strin
     .from("email_sends")
     .select("id, brevo_message_id, status")
     .eq("organization_id", orgId)
-    .eq("status", "sent")
+    .in("status", ["sent", "delivered"])
     .not("brevo_message_id", "is", null);
 
   if (fetchError) {
@@ -61,9 +61,11 @@ async function syncOrganization(supabase: any, orgId: string, brevoApiKey: strin
             break;
           case "opened":
           case "unique_opened":
+          case "uniqueOpened":
             updateData.opened_at = evt.date || new Date().toISOString();
             break;
           case "click":
+          case "clicks":
             updateData.clicked_at = evt.date || new Date().toISOString();
             break;
           case "hardBounce":
