@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { startOfMonth, startOfYear, format } from "date-fns";
 import { toast } from "sonner";
+import { useMonthlyObjectives } from "@/hooks/useMonthlyObjectives";
+import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 
 export interface ActivationObjective {
   id: string;
@@ -32,6 +34,8 @@ export function useActivationObjectives(referenceDate?: Date) {
   const { organization } = useAuth();
   const queryClient = useQueryClient();
   const orgId = organization?.id;
+  const { objectives: monthlyObjectives, isLoading: monthlyObjectivesLoading } = useMonthlyObjectives(referenceDate);
+  const usesMonthlyObjectives = isPerfect2GetherOrg(orgId);
 
   const ref = referenceDate || new Date();
   const currentMonthStart = format(startOfMonth(ref), "yyyy-MM-dd");
@@ -166,12 +170,16 @@ export function useActivationObjectives(referenceDate?: Date) {
 
   // Helper to get objective target
   const getTarget = useCallback((userId: string, periodType: "monthly" | "annual", proposalType: "energia" | "servicos"): number => {
+    if (usesMonthlyObjectives && periodType === "monthly") {
+      const objective = monthlyObjectives.find((entry) => entry.user_id === userId);
+      return Number((proposalType === "energia" ? objective?.total_energia_mwh : objective?.total_solar_kwp) ?? 0);
+    }
     const month = periodType === "monthly" ? currentMonthStart : currentYearStart;
     const obj = objectives.find(
       (o) => o.user_id === userId && o.period_type === periodType && o.proposal_type === proposalType && o.month === month
     );
     return obj?.target_quantity || 0;
-  }, [objectives, currentMonthStart, currentYearStart]);
+  }, [objectives, monthlyObjectives, usesMonthlyObjectives, currentMonthStart, currentYearStart]);
 
   // Sum activations: MWh for energia, kWp for servicos (or count when countMode='count')
   const sumActivations = useCallback((
@@ -260,7 +268,7 @@ export function useActivationObjectives(referenceDate?: Date) {
 
   return {
     objectives,
-    isLoading: objectivesLoading || monthlyLoading || annualLoading || cpesLoading || detailsLoading,
+    isLoading: (usesMonthlyObjectives && monthlyObjectivesLoading) || objectivesLoading || monthlyLoading || annualLoading || cpesLoading || detailsLoading,
     getTarget,
     countActivations: sumActivations,
     saveObjective,

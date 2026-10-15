@@ -176,6 +176,7 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["client-proposals"] });
       queryClient.invalidateQueries({ queryKey: ["client-sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["month-sales-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["recurring-sales"] });
       queryClient.invalidateQueries({ queryKey: ["commissions-live"] });
       toast.success("Venda criada com sucesso!");
@@ -233,6 +234,7 @@ export function useCreateSaleFromProposal() {
       queryClient.invalidateQueries({ queryKey: ["client-proposals"] });
       queryClient.invalidateQueries({ queryKey: ["client-sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["month-sales-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["commissions-live"] });
       if (!(data as any).alreadyExists) {
         toast.success("Proposta aceite! Venda criada automaticamente.");
@@ -259,6 +261,7 @@ export function useUpdateSaleStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["month-sales-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["commissions-live"] });
       toast.success("Estado atualizado!");
     },
@@ -323,6 +326,7 @@ export function useUpdateSale() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["month-sales-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["recurring-sales"] });
       queryClient.invalidateQueries({ queryKey: ["commissions-live"] });
     },
@@ -343,6 +347,7 @@ export function useDeleteSale() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["month-sales-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["commissions-live"] });
       toast.success("Venda eliminada!");
     },

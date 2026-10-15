@@ -60,6 +60,7 @@ export function useRealtimeSubscription(configs: RealtimeConfig[]) {
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['sales'] });
+          queryClient.invalidateQueries({ queryKey: ['month-sales-metrics'] });
           queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
         }
       )
@@ -159,6 +160,7 @@ export function useSalesRealtime() {
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['sales'] });
+          queryClient.invalidateQueries({ queryKey: ['month-sales-metrics'] });
         }
       )
       .subscribe();

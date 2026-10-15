@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 
 export interface UserSalesMetrics {
@@ -20,32 +21,46 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
   const monthEnd = format(endOfMonth(ref), "yyyy-MM-dd");
 
   return useQuery({
-    queryKey: ["month-sales-metrics", orgId, monthStart],
+    queryKey: ["month-sales-metrics", orgId, monthStart, "sale-and-activation-periods"],
     queryFn: async (): Promise<UserSalesMetrics[]> => {
       if (!orgId) return [];
 
-      // 1. Fetch fulfilled sales
-      const { data: sales, error } = await supabase
-        .from("sales")
+      const isP2G = isPerfect2GetherOrg(orgId);
+      const salesQuery = supabase.from("sales")
         .select("id, created_by, proposal_id")
         .eq("organization_id", orgId)
         .gte("sale_date", monthStart)
-        .lte("sale_date", monthEnd)
-        .eq("status", "fulfilled");
-
-      if (error) throw error;
-      if (!sales?.length) return [];
+        .lte("sale_date", monthEnd);
+      const [bookedResult, activatedResult] = await Promise.all([
+        isP2G ? salesQuery.neq("status", "cancelled") : salesQuery.eq("status", "fulfilled"),
+        isP2G ? supabase.from("sales")
+          .select("id, created_by, proposal_id")
+          .eq("organization_id", orgId)
+          .eq("status", "delivered")
+          .gte("activation_date", monthStart)
+          .lte("activation_date", monthEnd)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (bookedResult.error) throw bookedResult.error;
+      if (activatedResult.error) throw activatedResult.error;
+      const bookedSales = bookedResult.data ?? [];
+      const activatedSales = isP2G ? activatedResult.data ?? [] : bookedSales;
+      const sales = [...new Map([...bookedSales, ...activatedSales].map(sale => [sale.id, sale])).values()];
+      if (!sales.length) return [];
+      const bookedIds = new Set(bookedSales.map(sale => sale.id));
+      const activatedIds = new Set(activatedSales.map(sale => sale.id));
 
       // 2. Get proposal_ids and fetch proposal_cpes
-      const proposalIds = [...new Set(sales.map(s => s.proposal_id).filter(Boolean))] as string[];
+      const proposalIds = [...new Set(sales.map(s => s.proposal_id).filter((id): id is string => Boolean(id)))];
 
       let cpesByProposal = new Map<string, { consumo: number; comissao: number }>();
       if (proposalIds.length > 0) {
-        const { data: cpes } = await supabase
+        const { data: cpes, error: cpesError } = await supabase
           .from("proposal_cpes")
           .select("proposal_id, consumo_anual, comissao")
           .in("proposal_id", proposalIds);
 
+        if (cpesError) throw cpesError;
         if (cpes) {
           for (const cpe of cpes) {
             const existing = cpesByProposal.get(cpe.proposal_id) || { consumo: 0, comissao: 0 };
@@ -65,11 +80,12 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
       }>();
 
       if (proposalIds.length > 0) {
-        const { data: proposals } = await supabase
+        const { data: proposals, error: proposalsError } = await supabase
           .from("proposals")
           .select("id, proposal_type, negotiation_type, servicos_details")
           .in("id", proposalIds);
 
+        if (proposalsError) throw proposalsError;
         if (proposals) {
           for (const p of proposals) {
             let totalKwp = 0;
@@ -99,7 +115,8 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
         if (!grouped.has(uid)) {
           grouped.set(uid, { contracts: 0, energia: 0, solar: 0, comissao: 0 });
         }
-        const g = grouped.get(uid)!;
+        const g = grouped.get(uid);
+        if (!g) continue;
 
         const cpeData = sale.proposal_id ? cpesByProposal.get(sale.proposal_id) : null;
         const proposalMetrics = sale.proposal_id ? proposalMetricsById.get(sale.proposal_id) : null;
@@ -107,10 +124,14 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
           proposalMetrics?.proposalType === "energia" &&
           eligibleEnergyNegotiationTypes.has(proposalMetrics.negotiationType || "");
 
-        g.contracts += 1;
-        g.energia += countsForEnergyMetrics ? (cpeData?.consumo ?? 0) / 1000 : 0; // kWh → MWh
-        g.solar += countsForEnergyMetrics ? proposalMetrics?.solar || 0 : 0;
-        g.comissao += countsForEnergyMetrics ? cpeData?.comissao ?? 0 : 0;
+        if (bookedIds.has(sale.id)) {
+          g.contracts += 1;
+          g.energia += countsForEnergyMetrics ? (cpeData?.consumo ?? 0) / 1000 : 0;
+          g.solar += countsForEnergyMetrics ? proposalMetrics?.solar || 0 : 0;
+        }
+        if (activatedIds.has(sale.id)) {
+          g.comissao += countsForEnergyMetrics ? cpeData?.comissao ?? 0 : 0;
+        }
       }
 
       return Array.from(grouped.entries()).map(([userId, g]) => ({
