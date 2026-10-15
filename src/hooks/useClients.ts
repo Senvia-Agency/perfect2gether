@@ -187,8 +187,18 @@ export function useConvertLeadToClient() {
       nif?: string;
       company_nif?: string;
       notes?: string;
+      won_status?: string;
     }) => {
       if (!organizationId) throw new Error('No organization');
+
+      if (isPerfect2GetherOrg(organizationId)) {
+        const { data: result, error: conversionError } = await supabase.rpc('convert_p2g_lead_to_client', {
+          _lead: leadData.lead_id,
+          _won_status: leadData.won_status ?? null,
+        }).single();
+        if (conversionError) throw conversionError;
+        return { ...result.client_record, conversion_created: result.client_created };
+      }
 
       // First, fetch the lead to get the assigned_to and custom_data values
       const { data: lead, error: leadError } = await supabase
@@ -267,12 +277,14 @@ export function useConvertLeadToClient() {
         }
       }
 
-      return data;
+      return { ...data, conversion_created: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm-clients'] });
       queryClient.invalidateQueries({ queryKey: ['cpes'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
       toast.success('Lead convertido em cliente');
     },
     onError: (error) => {

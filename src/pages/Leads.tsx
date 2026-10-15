@@ -307,38 +307,25 @@ export default function Leads() {
       const existingClient = clients.find(c => c.lead_id === leadId || (lead.company_nif && c.company_nif === lead.company_nif));
 
       if (isPerfect2Gether) {
-        // Perfect2Gether custom flow
-        if (existingClient) {
-          // Already a client → mark won immediately + open proposal modal
-          updateStatus.mutate({ leadId, status: newStatus });
-          setPendingWonData(null);
-          toast.success('Lead ganha! Cliente já existente — criar proposta.');
-          setPrefillProposalClientId(existingClient.id);
-          setNewlyCreatedClientId(existingClient.id);
-          setIsCreateProposalModalOpen(true);
-        } else {
-          // Not a client → create client → navigate to client page
-          convertLeadToClient.mutate({
-            lead_id: leadId,
-            name: (lead.name && lead.name !== lead.company_name)
-              ? lead.name
-              : (lead.company_name || lead.name || 'Sem nome'),
-            email: lead.email,
-            phone: lead.phone,
-            company: lead.company_name || undefined,
-            company_nif: lead.company_nif || undefined,
-            notes: lead.notes || undefined,
-          }, {
-            onSuccess: (newClient) => {
-              updateStatus.mutate({ leadId, status: newStatus });
-              setPendingWonData(null);
+        convertLeadToClient.mutate({
+          lead_id: leadId,
+          name: lead.name,
+          won_status: newStatus,
+        }, {
+          onSuccess: (client) => {
+            setPendingWonData(null);
+            if (client.conversion_created) {
               toast.success('Lead ganha! Novo cliente criado.');
-              if (newClient?.id) {
-                navigate('/clients', { state: { openClientId: newClient.id } });
-              }
-            },
-          });
-        }
+              navigate('/clients', { state: { openClientId: client.id } });
+            } else {
+              toast.success('Lead ganha! Cliente já existente — criar proposta.');
+              setPrefillProposalClientId(client.id);
+              setNewlyCreatedClientId(client.id);
+              setIsCreateProposalModalOpen(true);
+            }
+          },
+          onError: () => setPendingWonData(null),
+        });
         return;
       }
 

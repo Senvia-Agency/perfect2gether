@@ -3485,6 +3485,7 @@ export type Database = {
           service_type: string | null
           rejection_reason: string | null
           rejection_meeting_id: string | null
+          rejection_meeting_snapshot: Json | null
           status: string
           total_value: number
           updated_at: string | null
@@ -3516,6 +3517,7 @@ export type Database = {
           service_type?: string | null
           rejection_reason?: string | null
           rejection_meeting_id?: string | null
+          rejection_meeting_snapshot?: Json | null
           status?: string
           total_value?: number
           updated_at?: string | null
@@ -3547,6 +3549,7 @@ export type Database = {
           service_type?: string | null
           rejection_reason?: string | null
           rejection_meeting_id?: string | null
+          rejection_meeting_snapshot?: Json | null
           status?: string
           total_value?: number
           updated_at?: string | null
@@ -4675,6 +4678,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      convert_p2g_lead_to_client: {
+        Args: { _lead: string; _won_status?: string | null }
+        Returns: { client_id: string; client_created: boolean; client_record: Database["public"]["Tables"]["crm_clients"]["Row"] }[]
+      }
       reject_p2g_proposal_with_meeting: { Args: { _proposal: string; _reason: string; _meeting: Json }; Returns: string }
       delete_cancelled_p2g_proposal: { Args: { p_proposal_id: string }; Returns: undefined }
       p2g_mfa_required: { Args: Record<string, never>; Returns: boolean }
