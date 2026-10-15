@@ -277,6 +277,7 @@ export type Database = {
           lead_id: string | null
           meeting_link: string | null
           organization_id: string
+          proposal_id: string | null
           reminder_minutes: number | null
           reminder_sent: boolean | null
           start_time: string
@@ -296,6 +297,7 @@ export type Database = {
           lead_id?: string | null
           meeting_link?: string | null
           organization_id: string
+          proposal_id?: string | null
           reminder_minutes?: number | null
           reminder_sent?: boolean | null
           start_time: string
@@ -315,6 +317,7 @@ export type Database = {
           lead_id?: string | null
           meeting_link?: string | null
           organization_id?: string
+          proposal_id?: string | null
           reminder_minutes?: number | null
           reminder_sent?: boolean | null
           start_time?: string
@@ -324,6 +327,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_events_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calendar_events_client_id_fkey"
             columns: ["client_id"]
@@ -3473,6 +3483,8 @@ export type Database = {
           servicos_details: Json | null
           servicos_produtos: string[] | null
           service_type: string | null
+          rejection_reason: string | null
+          rejection_meeting_id: string | null
           status: string
           total_value: number
           updated_at: string | null
@@ -3502,6 +3514,8 @@ export type Database = {
           servicos_details?: Json | null
           servicos_produtos?: string[] | null
           service_type?: string | null
+          rejection_reason?: string | null
+          rejection_meeting_id?: string | null
           status?: string
           total_value?: number
           updated_at?: string | null
@@ -3531,6 +3545,8 @@ export type Database = {
           servicos_details?: Json | null
           servicos_produtos?: string[] | null
           service_type?: string | null
+          rejection_reason?: string | null
+          rejection_meeting_id?: string | null
           status?: string
           total_value?: number
           updated_at?: string | null
@@ -4659,6 +4675,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      reject_p2g_proposal_with_meeting: { Args: { _proposal: string; _reason: string; _meeting: Json }; Returns: string }
       delete_cancelled_p2g_proposal: { Args: { p_proposal_id: string }; Returns: undefined }
       p2g_mfa_required: { Args: Record<string, never>; Returns: boolean }
       accept_invite: {

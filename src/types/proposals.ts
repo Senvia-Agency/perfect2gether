@@ -32,6 +32,8 @@ export interface Proposal {
   total_value: number;
   status: ProposalStatus;
   notes?: string | null;
+  rejection_reason?: string | null;
+  rejection_meeting_id?: string | null;
   proposal_date: string;
   accepted_at?: string | null;
   created_by?: string | null;

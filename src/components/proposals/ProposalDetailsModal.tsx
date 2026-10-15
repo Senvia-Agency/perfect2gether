@@ -1,3 +1,5 @@
+import { ProposalRejectionDialog } from './ProposalRejectionDialog';
+import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -91,6 +93,7 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
   const [status, setStatus] = useState<ProposalStatus>('draft');
   const [notes, setNotes] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -155,6 +158,10 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
       return;
     }
     
+    if (newStatus === 'rejected' && isPerfect2GetherOrg(organization?.id)) {
+      setShowRejectionDialog(true);
+      return;
+    }
     setStatus(newStatus);
     updateProposal.mutate({ id: proposal.id, status: newStatus });
     
@@ -681,6 +688,9 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
                     </Card>
                   )}
 
+                  {proposal.rejection_reason && (
+                    <Card><CardHeader className="pb-2 p-4"><CardTitle className="text-sm font-medium">Motivo da recusa</CardTitle></CardHeader><CardContent className="p-4 pt-0 text-sm whitespace-pre-wrap">{proposal.rejection_reason}</CardContent></Card>
+                  )}
                   {/* Observações */}
                   <Card>
                     <CardHeader className="pb-2 p-4">
@@ -845,6 +855,8 @@ export function ProposalDetailsModal({ proposal, open, onOpenChange }: ProposalD
           </div>
         </DialogContent>
       </Dialog>
+
+      <ProposalRejectionDialog proposal={proposal} open={showRejectionDialog} onOpenChange={setShowRejectionDialog} onSuccess={() => { setStatus('rejected'); onOpenChange(false); }} />
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

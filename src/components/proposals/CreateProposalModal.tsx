@@ -1,3 +1,4 @@
+import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, UserPlus, Zap, Wrench, Package, FileText, User } from 'lucide-react';
 
@@ -462,7 +463,7 @@ export function CreateProposalModal({ client, open, onOpenChange, onSuccess, pre
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {PROPOSAL_STATUSES.map((s) => (
+                              {PROPOSAL_STATUSES.filter(item => item !== 'rejected' || !isPerfect2GetherOrg(organization?.id)).map((s) => (
                                 <SelectItem key={s} value={s}>
                                   {PROPOSAL_STATUS_LABELS[s]}
                                 </SelectItem>

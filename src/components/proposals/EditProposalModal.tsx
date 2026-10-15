@@ -1,3 +1,5 @@
+import { ProposalRejectionDialog } from './ProposalRejectionDialog';
+import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import { useState, useMemo, useEffect } from 'react';
 import { X, UserPlus, Zap, Wrench, Package, FileText, User, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -72,6 +74,7 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
   const [notes, setNotes] = useState('');
   const [proposalDate, setProposalDate] = useState('');
   const [status, setStatus] = useState<ProposalStatus>('draft');
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   
   const [negotiationType, setNegotiationType] = useState<NegotiationType | null>(null);
   const [proposalType, setProposalType] = useState<ProposalType>('energia');
@@ -534,7 +537,12 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="status">Estado</Label>
-                          <Select value={status} onValueChange={(v) => setStatus(v as ProposalStatus)}>
+                          <Select value={status} onValueChange={(value) => {
+                            const next = PROPOSAL_STATUSES.find(item => item === value);
+                            if (!next) return;
+                            if (next === 'rejected' && proposal.status !== 'rejected' && isPerfect2GetherOrg(organization?.id)) { setShowRejectionDialog(true); return; }
+                            setStatus(next);
+                          }}>
                             <SelectTrigger id="status">
                               <SelectValue />
                             </SelectTrigger>
@@ -964,6 +972,8 @@ export function EditProposalModal({ proposal, open, onOpenChange, onSuccess }: E
           </div>
         </DialogContent>
       </Dialog>
+
+      <ProposalRejectionDialog proposal={proposal} open={showRejectionDialog} onOpenChange={setShowRejectionDialog} onSuccess={() => { setStatus('rejected'); }} />
 
       <CreateClientModal
         open={isCreateClientOpen}
