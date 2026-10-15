@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCommitments, CommitmentTotals } from "@/hooks/useCommitments";
+import { useCommitments, type CommitmentTotals } from "@/hooks/useCommitments";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules } from "@/hooks/useModules";
 
@@ -27,12 +27,12 @@ export function EditCommitmentModal({ open, onOpenChange, existing, members, mon
   const { modules } = useModules();
   const showEnergy = organization?.niche === 'telecom' && modules.energy;
 
-  const canPickMember = (members?.length ?? 0) > 1;
+  const canPickMember = (members?.length ?? 0) > 0;
   const [targetUserId, setTargetUserId] = useState<string>(user?.id || "");
 
   // Le e grava sempre o compromisso do colaborador selecionado, no mes que o
   // painel esta a mostrar (nao no mes corrente, que podia ser outro).
-  const { commitment, saveCommitment } = useCommitments(targetUserId, month);
+  const { commitment, saveCommitment, canSaveCommitment, isReadOnly, canCorrectCommitments, lockEnabled } = useCommitments(targetUserId, month);
 
   const [totals, setTotals] = useState<CommitmentTotals>({
     total_nifs: 0,
@@ -54,6 +54,7 @@ export function EditCommitmentModal({ open, onOpenChange, existing, members, mon
   }, [open, existing, commitment, targetUserId, user?.id]);
 
   const handleSave = () => {
+    if (!canSaveCommitment) return;
     saveCommitment.mutate(totals, {
       onSuccess: () => onOpenChange(false),
     });
@@ -66,7 +67,8 @@ export function EditCommitmentModal({ open, onOpenChange, existing, members, mon
           <DialogTitle>Definir Compromisso Mensal</DialogTitle>
         </DialogHeader>
 
-        <div className="px-4 md:px-6 pb-4 space-y-4">
+        {lockEnabled && !canCorrectCommitments && <p className="px-4 md:px-6 pb-4 text-sm text-muted-foreground">{isReadOnly ? "Este compromisso já está registado e não pode ser alterado por si." : "Depois de guardar, só um administrador ou gestor de compromissos poderá corrigir os valores."}</p>}
+        <fieldset disabled={!canSaveCommitment || saveCommitment.isPending} className="px-4 md:px-6 pb-4 space-y-4">
           {canPickMember && (
             <div>
               <Label className="text-xs">Colaborador</Label>
@@ -75,7 +77,8 @@ export function EditCommitmentModal({ open, onOpenChange, existing, members, mon
                   <SelectValue placeholder="Escolher colaborador" />
                 </SelectTrigger>
                 <SelectContent>
-                  {members!.map((m) => (
+                  {user?.id && !members?.some(member => member.user_id === user.id) && <SelectItem value={user.id}>O meu compromisso</SelectItem>}
+                  {members?.map((m) => (
                     <SelectItem key={m.user_id} value={m.user_id}>
                       {m.full_name}{m.user_id === user?.id ? " (eu)" : ""}
                     </SelectItem>
@@ -131,11 +134,11 @@ export function EditCommitmentModal({ open, onOpenChange, existing, members, mon
               className="h-9 text-sm"
             />
           </div>
-        </div>
+        </fieldset>
 
         <DialogFooter className="p-4 md:p-6 pt-2 border-t">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saveCommitment.isPending}>
+          <Button onClick={handleSave} disabled={!canSaveCommitment || saveCommitment.isPending}>
             {saveCommitment.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
             Guardar
           </Button>

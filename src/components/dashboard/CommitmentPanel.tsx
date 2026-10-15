@@ -37,22 +37,12 @@ interface RowData {
 export function CommitmentPanel() {
   const { user, profile, organization } = useAuth();
   const { can } = usePermissions();
-  // O EditCommitmentModal grava sempre o compromisso do proprio utilizador
-  // (useCommitments(user.id)) -- nao existe forma de editar o de outra pessoa.
-  // Por isso qualquer comercial pode definir o seu, sem depender de
-  // gestao.commitments.manage, que e uma permissao de gestao e estava a
-  // esconder o botao a quem so quer inserir o proprio compromisso.
-  const canManageCommitments = true;
-  // Definir o compromisso de OUTRA pessoa continua a exigir a permissao de
-  // gestao e visibilidade de equipa. So nesse caso aparece o seletor de
-  // colaborador no modal.
-  const canManageOthers = can('gestao', 'commitments', 'manage');
   // Coluna de Comissao apenas para quem tem permissao de a ver.
   const showCommission = can('finance', 'commissions', 'view');
   const { data: members = [] } = useTeamMembers({ excludeAdmins: true });
   const { selectedMemberId, canFilterByTeam, isTeamLeader, teamMemberIds, dataScope } = useTeamFilter();
   const { selectedMonth } = useDashboardPeriod();
-  const { commitment, isLoading, allCommitments, allLoading } = useCommitments(user?.id, selectedMonth);
+  const { commitment, isLoading, allCommitments, allLoading, canSaveCommitment, canCorrectCommitments, isReadOnly } = useCommitments(user?.id, selectedMonth);
   const { modules } = useModules();
   const [editOpen, setEditOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -125,8 +115,8 @@ export function CommitmentPanel() {
             </div>
             <div className="flex items-center gap-1">
               <PrintCardButton targetRef={cardRef} />
-              {canManageCommitments && (
-                <Button variant="ghost" size="icon-sm" onClick={() => setEditOpen(true)}>
+              {canSaveCommitment && (
+                <Button variant="ghost" size="icon-sm" aria-label={commitment ? "Corrigir compromisso" : "Definir compromisso"} onClick={() => setEditOpen(true)}>
                   {commitment ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                 </Button>
               )}
@@ -142,7 +132,7 @@ export function CommitmentPanel() {
           ) : rows.every((r) => !r.hasCommitment) ? (
             <div className="text-center py-6">
               <p className="text-sm text-muted-foreground mb-3">Nenhum compromisso definido para este mês.</p>
-              {canManageCommitments && (
+              {canSaveCommitment && (
                 <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" /> Definir Compromisso
                 </Button>
@@ -181,6 +171,7 @@ export function CommitmentPanel() {
               </TableBody>
             </Table>
           )}
+          {isReadOnly && !loading && <p className="mt-3 text-xs text-muted-foreground">Compromisso deste mês registado. Alterações reservadas a administradores e gestores de compromissos.</p>}
         </CardContent>
       </Card>
 
@@ -194,7 +185,7 @@ export function CommitmentPanel() {
           total_comissao: Number(commitment.total_comissao),
         } : null}
         month={selectedMonth}
-        members={canManageOthers ? allRows.map((r) => ({
+        members={canCorrectCommitments ? allRows.map((r) => ({
           user_id: r.userId,
           full_name: r.name.replace(' (eu)', ''),
         })) : undefined}
