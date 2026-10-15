@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import type { Cpe, CpeStatus, CpeServiceType } from '@/types/cpes';
+import { getCpeSaveError } from '@/lib/cpe-errors';
+import type { Cpe } from '@/types/cpes';
 
 export function useCpes(clientId?: string | null) {
   const { organization } = useAuth();
@@ -57,54 +58,7 @@ export function useCpe(cpeId: string | null) {
   });
 }
 
-interface CreateCpeData {
-  client_id: string;
-  equipment_type: string;
-  serial_number?: string;
-  comercializador: string;
-  fidelizacao_start?: string;
-  fidelizacao_end?: string;
-  status?: CpeStatus;
-  nivel_tensao?: string;
-  notes?: string;
-  consumo_anual?: number;
-  service_type?: CpeServiceType;
-  modalidade?: string;
-  kwp?: number;
-}
-
-export function useCreateCpe() {
-  const { organization } = useAuth();
-  const organizationId = organization?.id;
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: CreateCpeData) => {
-      if (!organizationId) throw new Error('No organization');
-
-      const { data: cpe, error } = await supabase
-        .from('cpes')
-        .insert({
-          ...data,
-          organization_id: organizationId,
-          status: data.status || 'active',
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return cpe;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['cpes'] });
-      toast.success('CPE adicionado com sucesso');
-    },
-    onError: (error) => {
-      console.error('Error creating CPE:', error);
-      toast.error('Erro ao adicionar CPE');
-    },
-  });
-}
+export { useCreateCpe } from './useCreateCpe';
 
 export function useUpdateCpe() {
   const queryClient = useQueryClient();
@@ -128,7 +82,7 @@ export function useUpdateCpe() {
     },
     onError: (error) => {
       console.error('Error updating CPE:', error);
-      toast.error('Erro ao atualizar CPE');
+      toast.error(getCpeSaveError(error, 'Erro ao atualizar CPE'));
     },
   });
 }
