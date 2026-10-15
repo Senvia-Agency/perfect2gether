@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamFilter } from '@/hooks/useTeamFilter';
 import { toast } from 'sonner';
+import { getLeadCpes, buildLeadCpesPatch } from '@/lib/leadUtils';
 import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import type { CrmClient, ClientStatus } from '@/types/clients';
 
@@ -190,11 +191,14 @@ export function useConvertLeadToClient() {
       if (!organizationId) throw new Error('No organization');
 
       // First, fetch the lead to get the assigned_to and custom_data values
-      const { data: lead } = await supabase
+      const { data: lead, error: leadError } = await supabase
         .from('leads')
         .select('assigned_to, custom_data, company_name, company_nif')
         .eq('id', leadData.lead_id)
+        .eq('organization_id', organizationId)
         .single();
+
+      if (leadError) throw leadError;
 
       const { data, error } = await supabase
         .from('crm_clients')
@@ -235,20 +239,22 @@ export function useConvertLeadToClient() {
         console.error('[useConvertLeadToClient] Failed to backfill client_id on proposals/sales:', backfillError);
       }
 
-      // Auto-create CPE if lead has CPE data
-      const customData = lead?.custom_data as Record<string, unknown> | null;
-      const cpeValue = customData?.cpe as string | undefined;
-      if (cpeValue) {
+      // Transfer the current CPE list and the legacy single-CPE format.
+      const rawCustomData = lead?.custom_data;
+      const customData = rawCustomData && typeof rawCustomData === 'object' && !Array.isArray(rawCustomData) ? rawCustomData : null;
+      const cpeValues = buildLeadCpesPatch(getLeadCpes(customData)) ?? [];
+      for (const cpeValue of cpeValues) {
         // Check if CPE already exists for this client to avoid duplicates
-        const { data: existingCpe } = await supabase
+        const { data: existingCpe, error: lookupError } = await supabase
           .from('cpes')
           .select('id')
           .eq('client_id', data.id)
           .eq('serial_number', cpeValue)
           .maybeSingle();
 
+        if (lookupError) throw lookupError;
         if (!existingCpe) {
-          await supabase.from('cpes').insert({
+          const { error: cpeError } = await supabase.from('cpes').insert({
             client_id: data.id,
             organization_id: organizationId,
             equipment_type: (organization?.niche === 'telecom') ? 'Energia' : 'Equipamento',
@@ -257,6 +263,7 @@ export function useConvertLeadToClient() {
             status: 'active',
             notes: `Criado automaticamente na conversão da Lead #${leadData.lead_id.slice(0, 8)}`,
           });
+          if (cpeError) throw cpeError;
         }
       }
 
@@ -264,6 +271,7 @@ export function useConvertLeadToClient() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm-clients'] });
+      queryClient.invalidateQueries({ queryKey: ['cpes'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       toast.success('Lead convertido em cliente');
     },
