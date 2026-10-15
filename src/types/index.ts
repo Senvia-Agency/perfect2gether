@@ -3,7 +3,8 @@
 export type AppRole = 'super_admin' | 'admin' | 'viewer' | 'salesperson';
 export type LeadStatus = 'new' | 'contacted' | 'scheduled' | 'proposal' | 'won' | 'lost';
 export type LeadTemperature = 'cold' | 'warm' | 'hot';
-export type LeadTipologia = 'ee' | 'gas' | 'servicos' | 'ee_servicos';
+export const LEAD_TIPOLOGIAS = ['ee', 'gas', 'ee_gas', 'servicos', 'ee_servicos'] as const;
+export type LeadTipologia = typeof LEAD_TIPOLOGIAS[number];
 export type OrganizationPlan = 'starter' | 'pro' | 'elite';
 
 // Meta Ads Pixel
@@ -140,6 +141,7 @@ export const TEMPERATURE_STYLES: Record<LeadTemperature, { color: string; emoji:
 export const TIPOLOGIA_LABELS: Record<LeadTipologia, string> = {
   ee: 'EE',
   gas: 'Gás',
+  ee_gas: 'EE + GN',
   servicos: 'Serviços',
   ee_servicos: 'EE + Serviços',
 };
@@ -148,6 +150,7 @@ export const TIPOLOGIA_LABELS: Record<LeadTipologia, string> = {
 export const TIPOLOGIA_STYLES: Record<LeadTipologia, { color: string; emoji: string; bgClass: string }> = {
   ee: { color: 'text-yellow-500', emoji: '⚡', bgClass: 'bg-yellow-500/10' },
   gas: { color: 'text-orange-500', emoji: '🔥', bgClass: 'bg-orange-500/10' },
+  ee_gas: { color: 'text-orange-500', emoji: '⚡🔥', bgClass: 'bg-orange-500/10' },
   servicos: { color: 'text-purple-500', emoji: '🔧', bgClass: 'bg-purple-500/10' },
   ee_servicos: { color: 'text-green-500', emoji: '⚡🔧', bgClass: 'bg-green-500/10' },
 };

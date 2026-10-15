@@ -1,4 +1,6 @@
 import { Lead, STATUS_LABELS, LeadStatus, LeadTemperature, LeadTipologia, TEMPERATURE_LABELS, TEMPERATURE_STYLES, TIPOLOGIA_LABELS, TIPOLOGIA_STYLES, FormSettings, CustomField } from "@/types";
+import { LeadClientSegmentSelect } from "./LeadClientSegmentSelect";
+import { getLeadClientSegment, withLeadClientSegment } from "@/lib/lead-classification";
 import { useProfileName } from '@/hooks/useProfileName';
 import { getRoleLabel } from "@/lib/roles";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
@@ -87,7 +89,7 @@ import { SendLeadEmailModal } from "./SendLeadEmailModal";
 import { isPlaceholderEmail, displayEmail, getLeadCpes, buildLeadCpesPatch , canOwnLeads } from "@/lib/leadUtils";
 
 const TECHNICAL_TRACKING_KEYS = ['fbclid', 'gclid', 'fbc', 'fbp'] as const;
-const HIDDEN_CUSTOM_DATA_KEYS = ['metadata', 'prospect_id', 'source_file_name', 'prospect_source', 'cpe', 'cpes'] as const;
+const HIDDEN_CUSTOM_DATA_KEYS = ['metadata', 'prospect_id', 'source_file_name', 'prospect_source', 'cpe', 'cpes', 'client_segment'] as const;
 
 const socialMediaIcons = [
   { key: "facebook", icon: Facebook, label: "Facebook" },
@@ -457,6 +459,21 @@ export function LeadDetailsModal({
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {isP2G && (
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="lead-client-segment" className="text-sm text-muted-foreground">Segmento do Cliente</Label>
+                        <LeadClientSegmentSelect
+                          id="lead-client-segment"
+                          className="w-48"
+                          value={getLeadClientSegment(lead.custom_data)}
+                          disabled={!canEditLeads || !onUpdate}
+                          onValueChange={segment => onUpdate?.(lead.id, {
+                            custom_data: withLeadClientSegment(lead.custom_data, segment),
+                          })}
+                        />
+                      </div>
+                    )}
 
                     {/* Tipologia - Only for Telecom */}
                     {showEnergy && (

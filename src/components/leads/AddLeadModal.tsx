@@ -44,7 +44,9 @@ import { LeadFieldsSettings, DEFAULT_LEAD_FIELDS_SETTINGS } from "@/types/field-
 import { useModules } from "@/hooks/useModules";
 import { useCreateCpe } from "@/hooks/useCpes";
 import type { LeadTemperature, LeadTipologia } from "@/types";
-import { TIPOLOGIA_LABELS, TIPOLOGIA_STYLES } from "@/types";
+import { LEAD_TIPOLOGIAS, TIPOLOGIA_LABELS, TIPOLOGIA_STYLES } from "@/types";
+import { LeadClientSegmentSelect } from "./LeadClientSegmentSelect";
+import { leadClientSegmentSchema, LEAD_CLIENT_SEGMENT_LABELS, withLeadClientSegment } from "@/lib/lead-classification";
 import { getRoleLabel } from "@/lib/roles";
 import { buildLeadCpesPatch , canOwnLeads } from "@/lib/leadUtils";
 
@@ -93,7 +95,8 @@ function buildLeadSchema(settings: LeadFieldsSettings | undefined, niche?: strin
     }),
     automation_enabled: z.boolean().default(true),
     assigned_to: z.string().optional(),
-    tipologia: z.enum(["ee", "gas", "servicos", "ee_servicos"]).optional(),
+    tipologia: z.enum(LEAD_TIPOLOGIAS).optional(),
+    client_segment: leadClientSegmentSchema.optional(),
     consumo_anual: z.coerce.number().min(0, "Consumo inválido").optional().or(z.literal("")),
   });
 }
@@ -169,6 +172,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
       automation_enabled: true,
       assigned_to: "",
       tipologia: undefined,
+      client_segment: undefined,
       consumo_anual: "",
     },
   });
@@ -249,7 +253,9 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
       assigned_to: data.assigned_to && data.assigned_to !== 'unassigned' ? data.assigned_to : undefined,
       tipologia: showEnergy ? data.tipologia as LeadTipologia : undefined,
       consumo_anual: showEnergy && data.consumo_anual ? Number(data.consumo_anual) : undefined,
-      custom_data: cpes ? { cpes } : undefined,
+      custom_data: isP2G && data.client_segment
+        ? withLeadClientSegment(cpes ? { cpes } : undefined, data.client_segment)
+        : cpes ? { cpes } : undefined,
     });
 
     // Check and automatically create a CPE for the existing client for each value that doesn't exist yet
@@ -302,6 +308,7 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
       automation_enabled: hasActiveWhatsappAutomation,
       assigned_to: "",
       tipologia: undefined,
+      client_segment: undefined,
       consumo_anual: "",
     });
     onOpenChange(false);
@@ -590,6 +597,20 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
                         )}
                       </div>
 
+                      {isP2G && (
+                        <FormField
+                          control={form.control}
+                          name="client_segment"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="new-lead-client-segment">Segmento do Cliente</FormLabel>
+                              <LeadClientSegmentSelect id="new-lead-client-segment" value={field.value} onValueChange={field.onChange} />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
                       {isVisible('tipologia') && showEnergy && (
                         <FormField
                           control={form.control}
@@ -787,6 +808,9 @@ export function AddLeadModal({ open, onOpenChange }: AddLeadModalProps) {
                           )}
                           {isVisible('value') && !showEnergy && watchedValues.value && (
                             <SummaryRow label={getLabel('value', 'Valor')} value={`€${watchedValues.value}`} />
+                          )}
+                          {isP2G && watchedValues.client_segment && (
+                            <SummaryRow label="Segmento do Cliente" value={LEAD_CLIENT_SEGMENT_LABELS[watchedValues.client_segment]} />
                           )}
                           {isVisible('tipologia') && showEnergy && watchedValues.tipologia && (
                             <SummaryRow
