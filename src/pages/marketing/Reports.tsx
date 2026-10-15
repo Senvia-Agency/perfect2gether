@@ -167,11 +167,10 @@ export default function Reports() {
               <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-4 flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Tracking de entregas não configurado</p>
+                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Sem confirmações de entrega neste período</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Existem {stats.sent} emails enviados mas 0 entregas registadas. Configure o webhook do Brevo em{' '}
-                    <Link to="/settings" className="underline text-primary">Definições → Integrações → Brevo</Link>{' '}
-                    para ativar o tracking de entregas, aberturas e cliques.
+                    Há {stats.sent} {stats.sent === 1 ? 'email enviado' : 'emails enviados'} sem confirmação de entrega no período selecionado.
+                    {' '}Os eventos de envios mais antigos podem ser consultados em «90 dias», quando disponíveis.
                   </p>
                 </div>
               </div>
