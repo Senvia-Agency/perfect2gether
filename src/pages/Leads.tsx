@@ -126,10 +126,13 @@ export default function Leads() {
 
   // Keep selectedLead synchronized with updated data from query
   useEffect(() => {
-    if (selectedLead && leads.length > 0) {
+    if (selectedLead) {
       const updatedLead = leads.find(l => l.id === selectedLead.id);
       if (updatedLead) {
         setSelectedLead(updatedLead);
+      } else {
+        setSelectedLead(null);
+        setIsModalOpen(false);
       }
     }
   }, [leads]);

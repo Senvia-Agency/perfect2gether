@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 interface BulkAssignLeadsParams {
   leadIds: string[];
   assignedTo: string | null;
@@ -12,10 +14,19 @@ interface BulkAssignClientsParams {
 }
 
 export function useBulkAssignLeads() {
+  const { organization } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ leadIds, assignedTo }: BulkAssignLeadsParams) => {
+      if (organization?.id === '96a3950e-31be-4c6d-abed-b82968c0d7e9') {
+        const { data: changed, error } = await supabase.rpc('assign_p2g_leads', {
+          _lead_ids: leadIds, _assigned_to: assignedTo,
+        });
+        if (error) throw error;
+        if (changed !== new Set(leadIds).size) throw new Error('Não foi possível atribuir todas as leads.');
+        return;
+      }
       const { error } = await supabase
         .from("leads")
         .update({ assigned_to: assignedTo })

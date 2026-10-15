@@ -4678,6 +4678,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_p2g_leads: {
+        Args: { _lead_ids: string[]; _assigned_to: string | null };
+        Returns: number;
+      };
+      create_p2g_assigned_lead: {
+        Args: { _lead: Json };
+        Returns: string;
+      };
       convert_p2g_lead_to_client: {
         Args: { _lead: string; _won_status?: string | null }
         Returns: { client_id: string; client_created: boolean; client_record: Database["public"]["Tables"]["crm_clients"]["Row"] }[]

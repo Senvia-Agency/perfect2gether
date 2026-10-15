@@ -80,11 +80,22 @@ export function useUpdateLeadStatus() {
 }
 
 export function useUpdateLead() {
+  const { organization } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   return useMutation({
     mutationFn: async ({ leadId, updates }: { leadId: string; updates: Partial<Omit<Lead, 'custom_data'>> & { custom_data?: Json } }) => {
+      if (organization?.id === '96a3950e-31be-4c6d-abed-b82968c0d7e9' && Object.prototype.hasOwnProperty.call(updates, 'assigned_to')) {
+        if (Object.keys(updates).length !== 1) throw new Error('Guarde a atribuição separadamente das restantes alterações.');
+        const { data: changed, error } = await supabase.rpc('assign_p2g_leads', {
+          _lead_ids: [leadId], _assigned_to: updates.assigned_to ?? null,
+        });
+        if (error) throw error;
+        if (changed !== 1) throw new Error('Não foi possível atribuir a lead.');
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('leads')
         .update(updates)
@@ -211,11 +222,21 @@ export function useCreateLead() {
       }
       
       const { custom_data, ...rest } = leadData;
+      const leadCustomData = custom_data as Json | undefined;
+      if (isP2g && assignedTo && assignedTo !== user?.id) {
+        const { data: id, error } = await supabase.rpc('create_p2g_assigned_lead', {
+          _lead: { ...rest, custom_data: leadCustomData, assigned_to: assignedTo },
+        });
+        if (error) throw error;
+        if (!id) throw new Error('Não foi possível criar a lead.');
+        return { id };
+      }
+
       const { data, error } = await supabase
         .from('leads')
         .insert({
           ...rest,
-          custom_data: custom_data as Json | undefined,
+          custom_data: leadCustomData,
           assigned_to: assignedTo,
           organization_id: organization.id,
           status: 'new',
