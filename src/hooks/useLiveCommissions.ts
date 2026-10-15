@@ -10,6 +10,7 @@ import {
   type EnergyVolumeTier,
 } from '@/hooks/useCommissionMatrix';
 import { format, endOfMonth } from 'date-fns';
+import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 
 const NEGOTIATION_TYPE_LABELS: Record<string, string> = {
   angariacao: 'Angariação',
@@ -76,6 +77,7 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
   const { data: org } = useOrganization();
   const { data: members } = useTeamMembers({ excludeAdmins: true });
   const organizationId = organization?.id;
+  const commissionDate = isPerfect2GetherOrg(organizationId) ? 'activation_date' : 'sale_date';
 
   const energyConfig: EnergyCommissionConfig | null = (org as any)?.commission_matrix?.ee_gas ?? null;
 
@@ -86,7 +88,7 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
   };
 
   return useQuery<LiveCommissionsData>({
-    queryKey: ['commissions-live', organizationId, selectedMonth, 'concluded-sales-only', effectiveUserIds, members, energyConfig],
+    queryKey: ['commissions-live', organizationId, selectedMonth, commissionDate, 'concluded-sales-only', effectiveUserIds, members, energyConfig],
     queryFn: async (): Promise<LiveCommissionsData> => {
       const emptyResult: LiveCommissionsData = { commercials: [], globalMwh: 0, globalTier: 'low', totalCommission: 0, globalEnergyCommission: 0, globalServicosCommission: 0, globalServicosKwp: 0 };
       if (!organizationId) return emptyResult;
@@ -94,15 +96,14 @@ export function useLiveCommissions(selectedMonth: string, effectiveUserIds?: str
       const monthStart = selectedMonth;
       const monthEnd = format(endOfMonth(new Date(selectedMonth)), 'yyyy-MM-dd');
 
-      // Only concluded sales earn a commission. Activation may be scheduled
-      // later, so the financial period follows the sale date.
+      // P2G commissions belong to the activation month, not the sale month.
       const { data: sales, error: salesError } = await supabase
         .from('sales')
         .select('id, code, lead_id, client_id, sale_date, activation_date, status, proposal_id')
         .eq('organization_id', organizationId)
         .eq('status', 'delivered')
-        .gte('sale_date', monthStart)
-        .lte('sale_date', monthEnd);
+        .gte(commissionDate, monthStart)
+        .lte(commissionDate, monthEnd);
 
       if (salesError) throw salesError;
       if (!sales?.length) return emptyResult;
