@@ -39,27 +39,36 @@ function run({ sales = [sale('one')], month = '2026-10-15', organization = org, 
   return exports.useMonthSalesMetrics(new Date(month + 'T12:00:00')).queryFn();
 }
 const totals = rows => rows.reduce((total, row) => ({ nifs: total.nifs + row.nifs, energia: total.energia + row.energia, comissao: total.comissao + row.comissao }), { nifs: 0, energia: 0, comissao: 0 });
-test('all non-cancelled sale states count in the sale month, without early commissions', async () => {
+test('all non-cancelled sales and their indicative commissions count in the sale month', async () => {
   const rows = await run({ sales: [sale('progress'), sale('fulfilled', 'fulfilled'), sale('delivered', 'delivered'), sale('cancelled', 'cancelled')] });
-  assert.deepEqual(totals(rows), { nifs: 3, energia: 41.33 * 3, comissao: 0 });
+  assert.deepEqual(totals(rows), { nifs: 3, energia: 41.33 * 3, comissao: 74.2 * 3 });
 });
-test('October sale activates in February: sale only in October, commission only in February', async () => {
+test('October sale activates in February: performance and commission stay in October', async () => {
   const sales = [sale('one', 'delivered', '2027-02-04')];
-  assert.deepEqual(totals(await run({ sales })), { nifs: 1, energia: 41.33, comissao: 0 });
+  assert.deepEqual(totals(await run({ sales })), { nifs: 1, energia: 41.33, comissao: 74.2 });
   for (const month of ['2026-11-15', '2026-12-15', '2027-01-15', '2027-03-15']) {
     assert.deepEqual(totals(await run({ sales, month })), { nifs: 0, energia: 0, comissao: 0 });
   }
-  assert.deepEqual(totals(await run({ sales, month: '2027-02-15' })), { nifs: 0, energia: 0, comissao: 74.2 });
+  assert.deepEqual(totals(await run({ sales, month: '2027-02-15' })), { nifs: 0, energia: 0, comissao: 0 });
 });
-test('sale still in progress does not repeat next month or accrue commission from a planned activation date', async () => {
+test('in-progress sale counts indicative commission once, without repeating in its activation month', async () => {
   const sales = [sale('one', 'in_progress', '2027-02-04')];
-  assert.equal(totals(await run({ sales })).nifs, 1);
+  assert.deepEqual(totals(await run({ sales })), { nifs: 1, energia: 41.33, comissao: 74.2 });
   assert.deepEqual(totals(await run({ sales, month: '2027-02-15' })), { nifs: 0, energia: 0, comissao: 0 });
 });
 test('same-month activation counts the sale and commission once and excludes cancellations', async () => {
   const sales = [sale('one', 'delivered', '2026-10-20'), sale('cancelled', 'cancelled', '2026-10-20')];
   assert.deepEqual(totals(await run({ sales })), { nifs: 1, energia: 41.33, comissao: 74.2 });
 });
+
+test('September sale activated in October does not displace October booked sales', async () => {
+  const sales = [
+    { ...sale('september', 'delivered', '2026-10-05'), sale_date: '2026-09-29' },
+    sale('october', 'fulfilled'),
+  ];
+  assert.deepEqual(totals(await run({ sales })), { nifs: 1, energia: 41.33, comissao: 74.2 });
+});
+
 test('other organizations retain their existing fulfilled-only rules', async () => {
   const organization = 'other';
   const sales = [sale('one', 'fulfilled'), sale('two', 'in_progress')].map(row => ({ ...row, organization_id: organization }));

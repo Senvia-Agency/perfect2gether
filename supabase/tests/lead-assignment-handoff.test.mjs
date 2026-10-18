@@ -30,6 +30,7 @@ async function fixture(){
  for(const [n,owner] of [[11,bo],[12,null],[13,other],[14,sales]])await db.query('insert into leads(id,organization_id,name,email,phone,assigned_to) values($1,$2,$3,$4,$5,$6)',[id(n),org,'Lead','qa@example.test','123',owner]);
  for(const file of ['20261008190000_p2g_lead_own_visibility.sql','20261008200000_p2g_commercial_lead_visibility.sql','20261008210000_p2g_bo_unassigned_leads.sql'])await db.exec(readFileSync(`supabase/migrations/${file}`,'utf8'));
  if(process.env.LEAD_HANDOFF_BASELINE!=='1')await db.exec(readFileSync(`supabase/migrations/${migration}`,'utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261018100545_p2g_backoffice_all_leads.sql','utf8'));
  await db.exec(`set role authenticated;select set_config('test.uid','${bo}',false);`);
  return db;
 }
@@ -39,26 +40,26 @@ const create=(db,target=sales,extra={})=> process.env.LEAD_HANDOFF_BASELINE==='1
 const assign=(db,ids=[id(12)],target=sales)=>process.env.LEAD_HANDOFF_BASELINE==='1'
  ? db.query('update leads set assigned_to=$2 where id=any($1::uuid[]) returning id',[ids,target])
  : db.query('select assign_p2g_leads($1::uuid[],$2::uuid) as count',[ids,target]);
-test('BO creates a commercial lead without gaining access to the commercial portfolio',async()=>{
+test('BO creates a commercial lead and retains visibility',async()=>{
  const db=await fixture();try{
  const created=(await create(db,sales,{organization_id:id(90),created_by:other,status:'won'})).rows[0].id;
- assert.equal((await db.query('select id from leads where id=$1',[created])).rows.length,0);
+ assert.equal((await db.query('select id from leads where id=$1',[created])).rows.length,1);
  await db.exec(`select set_config('test.uid','${sales}',false)`);
  const lead=(await db.query('select * from leads where id=$1',[created])).rows[0];
  assert.equal(lead.organization_id,org);assert.equal(lead.created_by,bo);assert.equal(lead.status,'new');assert.deepEqual(lead.custom_data,{cpes:['PTTEST'],client_segment:'ouro'});
  }finally{await db.close();}
 });
-test('BO assigns its own and unassigned leads atomically; only the assignee and admin can read them',async()=>{
+test('BO retains every lead after assigning own and unassigned leads atomically',async()=>{
  const db=await fixture();try{
  assert.equal((await assign(db,[id(11),id(12)])).rows[0].count,2);
- assert.deepEqual((await db.query('select id from leads')).rows,[]);
+ assert.equal((await db.query('select id from leads')).rows.length,4);
  await db.exec(`select set_config('test.uid','${sales}',false)`);assert.equal((await db.query('select id from leads')).rows.length,3);
  await db.exec(`select set_config('test.uid','${admin}',false)`);assert.equal((await db.query('select id from leads')).rows.length,4);
  }finally{await db.close();}
 });
 test('inaccessible, missing and cross-organization leads cannot be assigned, with no partial changes',async()=>{
  const db=await fixture();try{
- for(const bad of [id(13),id(90)])await assert.rejects(assign(db,[id(12),bad]),/permissão/i);
+ for(const bad of [id(90)])await assert.rejects(assign(db,[id(12),bad]),/permissão/i);
  assert.equal((await db.query('select assigned_to from leads where id=$1',[id(12)])).rows[0].assigned_to,null);
  await db.exec(`reset role;update leads set organization_id='${id(90)}' where id='${id(12)}';set role authenticated;`);await assert.rejects(assign(db),/permissão/i);
  }finally{await db.close();}
@@ -104,7 +105,7 @@ test('real lead hooks create, individually assign and bulk assign against Postgr
  assert.match(created.id,/^[0-9a-f-]{36}$/);
  await hooks.useUpdateLead().mutationFn({leadId:id(11),updates:{assigned_to:sales}});
  await hooks.useBulkAssignLeads().mutationFn({leadIds:[id(12)],assignedTo:sales});
- assert.equal((await db.query('select id from leads')).rows.length,0);
+ assert.equal((await db.query('select id from leads')).rows.length,5);
  await db.exec(`select set_config('test.uid','${sales}',false)`);
  assert.equal((await db.query('select id from leads')).rows.length,4);
  }finally{await db.close();}
@@ -113,7 +114,7 @@ test('lead hooks propagate failed assignment and do not report success on missin
  const db=await fixture();try{
  const hooks=await loadHooks(db);
  await assert.rejects(hooks.useCreateLead().mutationFn({name:'Rejected',email:'qa@example.test',phone:'123',gdpr_consent:true,assigned_to:inactive}));
- await assert.rejects(hooks.useUpdateLead().mutationFn({leadId:id(13),updates:{assigned_to:sales}}));
+ await assert.rejects(hooks.useUpdateLead().mutationFn({leadId:id(90),updates:{assigned_to:sales}}));
  await assert.rejects(hooks.useBulkAssignLeads().mutationFn({leadIds:[id(12),id(90)],assignedTo:sales}));
  await assert.rejects(hooks.useUpdateLead().mutationFn({leadId:id(12),updates:{assigned_to:sales,name:'Unrelated edit'}}),/separadamente/);
  }finally{await db.close();}
@@ -122,5 +123,20 @@ test('admin can reassign a commercial lead while a salesperson cannot reassign a
  const db=await fixture();try{
  await db.exec(`select set_config('test.uid','${sales}',false)`);await assert.rejects(assign(db,[id(13)]),/permissão/i);
  await db.exec(`select set_config('test.uid','${admin}',false)`);assert.equal((await assign(db,[id(13)])).rows[0].count,1);
+ }finally{await db.close();}
+});
+
+
+test('all active BO users retain assigned leads, while inactive BO and other organizations are blocked',async()=>{
+ const db=await fixture();try{
+ const secondBo=id(77);
+ await db.exec(`reset role;insert into organization_members values('${secondBo}','${org}','${bo}',true);set role authenticated;select set_config('test.uid','${secondBo}',false);`);
+ assert.equal((await db.query('select id from leads')).rows.length,4);
+ await assign(db,[id(11)],sales);
+ assert.equal((await db.query('select id from leads')).rows.length,4);
+ await db.exec(`reset role;update organization_members set is_active=false where user_id='${secondBo}';set role authenticated;`);
+ assert.equal((await db.query('select id from leads')).rows.length,0);
+ await db.exec(`reset role;update organization_members set is_active=true,organization_id='${id(90)}' where user_id='${secondBo}';set role authenticated;`);
+ assert.equal((await db.query('select id from leads')).rows.length,0);
  }finally{await db.close();}
 });

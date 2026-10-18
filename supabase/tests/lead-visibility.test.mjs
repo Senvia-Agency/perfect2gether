@@ -25,14 +25,14 @@ test('lead query enforces own scope except admins and commercial managers, with 
   const manager=profileName==='CE'||profileName==='Diretor Comercial';
   const filters={};let inserted;
   const query={select:()=>query,eq:(k,v)=>{filters[k]=v;return query;},order:()=>query,or:value=>{filters.or=value;return query;},insert:value=>{inserted=value;return query;},single:async()=>({data:inserted,error:null}),then:resolve=>resolve({data:[],error:null})};
-  const exports={};new Function('exports','useAuth','usePermissions','useTeamFilter','useQuery','useMutation','useQueryClient','useToast','supabase',js)(exports,()=>({user:{id:own},organization:{id:p2g}}),()=>({isAdmin:false,isProfileAdmin:admin,isLoadingPermissions:false,profileName}),()=>({effectiveUserIds:manager?[own]:null}),options=>options,options=>options,()=>({}),()=>({toast:()=>{}}),{from:()=>query});
+  const exports={};new Function('exports','useAuth','usePermissions','useTeamFilter','useQuery','useMutation','useQueryClient','useToast','supabase',js)(exports,()=>({user:{id:own},organization:{id:p2g}}),()=>({isAdmin:false,isProfileAdmin:admin,isLoadingPermissions:false,profileName}),()=>({effectiveUserIds:manager||profileName==='Back Office'?[own]:null}),options=>options,options=>options,()=>({}),()=>({toast:()=>{}}),{from:()=>query});
   const list=exports.useLeads();assert.equal(list.enabled,true);assert.ok(list.queryKey.includes(own));await list.queryFn();assert.equal(filters.assigned_to,admin||manager||profileName==='Back Office'?undefined:own);
-  if(profileName==='Back Office')assert.equal(filters.or,`assigned_to.eq.${own},assigned_to.is.null`);
+  if(profileName==='Back Office')assert.equal(filters.or,undefined);
   if(!admin){await exports.useCreateLead().mutationFn({name:'Own lead',gdpr_consent:true});assert.equal(inserted.assigned_to,own);}
  }
 });
 
-test('BO sees own and unassigned; commercial managers see commercial owners; admin sees all',async()=>{
+test('BO sees all leads; commercial managers see commercial owners; admin sees all',async()=>{
  const db=new PGlite();const ids=Array.from({length:5},(_,i)=>`00000000-0000-4000-8000-00000000000${i+1}`);
  try{
  await db.exec(`create schema auth;create role authenticated;create role service_role;create function auth.role() returns text language sql as $$select coalesce(nullif(current_setting('test.role',true),''),'authenticated')$$;create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;create type public.app_role as enum ('admin','super_admin','salesperson');create function public.has_role(u uuid,r app_role) returns boolean language sql as $$select false$$;create function public.get_user_org_id(u uuid) returns uuid language sql as $$select '${p2g}'::uuid$$;create function public.app_can_view_user_data(u uuid) returns boolean language sql as $$select u=auth.uid()$$;create table public.organization_profiles(id uuid,organization_id uuid,base_role app_role,name text);create table public.organization_members(user_id uuid,organization_id uuid,profile_id uuid,is_active boolean);create table public.leads(id int,organization_id uuid,assigned_to uuid);alter table public.leads enable row level security;create policy "Users read org leads v2" on public.leads for select to authenticated using(true);grant usage on schema auth to authenticated;grant select on public.leads to authenticated;`);
@@ -40,10 +40,11 @@ test('BO sees own and unassigned; commercial managers see commercial owners; adm
  await db.exec(`insert into public.leads values(6,'${p2g}',null);`);await db.exec(readFileSync(migration,'utf8'));
  if(process.env.LEAD_COMMERCIAL_BASELINE!=='1')await db.exec(readFileSync(new URL('../migrations/20261008200000_p2g_commercial_lead_visibility.sql',import.meta.url),'utf8'));
  if(process.env.LEAD_BO_BASELINE!=='1')await db.exec(readFileSync(new URL('../migrations/20261008210000_p2g_bo_unassigned_leads.sql',import.meta.url),'utf8'));
+ await db.exec(readFileSync(new URL('../migrations/20261018100545_p2g_backoffice_all_leads.sql',import.meta.url),'utf8'));
  await db.exec('set role authenticated');
  for(const index of [0,1,2,3,4]){
   await db.exec(`select set_config('test.uid','${ids[index]}',false)`);
-  const expected=index<2?[1,2,3]:index===4?[1,2,3,4,5,6]:index===3?[4,6]:[index+1];
+  const expected=index<2?[1,2,3]:index===4?[1,2,3,4,5,6]:index===3?[1,2,3,4,5,6]:[index+1];
   assert.deepEqual((await db.query('select id from public.leads order by id')).rows.map(x=>x.id),expected);
  }
  await db.exec(`reset role;grant insert on public.leads to authenticated;create policy creator_insert on public.leads for insert to authenticated with check(true);set role authenticated;select set_config('test.uid','${ids[2]}',false);insert into public.leads values(7,'${p2g}',null);`);

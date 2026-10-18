@@ -12,12 +12,12 @@ export function useLeads() {
   const { organization, user } = useAuth();
   const { isAdmin, isProfileAdmin, isLoadingPermissions, profileName } = usePermissions();
   const isP2g = organization?.id === '96a3950e-31be-4c6d-abed-b82968c0d7e9';
-  const canSeeUnassigned = isP2g && profileName === 'Back Office';
+  const canSeeAllLeads = isP2g && profileName === 'Back Office';
   const canSeeCommercial = isP2g && (profileName === 'CE' || profileName === 'Diretor Comercial');
   const { effectiveUserIds } = useTeamFilter();
   
   return useQuery({
-    queryKey: ['leads', organization?.id, user?.id, isAdmin, isProfileAdmin, canSeeCommercial, canSeeUnassigned, effectiveUserIds],
+    queryKey: ['leads', organization?.id, user?.id, isAdmin, isProfileAdmin, canSeeCommercial, canSeeAllLeads, effectiveUserIds],
     staleTime: 30_000,
     queryFn: async () => {
       if (!organization?.id || !user?.id) return [];
@@ -28,12 +28,10 @@ export function useLeads() {
         .eq('organization_id', organization.id)
         .order('created_at', { ascending: false });
       
-      // P2G: own leads, plus the unassigned queue for Back Office.
-      if (isP2g && !isAdmin && !isProfileAdmin && !canSeeCommercial) {
-        query = canSeeUnassigned
-          ? query.or(`assigned_to.eq.${user.id},assigned_to.is.null`)
-          : query.eq('assigned_to', user.id);
-      } else if (effectiveUserIds && !canSeeCommercial) {
+      // Back Office keeps the complete P2G portfolio after commercial handoffs.
+      if (isP2g && !isAdmin && !isProfileAdmin && !canSeeCommercial && !canSeeAllLeads) {
+        query = query.eq('assigned_to', user.id);
+      } else if (effectiveUserIds && !canSeeCommercial && !canSeeAllLeads) {
         const orFilters = effectiveUserIds
           .map(id => `assigned_to.eq.${id}`)
           .concat('assigned_to.is.null')

@@ -21,7 +21,7 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
   const monthEnd = format(endOfMonth(ref), "yyyy-MM-dd");
 
   return useQuery({
-    queryKey: ["month-sales-metrics", orgId, monthStart, "sale-and-activation-periods"],
+    queryKey: ["month-sales-metrics", orgId, monthStart, "booked-sales-commissions-v2"],
     queryFn: async (): Promise<UserSalesMetrics[]> => {
       if (!orgId) return [];
 
@@ -31,24 +31,12 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
         .eq("organization_id", orgId)
         .gte("sale_date", monthStart)
         .lte("sale_date", monthEnd);
-      const [bookedResult, activatedResult] = await Promise.all([
-        isP2G ? salesQuery.neq("status", "cancelled") : salesQuery.eq("status", "fulfilled"),
-        isP2G ? supabase.from("sales")
-          .select("id, created_by, proposal_id")
-          .eq("organization_id", orgId)
-          .eq("status", "delivered")
-          .gte("activation_date", monthStart)
-          .lte("activation_date", monthEnd)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-      if (bookedResult.error) throw bookedResult.error;
-      if (activatedResult.error) throw activatedResult.error;
-      const bookedSales = bookedResult.data ?? [];
-      const activatedSales = isP2G ? activatedResult.data ?? [] : bookedSales;
-      const sales = [...new Map([...bookedSales, ...activatedSales].map(sale => [sale.id, sale])).values()];
+      // This performance table measures sales booked in the selected month,
+      // including their indicative commission. Finance uses activation dates separately.
+      const result = await (isP2G ? salesQuery.neq("status", "cancelled") : salesQuery.eq("status", "fulfilled"));
+      if (result.error) throw result.error;
+      const sales = result.data ?? [];
       if (!sales.length) return [];
-      const bookedIds = new Set(bookedSales.map(sale => sale.id));
-      const activatedIds = new Set(activatedSales.map(sale => sale.id));
 
       // 2. Get proposal_ids and fetch proposal_cpes
       const proposalIds = [...new Set(sales.map(s => s.proposal_id).filter((id): id is string => Boolean(id)))];
@@ -124,14 +112,10 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
           proposalMetrics?.proposalType === "energia" &&
           eligibleEnergyNegotiationTypes.has(proposalMetrics.negotiationType || "");
 
-        if (bookedIds.has(sale.id)) {
-          g.contracts += 1;
-          g.energia += countsForEnergyMetrics ? (cpeData?.consumo ?? 0) / 1000 : 0;
-          g.solar += countsForEnergyMetrics ? proposalMetrics?.solar || 0 : 0;
-        }
-        if (activatedIds.has(sale.id)) {
-          g.comissao += countsForEnergyMetrics ? cpeData?.comissao ?? 0 : 0;
-        }
+        g.contracts += 1;
+        g.energia += countsForEnergyMetrics ? (cpeData?.consumo ?? 0) / 1000 : 0;
+        g.solar += countsForEnergyMetrics ? proposalMetrics?.solar || 0 : 0;
+        g.comissao += countsForEnergyMetrics ? cpeData?.comissao ?? 0 : 0;
       }
 
       return Array.from(grouped.entries()).map(([userId, g]) => ({
