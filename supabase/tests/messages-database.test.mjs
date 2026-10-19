@@ -105,4 +105,3 @@ const second=(await db.query('SELECT public.p2g_chat_take_work() AS result')).ro
 await db.exec('RESET ROLE');
 console.log(`PASS ${checks} database authorization/contract assertions; real migration executed in PGlite PostgreSQL.`);
 await db.close();
-

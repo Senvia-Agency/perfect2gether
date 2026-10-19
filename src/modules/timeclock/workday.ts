@@ -78,6 +78,3 @@ export function formatDuration(seconds: number, withSeconds = false): string {
   const total = Math.max(0, Math.floor(seconds)), hours = Math.floor(total / 3600), minutes = Math.floor(total % 3600 / 60);
   return `${hours}:${String(minutes).padStart(2, '0')}${withSeconds ? `:${String(total % 60).padStart(2, '0')}` : ''}`;
 }
-
-
-

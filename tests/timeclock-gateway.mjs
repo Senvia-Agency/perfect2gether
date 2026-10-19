@@ -58,11 +58,3 @@ await test('Given missing authoritative IP When GPS inside nonblocking site Then
 await test('Given reminder push When worker dispatches Then correct area and safe action preserved',async()=>{const delivered=[];const handler=createClockWorkerHandler({secret:'private',deliveryEnabled:true,rpc:async(action)=>action==='claim'?[{id:tagId,organization_id:org,user_id:user,event_key:'reminder:2026-10-19:pause',title:'Untrusted private title',body:'PRIVATE',payload:{action:'pause'},channel:'push',attempts:1,claimed_at:'2026-10-19T09:00:00Z'}]:{},deliver:async(_job,message)=>{delivered.push(message)}});await handler(request({},{'x-clock-worker-secret':'private'}));assert.equal(delivered[0].url,'/rh?tab=ponto');assert.ok(!JSON.stringify(delivered[0]).includes('PRIVATE'));assert.notEqual(delivered[0].title,'Registo de ponto');});
 assert.ok(haversine({latitude:0,longitude:0},{latitude:0,longitude:1})>111000);
 }finally{await server.close();}
-
-
-
-
-
-
-
-

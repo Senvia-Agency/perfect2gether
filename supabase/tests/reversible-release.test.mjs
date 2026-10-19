@@ -25,7 +25,10 @@ test('release switches enforce admin ownership, stop writes and preserve stored 
   await db.query('SELECT public.p2g_clock_register($1,$2,$3,$4)',args);
   await clockSession(db,i.manager);
   await release('update',{messages:false,timeclock:false,new_ui:false});
+  await db.exec('RESET ROLE');
+  await db.query('INSERT INTO p2g_release_settings(organization_id,messages) VALUES($1,true)',[i.otherOrg]);
   await clockSession(db,i.employee);
+  await assert.rejects(()=>chat('send',{org:i.otherOrg,conversation:conv,id:crypto.randomUUID(),body:'forged org',attachments:[]}),/module_disabled/);
   await assert.rejects(()=>chat('send',{conversation:conv,id:crypto.randomUUID(),body:'blocked',attachments:[]}),/module_disabled/);
   await clockSession(db,i.employee,'service_role');
   await assert.rejects(()=>db.query('SELECT public.p2g_clock_register($1,$2,$3,$4)',args),/module_disabled/);

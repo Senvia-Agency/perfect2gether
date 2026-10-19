@@ -29,8 +29,8 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
   ...props
 }, ref) => <DialogPortal>
     <DialogOverlay className={overlayClassName} />
-    <DialogPrimitive.Content 
-      ref={ref} 
+    <DialogPrimitive.Content
+      ref={ref}
       onOpenAutoFocus={(e) => {
         if (window.matchMedia('(max-width: 768px)').matches) {
           e.preventDefault();

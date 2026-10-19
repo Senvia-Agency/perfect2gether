@@ -20,10 +20,10 @@ export function LegacyMobileHeader({
         <Button variant="ghost" size="icon" onClick={onMenuToggle} aria-label="Abrir menu">
           <Menu className="h-5 w-5" />
         </Button>
-        <img 
+        <img
           alt={organization?.name || "Perfect2Gether"}
-          className="h-8 w-28 object-contain" 
-          src="/logo-p2gether.png" 
+          className="h-8 w-28 object-contain"
+          src="/logo-p2gether.png"
         />
         <div className="w-10" />
       </div>

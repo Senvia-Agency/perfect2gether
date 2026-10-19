@@ -23,10 +23,10 @@ export function MobileHeader({
         <Button variant="ghost" size="icon" onClick={onMenuToggle} className="rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-300" aria-label="Abrir menu">
           <Menu className="h-5 w-5" />
         </Button>
-        <img 
+        <img
           alt={organization?.name || "Perfect2Gether"}
-          className="h-7 w-20 min-w-0 object-contain" 
-          src="/logo-p2gether.png" 
+          className="h-7 w-20 min-w-0 object-contain"
+          src="/logo-p2gether.png"
         />
         <div className="ml-auto flex shrink-0 items-center gap-1"><ClockWidget /><AccountControls /></div>
       </div>

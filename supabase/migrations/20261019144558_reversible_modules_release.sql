@@ -52,9 +52,9 @@ ALTER FUNCTION p2g_chat_private.p2g_chat(text,jsonb) RENAME TO dispatch;
 REVOKE ALL ON FUNCTION p2g_chat_private.dispatch(text,jsonb) FROM PUBLIC,anon,authenticated,service_role;
 CREATE FUNCTION public.p2g_chat(action text,payload jsonb DEFAULT '{}') RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE org uuid; BEGIN
- org:=(payload->>'org')::uuid;
- IF org IS NULL THEN SELECT organization_id INTO org FROM public.p2g_chat_conversations WHERE id=(payload->>'conversation')::uuid; END IF;
- IF org IS NULL AND payload->>'message' IS NOT NULL THEN SELECT c.organization_id INTO org FROM public.p2g_chat_messages m JOIN public.p2g_chat_conversations c ON c.id=m.conversation_id WHERE m.id=(payload->>'message')::uuid; END IF;
+ IF action IN ('snapshot','search','create','saved') THEN org:=(payload->>'org')::uuid;
+ ELSIF action IN ('edit','delete','react','save','pin_message') THEN SELECT c.organization_id INTO org FROM public.p2g_chat_messages m JOIN public.p2g_chat_conversations c ON c.id=m.conversation_id WHERE m.id=(payload->>'message')::uuid;
+ ELSE SELECT organization_id INTO org FROM public.p2g_chat_conversations WHERE id=(payload->>'conversation')::uuid; END IF;
  IF NOT p2g_release_private.enabled(org,'messages') THEN RAISE EXCEPTION 'module_disabled'; END IF;
  RETURN p2g_chat_private.dispatch(action,payload);
 END $$;

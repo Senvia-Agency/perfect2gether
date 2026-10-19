@@ -32,4 +32,3 @@ export function AttachmentCard({ attachment, gallery = [] }: { readonly attachme
     <Dialog open={open} onOpenChange={setOpen}><DialogContent className="messages-theme !max-w-4xl rounded-3xl bg-card"><DialogTitle>{active.name}</DialogTitle><DialogDescription>Pré-visualização da imagem · {index + 1} de {gallery.length || 1}</DialogDescription><img src={imageUrl} alt={active.name} className="max-h-[65dvh] w-full object-contain" /><div className="flex justify-between"><Button variant="outline" disabled={index <= 0} onClick={() => { const previous = gallery[index - 1]; if (previous) { setImageUrl(undefined); setActive(previous); } }}>Anterior</Button><Button variant="outline" disabled={index < 0 || index >= gallery.length - 1} onClick={() => { const next = gallery[index + 1]; if (next) { setImageUrl(undefined); setActive(next); } }}>Seguinte</Button></div></DialogContent></Dialog>
   </div>;
 }
-

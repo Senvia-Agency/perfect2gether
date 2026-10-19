@@ -387,7 +387,7 @@ export function useOrganizationProfiles() {
       if (updates.data_scope !== undefined) updateData.data_scope = updates.data_scope;
       if (updates.systems !== undefined) updateData.systems = updates.systems;
       if (updates.dashboard_widgets !== undefined) updateData.dashboard_widgets = updates.dashboard_widgets;
-      
+
       const { error } = await supabase
         .from('organization_profiles')
         .update(updateData)
@@ -408,7 +408,7 @@ export function useOrganizationProfiles() {
         .select('id')
         .eq('profile_id', id)
         .limit(1);
-      
+
       if (members && members.length > 0) {
         throw new Error('Este perfil está em uso por colaboradores da equipa');
       }

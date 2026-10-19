@@ -32,6 +32,3 @@ export function getBestPosition(): Promise<Position | null> {
   return collecting;
 }
 export function warmupGeolocation(): void { void getBestPosition(); }
-
-
-

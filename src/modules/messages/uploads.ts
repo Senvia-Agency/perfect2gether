@@ -107,5 +107,3 @@ export async function uploadAttachment(input: UploadInput): Promise<Attachment> 
     }).catch(finish);
   });
 }
-
-

@@ -117,9 +117,9 @@ export const GeneralContent = ({
               </div>
             </div>}
           </div>
-          
+
           <Separator />
-          
+
         </CardContent>
       </Card>
 
@@ -159,7 +159,7 @@ export const GeneralContent = ({
               />
            </div>
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="brevo-sender-email">Email de envio (Brevo)</Label>
             <Input

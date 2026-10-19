@@ -49,7 +49,3 @@ export function Thread({ controller, onNew }: { readonly controller: MessagesCon
     <ConversationDialog key={`members-${conversation.id}`} controller={controller} conversation={conversation} open={manage} close={() => setManage(false)} />
   </section>;
 }
-
-
-
-

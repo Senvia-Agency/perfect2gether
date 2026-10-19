@@ -36,7 +36,7 @@ export function ProtectedLayoutRoute() {
 
   if (needsOrgSelection && organizations.length > 1) {
     return (
-      <OrganizationSelector 
+      <OrganizationSelector
         organizations={organizations}
         onSelect={selectOrganization}
       />

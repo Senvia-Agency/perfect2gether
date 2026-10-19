@@ -38,4 +38,3 @@ export const punchOptionsSchema = z.object({
 }).superRefine((input, context) => {
   if ((input.tag?.picc_data || input.tag?.cmac) && input.tag.counter === undefined) context.addIssue({ code: z.ZodIssueCode.custom, path: ['tag', 'counter'], message: 'Contador obrigatório para NFC seguro.' });
 });
-

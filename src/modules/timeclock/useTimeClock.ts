@@ -102,10 +102,3 @@ export function useTimeClock(month?: string, selectedUser?: string, tickMs = 300
   return { userId, organizationId, snapshot: selected.data, currentSnapshot: current.data, state, summary, now,
     isLoading: selected.isLoading, error: punchError ?? selected.error ?? current.error, phase, canRetry, punch, retry, refresh, warmup: warmupGeolocation };
 }
-
-
-
-
-
-
-

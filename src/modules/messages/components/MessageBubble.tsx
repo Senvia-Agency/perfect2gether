@@ -64,6 +64,3 @@ export function MessageBubble({ message, controller, onReply }: { readonly messa
     </div>
   </article>;
 }
-
-
-
