@@ -1,3 +1,5 @@
+import { UsersRound } from "lucide-react";
+import { RhSectionHeader } from "./RhSectionHeader";
 import { EmployeeDocuments } from "./EmployeeDocuments";
 import { EmployeeHealth } from "./EmployeeHealth";
 import { value, memberName } from "@/lib/rh/form";
@@ -112,6 +114,7 @@ export function Employees({
   }
   return (
     <div className="space-y-6">
+      <RhSectionHeader icon={UsersRound} title={workspace.isAdmin ? "Colaboradores" : "Os meus dados"} description="Dados pessoais, documentos privados e saúde no trabalho." />
       <Field label="Selecionar colaborador" name="employee-select">
         <select
           id="employee-select"
@@ -126,7 +129,7 @@ export function Employees({
           ))}
         </select>
       </Field>
-      <Card>
+      <Card className="rh-card">
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center justify-between gap-3">
             {memberName(data, selected)}
@@ -138,7 +141,7 @@ export function Employees({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-2">
+          <dl className="rh-form-grid">
             {[
               ["phone", "Telefone"],
               ["address", "Morada"],
@@ -182,7 +185,7 @@ export function Employees({
         selected={selected}
       />
       <Dialog open={editing} onOpenChange={setEditing}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent overlayClassName="rh-overlay" className="workspace-theme rh-theme rh-dialog max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Ficha do colaborador</DialogTitle>
             <DialogDescription>
@@ -191,7 +194,7 @@ export function Employees({
           </DialogHeader>
           <form
             onSubmit={(e) => void save(e)}
-            className="grid gap-3 sm:grid-cols-2"
+            className="rh-form-grid"
           >
             {[
               ["phone", "Telefone", "tel"],

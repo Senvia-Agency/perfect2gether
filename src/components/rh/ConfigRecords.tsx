@@ -138,7 +138,7 @@ export function ConfigRecords({
         ))}
       </div>
       <Dialog open={!!edit} onOpenChange={() => setEdit(undefined)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent overlayClassName="rh-overlay" className="workspace-theme rh-theme rh-dialog max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Editar {edit ? kinds[edit.kind] : "registo"}
@@ -158,7 +158,7 @@ export function ConfigRecords({
         </DialogContent>
       </Dialog>
       <Dialog open={!!remove} onOpenChange={() => setRemove(undefined)}>
-        <DialogContent>
+        <DialogContent overlayClassName="rh-overlay" className="workspace-theme rh-theme rh-dialog">
           <DialogHeader>
             <DialogTitle>
               Eliminar {remove ? kinds[remove.kind] : "registo"}?

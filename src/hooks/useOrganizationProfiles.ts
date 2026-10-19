@@ -120,6 +120,7 @@ export const MODULE_SCHEMA: Record<string, ModuleSchema> = {
     },
   },
   rh: { label: 'Recursos Humanos', subareas: {
+    timeclock: { label: 'Ponto', actions: ['view', 'manage', 'configure'] },
     absences: { label: 'Ausências', actions: ['view', 'manage', 'approve'] },
     calendar: { label: 'Calendário', actions: ['view', 'manage'] },
     balances: { label: 'Saldos', actions: ['view', 'manage'] },

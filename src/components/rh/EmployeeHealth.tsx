@@ -23,7 +23,7 @@ export function EmployeeHealth({
   readonly selected: string;
 }) {
   return (
-    <Card>
+    <Card className="rh-card">
       <CardHeader>
         <CardTitle>Saúde no trabalho</CardTitle>
       </CardHeader>
@@ -53,7 +53,7 @@ export function EmployeeHealth({
         ))}
         {manager && (
           <form
-            className="grid gap-3 sm:grid-cols-2"
+            className="rh-form-grid"
             onSubmit={(e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);

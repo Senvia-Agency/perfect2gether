@@ -1,0 +1,18 @@
+import { z } from 'zod';
+export const personSchema = z.object({ id: z.string().uuid(), name: z.string(), avatar: z.string().nullable().optional() });
+export const memberSchema = personSchema.extend({ role: z.enum(['owner', 'member']), last_read_at: z.string().nullable(), typing_until: z.string().nullable(), online_at: z.string().nullable() });
+export const attachmentSchema = z.object({ id: z.string().uuid(), path: z.string(), name: z.string(), mime: z.string(), size: z.number().nonnegative() });
+export const messageSchema = z.object({ id: z.string().uuid(), conversation_id: z.string().uuid(), sender_id: z.string().uuid(), body: z.string(), created_at: z.string(), edited_at: z.string().nullable(), deleted_at: z.string().nullable(), reply_to: z.string().uuid().nullable(), forwarded: z.boolean(), saved: z.boolean().default(false), pinned: z.boolean().default(false), attachments: z.array(attachmentSchema), reactions: z.array(z.object({ user_id: z.string().uuid(), emoji: z.string() })) });
+export const conversationSchema = z.object({ id: z.string().uuid(), organization_id: z.string().uuid(), kind: z.enum(['direct', 'group', 'announcement']), title: z.string(), members: z.array(memberSchema), unread: z.number(), pinned: z.boolean(), muted: z.boolean(), archived: z.boolean(), last_message: z.string().nullable(), updated_at: z.string() });
+export const snapshotSchema = z.object({ conversations: z.array(conversationSchema), people: z.array(personSchema), can_announce: z.boolean(), max_file_bytes: z.number().positive() });
+export const searchResultSchema = z.object({ conversation_id: z.string().uuid(), message_id: z.string().uuid(), body: z.string() });
+export type Person = z.infer<typeof personSchema>;
+export type Member = z.infer<typeof memberSchema>;
+export type Attachment = z.infer<typeof attachmentSchema>;
+export type Message = z.infer<typeof messageSchema>;
+export type Conversation = z.infer<typeof conversationSchema>;
+export type Snapshot = z.infer<typeof snapshotSchema>;
+export type SearchResult = z.infer<typeof searchResultSchema>;
+export type SendInput = { readonly id: string; readonly conversation: string; readonly body: string; readonly reply_to: string | null; readonly attachments: Attachment[]; readonly forwarded?: boolean };
+export type CreateInput = { readonly org: string; readonly kind: Conversation['kind']; readonly title: string; readonly participants: string[] };
+export type ManageInput = { readonly conversation: string; readonly op: 'rename' | 'add' | 'remove' | 'promote' | 'leave'; readonly user?: string; readonly title?: string };

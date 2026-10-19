@@ -40,3 +40,10 @@ migrate.mjs
 supabase/.temp/
 
 .vercel
+
+# Local messaging runner process lock
+.messages.local.lock
+
+# Private development evidence and generated service worker
+.omo/
+dev-dist/

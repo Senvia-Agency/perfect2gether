@@ -46,7 +46,7 @@ export function AbsenceDecisionDialog({
         setReason("");
       }}
     >
-      <DialogContent>
+      <DialogContent overlayClassName="rh-overlay" className="workspace-theme rh-theme rh-dialog">
         <DialogHeader>
           <DialogTitle>
             {action?.mode === "partial"

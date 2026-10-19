@@ -1,3 +1,4 @@
+import { ReleaseFeatureRoute } from '@/components/auth/ReleaseFeatureRoute';
 import { lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { queryRetryDelay, shouldRetryQuery } from '@/lib/query-resilience';
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { NfcPunch } from "@/modules/timeclock/components/NfcPunch";
 import { ProtectedLayoutRoute } from "@/components/auth/ProtectedLayoutRoute";
 import { TotalLinkProtectedRoute } from "@/components/auth/TotalLinkProtectedRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
@@ -64,6 +66,7 @@ const SystemAdminUsers = lazy(() => import("./pages/system-admin/Users"));
 const SystemAdminAnnouncements = lazy(() => import("./pages/system-admin/Announcements"));
 const FinanceInternalRequests = lazy(() => import("./pages/finance/InternalRequests"));
 const RhWorkspace = lazy(() => import("./pages/RhWorkspace").then(m => ({ default: m.RhWorkspace })));
+const MessagesWorkspace = lazy(() => import("./modules/messages/MessagesWorkspace").then(m => ({ default: m.MessagesWorkspace })));
 const Gestao = lazy(() => import("./pages/Gestao"));
 const ReleaseNotes = lazy(() => import("./pages/ReleaseNotes"));
 
@@ -129,6 +132,8 @@ const App = () => (
                   <Route path="/marketing/reports" element={<MarketingReports />} />
                   <Route path="/marketing/lists" element={<MarketingLists />} />
                   <Route path="/rh" element={<RhWorkspace />} />
+                  <Route path="/ponto/nfc" element={<ReleaseFeatureRoute feature="timeclock"><NfcPunch /></ReleaseFeatureRoute>} />
+                  <Route path="/messages" element={<ReleaseFeatureRoute feature="messages"><MessagesWorkspace /></ReleaseFeatureRoute>} />
                   <Route path="/gestao" element={<Gestao />} />
                   <Route path="/notas-atualizacao" element={<ReleaseNotes />} />
                 </Route>

@@ -1,4 +1,7 @@
+import { ClockWidget } from "@/modules/timeclock/components/ClockWidget";
+import { AccountControls } from "./AccountControls";
 import { useAuth } from "@/contexts/AuthContext";
+import './navigation.css';
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -15,17 +18,17 @@ export function MobileHeader({
   const { organization } = useAuth();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border safe-top">
-      <div className="h-14 flex items-center justify-between px-4">
-        <Button variant="ghost" size="icon" onClick={onMenuToggle} aria-label="Abrir menu">
+    <header className="fixed top-0 left-0 right-0 z-[60] p2g-navigation border-b safe-top">
+      <div className="h-14 flex items-center justify-between gap-2 px-3">
+        <Button variant="ghost" size="icon" onClick={onMenuToggle} className="rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-300" aria-label="Abrir menu">
           <Menu className="h-5 w-5" />
         </Button>
         <img 
           alt={organization?.name || "Perfect2Gether"}
-          className="h-8 w-28 object-contain" 
+          className="h-7 w-20 min-w-0 object-contain" 
           src="/logo-p2gether.png" 
         />
-        <div className="w-10" />
+        <div className="ml-auto flex shrink-0 items-center gap-1"><ClockWidget /><AccountControls /></div>
       </div>
     </header>
   );

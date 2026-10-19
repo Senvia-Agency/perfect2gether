@@ -27,7 +27,7 @@ export function SupportConversation({
   readonly reply: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
   return (
-    <Card>
+    <Card className="rh-card">
       <CardHeader>
         <CardTitle>{text(ticket.data, "title")}</CardTitle>
       </CardHeader>

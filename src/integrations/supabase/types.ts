@@ -4678,6 +4678,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      p2g_release: { Args: { action: string; payload: Json }; Returns: Json };
+      p2g_clock: { Args: { action: string; payload: Json }; Returns: Json };
+      p2g_chat: {
+        Args: { action: string; payload: Json };
+        Returns: Json;
+      };
       assign_p2g_leads: {
         Args: { _lead_ids: string[]; _assigned_to: string | null };
         Returns: number;

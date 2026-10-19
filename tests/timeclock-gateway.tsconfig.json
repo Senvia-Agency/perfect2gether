@@ -1,0 +1,4 @@
+{
+ "compilerOptions":{"strict":true,"noEmit":true,"target":"ES2022","module":"ESNext","moduleResolution":"bundler","allowImportingTsExtensions":true,"skipLibCheck":true,"noUncheckedIndexedAccess":true,"exactOptionalPropertyTypes":true,"noUnusedLocals":true,"noUnusedParameters":true,"baseUrl":"..","paths":{"npm:zod@3.25.76":["node_modules/zod"],"https://esm.sh/@supabase/supabase-js@2.49.8":["node_modules/@supabase/supabase-js"],"https://esm.sh/@supabase/supabase-js@2":["node_modules/@supabase/supabase-js"]}},
+ "include":["../supabase/functions/_shared/clock-*.ts","../supabase/functions/clock-punch/*.ts","../supabase/functions/clock-tag-manage/*.ts","../supabase/functions/clock-notification-worker/*.ts","timeclock-gateway.d.ts"]
+}

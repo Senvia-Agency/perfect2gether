@@ -1,3 +1,5 @@
+import { Headphones } from "lucide-react";
+import { RhSectionHeader } from "./RhSectionHeader";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ListPager } from "./ListPager";
 import { SupportConversation } from "./SupportConversation";
@@ -89,12 +91,11 @@ export function Support({
   }
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{manager ? "Pedidos da equipa" : "Os meus pedidos"}</h2>
+      <RhSectionHeader icon={Headphones} title="Suporte interno" description={manager ? "Acompanhe os pedidos da equipa e responda às conversas." : "Abra um pedido e acompanhe as respostas do administrador."}>
         {!manager && <Button onClick={() => setCreating(true)}>Novo pedido</Button>}
-      </div>
+      </RhSectionHeader>
       <Dialog open={creating && !manager} onOpenChange={setCreating}>
-        <DialogContent>
+        <DialogContent overlayClassName="rh-overlay" className="workspace-theme rh-theme rh-dialog">
           <DialogHeader><DialogTitle>Novo pedido de suporte</DialogTitle><DialogDescription>Escreva o assunto e explique o pedido ao administrador.</DialogDescription></DialogHeader>
             <form onSubmit={(e) => void create(e)} className="space-y-3">
               <Field label="Assunto" name="ticket-title" required />
@@ -117,8 +118,8 @@ export function Support({
             </form>
         </DialogContent>
       </Dialog>
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <Card>
+      <div className="rh-support-grid grid min-w-0 items-start gap-6 grid-cols-[repeat(2,minmax(0,1fr))]">
+        <Card className="rh-card">
           <CardHeader>
             <CardTitle>{manager ? "Todos os pedidos" : "Os meus pedidos"}</CardTitle>
           </CardHeader>
@@ -164,7 +165,7 @@ export function Support({
             reply={reply}
           />
         )}
-        {!ticket && <Card><CardContent className="p-6 text-sm text-muted-foreground">Selecione um pedido para consultar a conversa e responder.</CardContent></Card>}
+        {!ticket && <Card className="rh-card"><CardContent className="p-6 text-sm text-muted-foreground">Selecione um pedido para consultar a conversa e responder.</CardContent></Card>}
       </div>
       </div>
 

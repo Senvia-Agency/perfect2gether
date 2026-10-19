@@ -35,7 +35,7 @@ export function BalanceEditor({
   };
   return (
     <form
-      className="grid gap-3 sm:grid-cols-4"
+      className="rh-form-grid rh-filter-grid"
       onSubmit={(e) => {
         e.preventDefault();
         void workspace.mutate.mutateAsync({

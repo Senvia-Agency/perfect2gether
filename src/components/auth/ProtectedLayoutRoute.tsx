@@ -71,7 +71,7 @@ export function ProtectedLayoutRoute() {
 
   return (
     <AppLayout userName={profile?.full_name} organizationName={organization?.name}>
-      <PushSubscriptionRefresh />
+      {!import.meta.env.DEV && <PushSubscriptionRefresh />}
       <Outlet />
       <WhatsNewDialog organizationId={organization?.id} />
     </AppLayout>

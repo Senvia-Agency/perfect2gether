@@ -30,7 +30,7 @@ export function CommunicationComposer({data,workspace,mode,onClose}: {
     ];
   };
 
- return <Dialog open={mode !== null} onOpenChange={open => {if(!open) onClose();}}><DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle>{mode === "notice" ? "Publicar aviso" : "Criar grupo"}</DialogTitle><DialogDescription>{mode === "notice" ? "Escolha o conteúdo e os destinatários." : "Os grupos organizam destinatários; não alteram permissões."}</DialogDescription></DialogHeader>
+ return <Dialog open={mode !== null} onOpenChange={open => {if(!open) onClose();}}><DialogContent overlayClassName="rh-overlay" className="workspace-theme rh-theme rh-dialog sm:max-w-2xl"><DialogHeader><DialogTitle>{mode === "notice" ? "Publicar aviso" : "Criar grupo"}</DialogTitle><DialogDescription>{mode === "notice" ? "Escolha o conteúdo e os destinatários." : "Os grupos organizam destinatários; não alteram permissões."}</DialogDescription></DialogHeader>
  {mode === "notice" ? <form
                 className="space-y-3"
                 onSubmit={(e) => {

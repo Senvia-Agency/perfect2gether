@@ -1,0 +1,53 @@
+.p2g-navigation {
+  --nav-surface: 0 0% 100%;
+  --nav-ink: 246 28% 16%;
+  --nav-muted: 249 14% 48%;
+  --nav-primary: 255 86% 62%;
+  --nav-border: 249 35% 91%;
+  --nav-tint: 254 100% 97%;
+  background: hsl(var(--nav-surface));
+  color: hsl(var(--nav-ink));
+  border-color: hsl(var(--nav-border));
+}
+.dark .p2g-navigation {
+  --nav-surface: 245 25% 10%;
+  --nav-ink: 250 30% 96%;
+  --nav-muted: 248 16% 68%;
+  --nav-border: 247 22% 20%;
+  --nav-tint: 249 30% 18%;
+}
+.p2g-navigation .p2g-nav-link {
+  border: 1px solid transparent;
+  color: hsl(var(--nav-muted));
+  transition: background-color 150ms, border-color 150ms, color 150ms;
+}
+.p2g-navigation .p2g-nav-link:hover {
+  background: hsl(var(--nav-tint) / .65);
+  color: hsl(var(--nav-ink));
+}
+.p2g-navigation .p2g-nav-link[aria-current="page"]:not([data-locked="true"]) {
+  background: hsl(var(--nav-tint));
+  border-color: hsl(var(--nav-primary) / .12);
+  color: hsl(var(--nav-primary));
+}
+.p2g-navigation .p2g-nav-link:focus-visible {
+  outline: 2px solid hsl(var(--nav-primary));
+  outline-offset: 2px;
+}
+.p2g-navigation .p2g-nav-link[data-locked="true"] { color: hsl(var(--nav-muted) / .55); }
+.p2g-navigation .p2g-nav-badge { background: hsl(var(--nav-primary)); color: white; }
+@media (prefers-reduced-motion: reduce) {
+  .p2g-navigation .p2g-nav-link { transition: none; }
+}
+.p2g-nav-link[data-active="true"] { background: hsl(var(--accent)); color: hsl(var(--primary)); border-color: hsl(var(--primary) / .12); }
+.p2g-navigation .p2g-nav-section + .p2g-nav-section { margin-top: 1rem; }
+.p2g-navigation .p2g-nav-section-label {
+  padding: .25rem .75rem .5rem;
+  color: hsl(var(--nav-muted));
+  font-size: .625rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.p2g-navigation .p2g-nav-more { margin-top: 1rem; border-top: 1px solid hsl(var(--nav-border)); padding-top: .5rem; }
+.p2g-navigation .p2g-nav-secondary { margin: .5rem 0 .25rem .75rem; padding-left: .5rem; border-left: 1px solid hsl(var(--nav-border)); }

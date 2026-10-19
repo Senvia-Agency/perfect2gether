@@ -47,7 +47,7 @@ export function AbsenceRequestDialog({
   const [target, setTarget] = useState(editing?.user_id ?? workspace.userId);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent overlayClassName="rh-overlay" className="workspace-theme rh-theme rh-dialog max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {batch
@@ -120,7 +120,7 @@ export function AbsenceRequestDialog({
             return (
               <fieldset key={id} className="space-y-3 rounded-md border p-3">
                 <legend className="px-2 text-sm">Período {i + 1}</legend>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rh-form-grid">
                   <Field
                     name={`start-${id}`}
                     label="Início"

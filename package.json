@@ -8,7 +8,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:messages": "node scripts/dev-messages.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -56,6 +57,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.24.12",
     "input-otp": "^1.4.2",
+    "jspdf": "4.2.1",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
@@ -71,6 +73,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "tus-js-client": "4.3.1",
     "vaul": "^0.9.9",
     "vite-plugin-pwa": "^1.2.0",
     "workbox-precaching": "^7.4.0",
@@ -79,6 +82,7 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",

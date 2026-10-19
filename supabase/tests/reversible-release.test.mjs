@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { createClockDatabase, clockSession, clockIds as i } from './timeclock-database-fixture.mjs';
+test('release switches enforce admin ownership, stop writes and preserve stored data across rollback', async () => {
+ const db=await createClockDatabase();
+ try {
+  await db.exec(`CREATE SCHEMA storage; CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint); CREATE TABLE storage.objects(id uuid DEFAULT gen_random_uuid(),bucket_id text,name text,owner_id text,metadata jsonb,UNIQUE(bucket_id,name)); ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;`);
+  for(const name of ['20261019130000_internal_messages.sql','20261019140000_p2g_chat_jobs.sql','20261019144558_reversible_modules_release.sql']) await db.exec(await readFile(new URL('../migrations/'+name,import.meta.url),'utf8'));
+  const release=(action,payload={})=>db.query('SELECT public.p2g_release($1,$2::jsonb) AS result',[action,{org:i.org,...payload}]).then(r=>r.rows[0].result);
+  const chat=(action,payload={})=>db.query('SELECT public.p2g_chat($1,$2::jsonb) AS result',[action,{org:i.org,...payload}]).then(r=>r.rows[0].result);
+  await db.query("INSERT INTO user_roles VALUES($1,'admin')",[i.manager]);
+  await clockSession(db,i.employee);
+  assert.equal((await release('snapshot')).messages,false);
+  await assert.rejects(()=>release('update',{messages:true,timeclock:true,new_ui:true}),/administrator_required/);
+  await assert.rejects(()=>release('snapshot',{org:i.otherOrg}),/access_denied/);
+  await assert.rejects(()=>chat('create',{kind:'direct',participants:[i.manager]}),/module_disabled/);
+  await clockSession(db,i.manager);
+  await release('update',{messages:true,timeclock:true,new_ui:true});
+  await clockSession(db,i.employee);
+  const conv=await chat('create',{kind:'direct',participants:[i.manager]});
+  const mid=crypto.randomUUID();await chat('send',{conversation:conv,id:mid,body:'Mensagem preservada',attachments:[]});
+  await clockSession(db,i.employee,'service_role');
+  const args=[i.org,i.employee,{request_id:crypto.randomUUID(),action:'start',device_id:'release-test'},{status:'pending',flags:['no_gps'],source:'gps',metadata:{}}];
+  await db.query('SELECT public.p2g_clock_register($1,$2,$3,$4)',args);
+  await clockSession(db,i.manager);
+  await release('update',{messages:false,timeclock:false,new_ui:false});
+  await clockSession(db,i.employee);
+  await assert.rejects(()=>chat('send',{conversation:conv,id:crypto.randomUUID(),body:'blocked',attachments:[]}),/module_disabled/);
+  await clockSession(db,i.employee,'service_role');
+  await assert.rejects(()=>db.query('SELECT public.p2g_clock_register($1,$2,$3,$4)',args),/module_disabled/);
+  assert.deepEqual((await db.query('SELECT public.p2g_chat_take_work() AS result')).rows[0].result.push,[]);
+  assert.deepEqual((await db.query("SELECT public.p2g_clock_worker('claim','{}') AS result")).rows[0].result,[]);
+  await db.exec('RESET ROLE');
+  assert.equal((await db.query('SELECT count(*)::int n FROM p2g_chat_messages')).rows[0].n,1);
+  assert.equal((await db.query('SELECT count(*)::int n FROM p2g_clock_entries')).rows[0].n,1);
+  await clockSession(db,i.manager);await release('update',{messages:true,timeclock:true,new_ui:true});
+  await clockSession(db,i.employee);assert.equal((await chat('history',{conversation:conv}))[0].body,'Mensagem preservada');
+  assert.equal((await db.query("SELECT public.p2g_clock('snapshot',$1) AS result",[{org:i.org,month:new Date().toISOString().slice(0,7)}])).rows[0].result.entries.length,1);
+  await db.exec('RESET ROLE');assert.equal((await db.query('SELECT count(*)::int n FROM p2g_release_audit')).rows[0].n,3);
+ } finally {await db.close();}
+});

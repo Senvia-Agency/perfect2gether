@@ -15,6 +15,8 @@ export function useRhWorkspace() {
     queryFn: () => rhSnapshot(org),
     enabled: !!org && !!user,
     retry: false,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
     select: (data) => scopeRhSnapshot(data, user?.id ?? "", isAdmin),
   });
   const mutate = useMutation({

@@ -1,0 +1,27 @@
+.workspace-theme, .messages-theme {
+  --primary: 255 86% 62%;
+  --primary-foreground: 0 0% 100%;
+  --background: 250 45% 98%;
+  --foreground: 246 28% 16%;
+  --card: 0 0% 100%;
+  --card-foreground: 246 28% 16%;
+  --muted: 250 40% 96%;
+  --muted-foreground: 249 14% 48%;
+  --accent: 254 100% 97%;
+  --accent-foreground: 255 80% 58%;
+  --border: 249 35% 90%;
+  --input: 249 35% 90%;
+  --ring: 255 86% 62%;
+  color: hsl(var(--foreground));
+}
+.dark .workspace-theme, .dark .messages-theme {
+  --background: 247 22% 11%;
+  --card: 247 20% 14%;
+  --card-foreground: 250 25% 95%;
+  --foreground: 250 25% 95%;
+  --muted: 247 20% 18%;
+  --muted-foreground: 249 16% 68%;
+  --accent: 253 32% 23%;
+  --border: 247 18% 24%;
+  --input: 247 18% 24%;
+}

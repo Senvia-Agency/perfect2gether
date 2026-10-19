@@ -21,7 +21,7 @@ export function NotificationSettings({
   const [page, setPage] = useState(1);
   const recipients = data.records.filter(r => r.kind === "recipient");
   return (
-    <Card>
+    <Card className="rh-card">
       <CardHeader>
         <CardTitle>Destinatários e processamento</CardTitle>
       </CardHeader>

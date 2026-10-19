@@ -5,7 +5,8 @@ import { AbsenceRequestDialog } from "./AbsenceRequestDialog";
 import { value } from "@/lib/rh/form";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { RhSectionHeader } from "./RhSectionHeader";
+import { CalendarDays, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { statusLabels } from "@/lib/rh/schema";
@@ -105,7 +106,7 @@ export function Absences({
   }
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
+      <RhSectionHeader icon={CalendarDays} title="Ausências" description="Peça uma ausência e acompanhe o estado dos pedidos.">
         <Button onClick={() => begin()}>
           <Plus className="mr-2 h-4 w-4" />
           Pedir ausência
@@ -121,6 +122,9 @@ export function Absences({
             Marcação em lote
           </Button>
         )}
+      </RhSectionHeader>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm font-medium text-muted-foreground">Pedidos de ausência</p>
         <select
           aria-label="Filtrar pedidos"
           value={filter}

@@ -18,15 +18,17 @@ const dialogContentVariants = {
 
 interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   variant?: keyof typeof dialogContentVariants;
+  readonly overlayClassName?: string;
 }
 
 const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, DialogContentProps>(({
   className,
   children,
   variant = "default",
+  overlayClassName,
   ...props
 }, ref) => <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content 
       ref={ref} 
       onOpenAutoFocus={(e) => {

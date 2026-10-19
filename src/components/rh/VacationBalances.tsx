@@ -15,7 +15,7 @@ export function VacationBalances({
   readonly year: number;
 }) {
   return (
-    <Card>
+    <Card className="rh-card">
       <CardHeader>
         <CardTitle>Saldos anuais · {year}</CardTitle>
       </CardHeader>

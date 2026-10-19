@@ -28,7 +28,7 @@ export function EmployeeDocuments({
   readonly download: (record: RhRecord) => Promise<void>;
 }) {
   return (
-    <Card>
+    <Card className="rh-card">
       <CardHeader>
         <CardTitle>Documentos privados</CardTitle>
       </CardHeader>
@@ -65,7 +65,7 @@ export function EmployeeDocuments({
           data.permissions["documents.manage"]) && (
           <form
             onSubmit={(e) => void files(e)}
-            className="grid gap-3 sm:grid-cols-2"
+            className="rh-form-grid"
           >
             <Field name="category" label="Categoria" required />
             <Field name="files" label="Carregar vários documentos">
@@ -78,7 +78,7 @@ export function EmployeeDocuments({
                 accept=".pdf,.png,.jpg,.jpeg,.docx"
               />
             </Field>
-            <p className="text-sm text-muted-foreground sm:col-span-2">
+            <p className="text-sm text-muted-foreground rh-field-wide">
               PDF, imagem ou Word; máximo 20 MB por ficheiro. Os documentos são
               privados.
             </p>

@@ -30,7 +30,7 @@ export function RhAbsenceCard({
   readonly canApprove: boolean;
 }) {
   return (
-    <Card key={a.id}>
+    <Card key={a.id} className="rh-card">
       <CardHeader>
         <CardTitle className="flex flex-wrap justify-between gap-2 text-base">
           <span>
@@ -39,15 +39,15 @@ export function RhAbsenceCard({
             )?.[1] ?? a.absence_type}{" "}
             · {memberName(data, a.user_id)}
           </span>
-          <span className="text-sm text-muted-foreground">
+          <span className="rh-status" data-status={a.status}>
             {statusLabels[a.status]}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {a.periods.map((p) => (
-          <p key={p.id} className="flex gap-2 text-sm">
-            <CalendarDays className="h-4 w-4" />
+          <p key={p.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/60 p-3 text-sm">
+            <CalendarDays className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             {p.start_date} → {p.end_date}
             {p.period_type !== "full_day" &&
               ` · ${p.start_time}–${p.end_time}`}{" "}

@@ -1,3 +1,4 @@
+import { ReleaseFeatures } from './ReleaseFeatures';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -77,7 +78,7 @@ export const GeneralContent = ({
   })();
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl"><ReleaseFeatures />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Building className="h-5 w-5" />Organização</CardTitle>

@@ -1,3 +1,5 @@
+import { CalendarClock } from "lucide-react";
+import { RhSectionHeader } from "./RhSectionHeader";
 import { VacationBalances } from "./VacationBalances";
 import { value, memberName } from "@/lib/rh/form";
 import { useState } from "react";
@@ -22,12 +24,13 @@ export function CalendarBalances({
   const days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
   return (
     <div className="space-y-6">
-      <Card>
+      <RhSectionHeader icon={CalendarClock} title="Calendário e saldos" description={workspace.isAdmin ? "Consulte as ausências da equipa e os saldos de férias." : "Consulte as suas ausências e o saldo de férias."} />
+      <Card className="rh-card">
         <CardHeader>
           <CardTitle>{workspace.isAdmin ? "Calendário da equipa" : "O meu calendário"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-4 print:hidden">
+          <div className="rh-form-grid rh-filter-grid print:hidden">
             <Field label="Mês" name="month">
               <input
                 id="month"
@@ -165,7 +168,7 @@ export function CalendarBalances({
       </Card>
       <VacationBalances data={data} workspace={workspace} year={year} />
       {data.permissions["calendar.manage"] && (
-        <Card>
+        <Card className="rh-card">
           <CardHeader>
             <CardTitle>Feriados e encerramentos</CardTitle>
           </CardHeader>
@@ -198,7 +201,7 @@ export function CalendarBalances({
                 </div>
               ))}
             <form
-              className="grid gap-3 sm:grid-cols-3"
+              className="rh-form-grid"
               onSubmit={(e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);

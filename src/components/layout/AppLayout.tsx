@@ -1,4 +1,7 @@
+import { LegacyAppLayout } from './LegacyAppLayout';
+import { useReleaseFeatures } from '@/hooks/useReleaseFeatures';
 import { ReactNode, useState } from "react";
+import { AppHeader } from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
 import { MobileHeader } from "./MobileHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
@@ -12,13 +15,15 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children, userName, organizationName }: AppLayoutProps) {
+  const { features } = useReleaseFeatures();
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  if (!features.new_ui) return <LegacyAppLayout userName={userName} organizationName={organizationName}>{children}</LegacyAppLayout>;
   // Mobile layout
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="p2g-shell min-h-screen bg-background">
         <MobileHeader
           onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           isMenuOpen={isMobileMenuOpen}
@@ -30,12 +35,12 @@ export function AppLayout({ children, userName, organizationName }: AppLayoutPro
           userName={userName}
           organizationName={organizationName}
         />
-        <main className="pb-20" style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top))' }}>
-          <div className="min-h-[calc(100vh-8.5rem)]">
+        <main style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top))', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+          <div className="min-h-[calc(100dvh-8.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))]">
             {children}
           </div>
         </main>
-        <MobileBottomNav />
+        <MobileBottomNav onMenuOpen={() => setIsMobileMenuOpen(true)} />
       </div>
     );
   }
@@ -45,7 +50,8 @@ export function AppLayout({ children, userName, organizationName }: AppLayoutPro
     <div className="min-h-screen bg-background">
       <AppSidebar userName={userName} organizationName={organizationName} />
       <main className="pl-64">
-        <div className="min-h-screen">
+        <AppHeader />
+        <div className="min-h-[calc(100dvh-3.5rem)]">
           {children}
         </div>
       </main>

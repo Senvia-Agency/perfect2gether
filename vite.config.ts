@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    fs: { deny: [".env", ".env.*", "*.{crt,pem}", "**/.git/**", "**/.messages*.local/**", "**/.messages.local.lock", "**/.clock.local/**", "**/.clock*.local/**"] },
   },
   plugins: [
     react(),
