@@ -96,7 +96,8 @@ export type Database = {
       }
       automation_queue: {
         Row: {
-          automation_id: string
+          automation_id: string | null
+          template_automation_id: string | null
           created_at: string
           id: string
           organization_id: string
@@ -108,7 +109,8 @@ export type Database = {
           variables: Json | null
         }
         Insert: {
-          automation_id: string
+          automation_id?: string | null
+          template_automation_id?: string | null
           created_at?: string
           id?: string
           organization_id: string
@@ -120,7 +122,8 @@ export type Database = {
           variables?: Json | null
         }
         Update: {
-          automation_id?: string
+          automation_id?: string | null
+          template_automation_id?: string | null
           created_at?: string
           id?: string
           organization_id?: string
@@ -1448,6 +1451,7 @@ export type Database = {
       }
       email_sends: {
         Row: {
+          template_automation_id: string | null
           automation_id: string | null
           brevo_message_id: string | null
           campaign_id: string | null
@@ -1467,6 +1471,7 @@ export type Database = {
           template_id: string | null
         }
         Insert: {
+          template_automation_id?: string | null
           automation_id?: string | null
           brevo_message_id?: string | null
           campaign_id?: string | null
@@ -1486,6 +1491,7 @@ export type Database = {
           template_id?: string | null
         }
         Update: {
+          template_automation_id?: string | null
           automation_id?: string | null
           brevo_message_id?: string | null
           campaign_id?: string | null

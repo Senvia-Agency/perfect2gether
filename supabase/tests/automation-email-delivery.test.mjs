@@ -43,7 +43,7 @@ const event={trigger_type:'sale_status_changed',organization_id:'org',record:{id
 test('actual Entregue to Em progresso handler authenticates the send and tags it as automation',async()=>{
  const app=handler('process-automation');const response=await app.run(event);
  assert.equal(response.status,200);assert.equal((await response.json()).triggered,1);
- assert.equal(app.calls[0].headers.Authorization,'Bearer internal-service');assert.equal(app.calls[0].headers.apikey,'internal-service');assert.equal(app.calls[0].body.automationId,'template');
+ assert.equal(app.calls[0].headers.Authorization,'Bearer internal-service');assert.equal(app.calls[0].headers.apikey,'internal-service');assert.equal(app.calls[0].body.templateAutomationId,'template');assert.equal(app.calls[0].body.automationId,undefined);
 });
 test('actual automation handler respects a serialized contractual state rule',async()=>{
  const app=handler('process-automation',{config:JSON.stringify({to_status:'delivered'})});const response=await app.run(event);
@@ -100,4 +100,18 @@ test('internal-auth migration retrieves the worker token from Vault for actual t
  const cron=(await db.query('select command from cron.jobs')).rows[0];await db.exec(cron.command);
  const requests=(await db.query('select headers from observed')).rows;assert.equal(requests.length,2);assert.equal(requests[1].headers['x-p2g-automation-token'],'vault-test-token');
  }finally{await db.close();}
+});
+
+test('template automation sends and delayed jobs retain their source with real foreign keys',async()=>{
+ const {PGlite}=await import('@electric-sql/pglite');const db=new PGlite();
+ try {
+  await db.exec(`create table email_templates(id uuid primary key);create table email_automations(id uuid primary key);create table email_sends(id uuid primary key,automation_id uuid references email_automations(id),template_id uuid references email_templates(id));create table automation_queue(id uuid primary key,automation_id uuid NOT NULL references email_automations(id),template_id uuid references email_templates(id));insert into email_templates values('11111111-1111-4111-8111-111111111111');`);
+  await db.exec(fs.readFileSync('supabase/migrations/20261020112508_email_template_automation_tracking.sql','utf8'));
+  for(const table of ['email_sends','automation_queue']){
+   await db.query(`insert into ${table}(id,template_id,template_automation_id) values($1,$2,$2)`,['22222222-2222-4222-8222-222222222222','11111111-1111-4111-8111-111111111111']);
+   const row=(await db.query(`select automation_id,template_automation_id from ${table}`)).rows[0];
+   assert.equal(row.automation_id,null);assert.equal(row.template_automation_id,'11111111-1111-4111-8111-111111111111');
+  }
+  await assert.rejects(db.query("insert into email_sends(id,automation_id) values('33333333-3333-4333-8333-333333333333','11111111-1111-4111-8111-111111111111')"),/foreign key/);
+ } finally {await db.close();}
 });

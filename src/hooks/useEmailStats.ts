@@ -39,11 +39,11 @@ export function useEmailStats(
           query = query.not('campaign_id', 'is', null);
         }
       } else if (source === 'automation') {
-        // automation_id is a new column not yet in generated types, use raw filter
+        // Include both dedicated automations and automations configured on templates.
         if (sourceId) {
-          query = query.filter('automation_id', 'eq', sourceId);
+          query = query.or(`automation_id.eq.${sourceId},template_automation_id.eq.${sourceId}`);
         } else {
-          query = query.filter('automation_id', 'not.is', null);
+          query = query.or('automation_id.not.is.null,template_automation_id.not.is.null');
         }
       }
 

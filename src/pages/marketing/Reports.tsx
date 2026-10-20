@@ -38,7 +38,7 @@ export default function Reports() {
     queryClient.invalidateQueries({ queryKey: ['email-stats'] });
   };
 
-  const getOriginLabel = (event: any) => {
+  const getOriginLabel = (event: { campaign_id: string | null; automation_id: string | null; template_automation_id: string | null }) => {
     if (event.campaign_id) {
       const camp = campaigns?.find((c: any) => c.id === event.campaign_id);
       return (
@@ -48,8 +48,8 @@ export default function Reports() {
         </div>
       );
     }
-    if ((event as any).automation_id) {
-      const tpl = templates?.find((t: any) => t.id === (event as any).automation_id);
+    if (event.template_automation_id || event.automation_id) {
+      const tpl = templates?.find(t => t.id === event.template_automation_id);
       return (
         <div className="flex items-center gap-1.5">
           <Bot className="h-3 w-3 text-purple-500" />

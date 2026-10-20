@@ -23,6 +23,7 @@ interface SendTemplateRequest {
   recipients: Recipient[];
   campaignId?: string;
   automationId?: string;
+  templateAutomationId?: string;
   settings?: Record<string, boolean>;
   settingsData?: Record<string, string>;
   subject?: string;
@@ -219,7 +220,7 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     const {
-      organizationId, templateId, recipients, campaignId, automationId,
+      organizationId, templateId, recipients, campaignId, automationId, templateAutomationId,
       settings = {}, settingsData = {},
       subject: customSubject, htmlContent: customHtmlContent,
     }: SendTemplateRequest = await req.json();
@@ -434,6 +435,7 @@ serve(async (req: Request): Promise<Response> => {
           template_id: templateId || null,
           campaign_id: campaignId || null,
           automation_id: automationId || null,
+          template_automation_id: templateAutomationId || null,
           client_id: recipient.clientId || null,
           recipient_email: recipient.email,
           recipient_name: recipient.name,
@@ -463,6 +465,7 @@ serve(async (req: Request): Promise<Response> => {
           template_id: templateId || null,
           campaign_id: campaignId || null,
           automation_id: automationId || null,
+          template_automation_id: templateAutomationId || null,
           client_id: recipient.clientId || null,
           recipient_email: recipient.email,
           recipient_name: recipient.name,

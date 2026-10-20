@@ -152,7 +152,7 @@ serve(async (req: Request): Promise<Response> => {
       if (delayMinutes > 0) {
         const scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1000);
         await supabase.from("automation_queue").insert({
-          automation_id: template.id,
+          template_automation_id: template.id,
           organization_id,
           recipient_email: recipientEmail,
           recipient_name: recipientName,
@@ -171,7 +171,7 @@ serve(async (req: Request): Promise<Response> => {
           body: {
             organizationId: organization_id,
             templateId: template.id,
-            automationId: template.id,
+            templateAutomationId: template.id,
             recipients: [{
               email: recipientEmail,
               name: recipientName,
