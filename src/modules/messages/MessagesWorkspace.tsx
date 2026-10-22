@@ -7,6 +7,7 @@ import { Thread } from './components/Thread';
 import { MessageDrafts } from './components/MessageDrafts';
 import { ConversationDialog } from './components/ConversationDialog';
 import { ColleagueDirectory } from './components/ColleagueDirectory';
+import { PushPrompt } from './components/PushPrompt';
 import './messages.css';
 
 const views = [
@@ -31,6 +32,7 @@ export function MessagesWorkspace() {
           <div className="flex h-full items-end"><button type="button" onClick={() => choose('all')} className="flex h-10 items-center gap-2 rounded-t-2xl bg-card px-4 text-sm font-medium"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-400 to-indigo-500 text-white"><MessageSquare className="h-3.5 w-3.5" /></span>Mensagens</button></div>
           <span className="mr-2 flex items-center gap-1.5 text-[11px] text-muted-foreground"><LockKeyhole className="h-3 w-3" /><span className="hidden sm:inline">Conversas privadas da equipa</span></span>
         </header>
+        <PushPrompt />
         <div className="chat-workspace-panes flex min-h-0 flex-1 flex-col md:flex-row" data-conversation-open={Boolean(controller.selectedId)}>
           <nav aria-label="Categorias de mensagens" className={`chat-categories flex shrink-0 gap-1 overflow-x-auto border-b bg-background px-2 py-2 md:w-[76px] md:flex-col md:gap-2 md:border-b-0 md:border-r md:px-1.5 md:py-3 ${controller.selectedId ? 'hidden md:flex' : ''}`}>
             {views.map(item => <button type="button" key={item.id} aria-pressed={view === item.id} onClick={() => choose(item.id)} className={`flex min-w-16 flex-col items-center gap-1.5 rounded-2xl border px-1 py-2.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${view === item.id ? 'border-primary/20 bg-primary/[0.06] text-primary' : 'border-transparent text-muted-foreground hover:bg-muted'}`}><span className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-sm ${item.color}`}><item.icon className="h-5 w-5" strokeWidth={1.8} /></span>{item.label}</button>)}

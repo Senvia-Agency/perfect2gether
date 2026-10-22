@@ -99,7 +99,7 @@ export function usePushNotifications() {
       setIsSubscribed(true);
       toast({
         title: 'Notificações ativadas',
-        description: 'Vai receber alertas quando chegarem novos leads.',
+        description: 'Vai receber alertas neste dispositivo.',
       });
 
       return true;
