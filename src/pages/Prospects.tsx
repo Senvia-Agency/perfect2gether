@@ -7,7 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProspects, useProspectSalespeople } from "@/hooks/useProspects";
+import { useGenerateMjProspects, useProspects, useProspectSalespeople, type ProspectJobProgress as ProspectJobProgression } from "@/hooks/useProspects";
+import { ProspectJobProgress } from "@/components/prospects/ProspectJobProgress";
 import { useModules } from "@/hooks/useModules";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTeamScopedMembers } from "@/hooks/useTeamFilter";
@@ -21,6 +22,8 @@ import { GenerateProspectsDialog } from "@/components/prospects/GenerateProspect
 import { Download, Loader2, Search, Upload, Users, Sparkles, Facebook, Instagram, Twitter, Youtube, Globe } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+
+const MJ_INITIAL_PROGRESS: ProspectJobProgression = { percent: 2, label: "A iniciar o extrator…" };
 
 const formatConsumption = (value: number | null) => {
   if (value === null || value === undefined) return "—";
@@ -81,6 +84,8 @@ export default function Prospects() {
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isDistributeOpen, setIsDistributeOpen] = useState(false);
   const isP2G = isPerfect2GetherOrg(organization?.id);
+  const generateMj = useGenerateMjProspects();
+  const [mjProgress, setMjProgress] = useState<ProspectJobProgression>(MJ_INITIAL_PROGRESS);
   const salespersonMap = useMemo(
     () => new Map(salespeople.map((salesperson) => [salesperson.user_id, salesperson.full_name])),
     [salespeople]
@@ -230,10 +235,24 @@ export default function Prospects() {
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           {isP2G ? (
             canImportProspects && (
-              <Button variant="outline" onClick={() => setIsImportOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                Importar
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Importar
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setMjProgress(MJ_INITIAL_PROGRESS);
+                    generateMj.mutate(setMjProgress);
+                  }}
+                  disabled={generateMj.isPending}
+                  title="Empresas com publicações comerciais de ontem e hoje em publicacoes.mj.pt"
+                >
+                  {generateMj.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  {generateMj.isPending ? "A pesquisar no MJ…" : "Empresas novas (MJ)"}
+                </Button>
+              </>
             )
           ) : (
             canGenerateProspects && (
@@ -256,6 +275,8 @@ export default function Prospects() {
             </>
           )}
         </div>
+
+        {generateMj.isPending && <ProspectJobProgress title="A pesquisar empresas novas no MJ" progress={mjProgress} />}
 
         <Card>
           <CardContent className="space-y-4 p-4 md:p-6">

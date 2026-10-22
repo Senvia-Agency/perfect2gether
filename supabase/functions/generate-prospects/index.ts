@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import { p2gMfaGate } from '../_shared/p2g-mfa-guard.ts';
+import { MJ_SOURCE, MJ_TASK_ID } from '../_shared/mj-prospects.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -114,6 +115,67 @@ Deno.serve(async (req) => {
       });
     }
 
+    const serviceSupabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const { data: membership, error: membershipError } = await serviceSupabase
+      .from("organization_members")
+      .select("user_id")
+      .eq("organization_id", organizationId)
+      .eq("user_id", userData.user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (membershipError || !membership) {
+      return new Response(JSON.stringify({ error: "Sem acesso a esta organização" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (body.source === MJ_SOURCE) {
+      const mjRes = await fetch(`${APIFY_BASE}/actor-tasks/${MJ_TASK_ID}/runs?token=${APIFY_API_TOKEN}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (!mjRes.ok) {
+        return new Response(
+          JSON.stringify({ error: `Apify start failed [${mjRes.status}]: ${await mjRes.text()}` }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const mjRunId = (await mjRes.json())?.data?.id;
+      if (!mjRunId) {
+        return new Response(JSON.stringify({ error: "No run ID returned from Apify" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: mjJob, error: mjJobError } = await serviceSupabase
+        .from("prospect_generation_jobs")
+        .insert({
+          organization_id: organizationId,
+          user_id: userData.user.id,
+          apify_run_id: mjRunId,
+          status: "running",
+          search_params: { source: MJ_SOURCE },
+        })
+        .select("id")
+        .single();
+      if (mjJobError) {
+        return new Response(
+          JSON.stringify({ error: `Failed to save job: ${mjJobError.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ jobId: mjJob.id, apifyRunId: mjRunId }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!startUrls.length && (!searchStrings.length || !location)) {
       return new Response(JSON.stringify({ error: "searchStrings+location or startUrls are required" }), {
         status: 400,
@@ -168,12 +230,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Save job to database using service role
-    const serviceSupabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     const { data: job, error: jobError } = await serviceSupabase
       .from("prospect_generation_jobs")

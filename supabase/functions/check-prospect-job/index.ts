@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import { p2gMfaGate } from '../_shared/p2g-mfa-guard.ts';
+import { MJ_SOURCE, importMjProspects, mjProgressFromLog, mjRunError, type JobProgress } from '../_shared/mj-prospects.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -119,7 +120,12 @@ Deno.serve(async (req) => {
     const apifyStatus = statusData?.data?.status || "FAILED";
 
     if (apifyStatus === "RUNNING" || apifyStatus === "READY") {
-      return new Response(JSON.stringify({ status: "running" }), {
+      let progress: JobProgress | undefined;
+      if ((job.search_params as Record<string, unknown> | null)?.source === MJ_SOURCE) {
+        const logRes = await fetch(`${APIFY_BASE}/logs/${job.apify_run_id}?token=${APIFY_API_TOKEN}`);
+        progress = logRes.ok ? mjProgressFromLog(await logRes.text()) : undefined;
+      }
+      return new Response(JSON.stringify({ status: "running", progress }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -145,6 +151,23 @@ Deno.serve(async (req) => {
       `${APIFY_BASE}/actor-runs/${job.apify_run_id}/dataset/items?token=${APIFY_API_TOKEN}&format=json`
     );
     const items: ApifyItem[] = await datasetRes.json();
+    const searchParams = job.search_params as Record<string, unknown> || {};
+
+    if (searchParams.source === MJ_SOURCE) {
+      const runError = mjRunError(items);
+      const result = runError ? null : await importMjProspects(serviceSupabase, job.organization_id, job.user_id, items);
+      await serviceSupabase
+        .from("prospect_generation_jobs")
+        .update(runError
+          ? { status: "failed", error: runError, completed_at: new Date().toISOString() }
+          : { status: "completed", result, completed_at: new Date().toISOString() })
+        .eq("id", jobId);
+
+      return new Response(JSON.stringify(runError ? { status: "failed", error: runError } : { status: "completed", result }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!Array.isArray(items) || items.length === 0) {
       const result = { inserted: 0, updated: 0, skipped: 0, total: 0 };
@@ -161,7 +184,6 @@ Deno.serve(async (req) => {
 
     // Process items and insert prospects
     const organizationId = job.organization_id;
-    const searchParams = job.search_params as Record<string, unknown> || {};
     const searchStrings = (searchParams.searchStrings as string[]) || [];
     const location = (searchParams.location as string) || "";
 

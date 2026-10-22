@@ -219,6 +219,62 @@ export function useImportProspects() {
   });
 }
 
+type ProspectJobResult = { inserted: number; updated: number; skipped: number; total: number };
+export type ProspectJobProgress = { percent: number; label: string };
+
+async function runProspectJob(
+  body: Record<string, unknown>,
+  onProgress?: (status: string, progress?: ProspectJobProgress) => void,
+): Promise<ProspectJobResult> {
+  onProgress?.("starting");
+  const startData = await invokeFunction<{ jobId: string }>("generate-prospects", body);
+  const jobId = startData?.jobId;
+  if (!jobId) throw new Error("Sem ID de job retornado");
+
+  onProgress?.("running");
+  const maxPollTime = 10 * 60 * 1000;
+  const pollInterval = body.source === "mj" ? 3000 : 8000;
+  const startTime = Date.now();
+
+  while (true) {
+    if (Date.now() - startTime > maxPollTime) {
+      throw new Error("A geração excedeu o tempo máximo de 10 minutos");
+    }
+
+    await new Promise((r) => setTimeout(r, pollInterval));
+
+    const checkData = await invokeFunction<{ status: string; result?: ProspectJobResult; error?: string; progress?: ProspectJobProgress }>(
+      "check-prospect-job",
+      { jobId },
+    );
+
+    if (checkData?.status === "failed") throw new Error(checkData?.error || "A geração falhou");
+    if (checkData?.status === "completed" && checkData.result) return checkData.result;
+    onProgress?.("running", checkData?.progress);
+  }
+}
+
+export function useGenerateMjProspects() {
+  const { organization } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (onProgress?: (progress: ProspectJobProgress) => void) => {
+      if (!organization?.id) throw new Error("Organização não encontrada");
+      return runProspectJob({ organizationId: organization.id, source: "mj" }, (_status, progress) => {
+        if (progress) onProgress?.(progress);
+      });
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["prospects"] });
+      toast.success(`${result.total} empresas encontradas • ${result.inserted} novas${result.skipped ? ` • ${result.skipped} já existiam` : ""}`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Erro ao pesquisar empresas no MJ");
+    },
+  });
+}
+
 export function useGenerateProspects() {
   const { organization } = useAuth();
   const queryClient = useQueryClient();
@@ -252,44 +308,7 @@ export function useGenerateProspects() {
       onProgress?: (status: string) => void;
     }) => {
       const { onProgress, ...bodyParams } = params;
-
-      // Step 1: Start the Apify run
-      onProgress?.("starting");
-      const startData = await invokeFunction<{ jobId: string }>("generate-prospects", bodyParams);
-      const jobId = startData?.jobId;
-      if (!jobId) throw new Error("Sem ID de job retornado");
-
-      // Step 2: Poll for completion
-      onProgress?.("running");
-      const maxPollTime = 10 * 60 * 1000; // 10 minutes
-      const pollInterval = 8000; // 8 seconds
-      const startTime = Date.now();
-
-      while (true) {
-        if (Date.now() - startTime > maxPollTime) {
-          throw new Error("A geração excedeu o tempo máximo de 10 minutos");
-        }
-
-        await new Promise((r) => setTimeout(r, pollInterval));
-
-        const checkData = await invokeFunction<{ status: string; result?: { inserted: number; updated: number; skipped: number; total: number }; error?: string }>(
-          "check-prospect-job",
-          { jobId },
-        );
-
-        if (checkData?.status === "running") {
-          onProgress?.("running");
-          continue;
-        }
-
-        if (checkData?.status === "failed") {
-          throw new Error(checkData?.error || "A geração falhou");
-        }
-
-        if (checkData?.status === "completed") {
-          return checkData.result as { inserted: number; updated: number; skipped: number; total: number };
-        }
-      }
+      return runProspectJob(bodyParams, onProgress);
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["prospects"] });
