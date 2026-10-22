@@ -33,6 +33,10 @@ import { CrmClient, CLIENT_SOURCE_LABELS, ClientStatus, DEFAULT_CLIENT_FIELDS_SE
 import { isBillingActive } from "@/components/sales/SaleFiscalInfo";
 import { COUNTRIES } from "@/lib/countries";
 import { User, Building2 } from "lucide-react";
+import { DecisionMakersFields } from "./DecisionMakersFields";
+import { areDecisionMakersValid, decisionMakersPayload, emptyDecisionMaker, parseDecisionMakers, type DecisionMaker } from "@/lib/decision-makers";
+
+const withAtLeastOne = (list: DecisionMaker[]) => (list.length > 0 ? list : [emptyDecisionMaker()]);
 
 interface EditClientModalProps {
   client: CrmClient | null;
@@ -57,7 +61,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
   const [phone, setPhone] = useState("");
   const [company, setCompany] = useState("");
   const [nif, setNif] = useState("");
-  const [decisionMakerName, setDecisionMakerName] = useState("");
+  const [decisionMakers, setDecisionMakers] = useState<DecisionMaker[]>([]);
   const [companyNif, setCompanyNif] = useState("");
   const [billingTarget, setBillingTarget] = useState<BillingTarget>("client");
   const [status, setStatus] = useState<ClientStatus>("active");
@@ -95,7 +99,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
       setPhone(client.phone || "");
       setCompany(client.company || "");
       setNif(client.nif || "");
-      setDecisionMakerName(client.decision_maker_name || "");
+      setDecisionMakers(withAtLeastOne(parseDecisionMakers(client.decision_makers, client.decision_maker_name)));
       setCompanyNif(client.company_nif || "");
       setBillingTarget((client.billing_target as BillingTarget) || "client");
       setStatus(client.status);
@@ -114,7 +118,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
   }, [client]);
 
   const isValid = useMemo(() => {
-    if (isP2g && !decisionMakerName.trim()) return false;
+    if (isP2g && !areDecisionMakersValid(decisionMakers)) return false;
     // Imported/legacy clients can have incomplete records. Allow staff to
     // complete those fields over several visits without requiring every
     // missing value at once, but do not let them blank previously filled
@@ -131,7 +135,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
     if (client?.conselho?.trim() && !conselho.trim()) return false;
     if ((!isP2g && nifValidation.isDuplicate) || companyNifValidation.isDuplicate) return false;
     return true;
-  }, [client, isP2g, decisionMakerName, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
+  }, [client, isP2g, decisionMakers, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +148,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
         email: email.trim() || null,
         phone: phone.trim() || null,
         company: company.trim() || null,
-        ...(isP2g ? { decision_maker_name: decisionMakerName.trim() } : { nif: nif.trim() || null }),
+        ...(isP2g ? decisionMakersPayload(decisionMakers) : { nif: nif.trim() || null }),
         company_nif: companyNif.trim() || null,
         billing_target: billingTarget,
         status,
@@ -233,17 +237,9 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
                       )}
 
                       {isP2g && (
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-decision-maker-name">Nome Decisor/Contato *</Label>
-                          <Input
-                            id="edit-decision-maker-name"
-                            value={decisionMakerName}
-                            onChange={(e) => setDecisionMakerName(e.target.value)}
-                            placeholder="Nome do decisor ou contacto"
-                            required
-                          />
-                        </div>
+                        <DecisionMakersFields idPrefix="edit" value={decisionMakers} onChange={setDecisionMakers} />
                       )}
+
                       {!isP2g && settings.nif.visible && (
                         <div className="space-y-2">
                           <Label htmlFor="edit-nif">NIF (Cliente) {settings.nif.required && client.nif?.trim() && '*'}</Label>

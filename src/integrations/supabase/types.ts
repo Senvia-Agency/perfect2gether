@@ -920,6 +920,7 @@ export type Database = {
           lead_id: string | null
           name: string
           decision_maker_name: string | null
+          decision_makers: Json
           nif: string | null
           notes: string | null
           organization_id: string
@@ -952,6 +953,7 @@ export type Database = {
           lead_id?: string | null
           name: string
           decision_maker_name?: string | null
+          decision_makers?: Json
           nif?: string | null
           notes?: string | null
           organization_id: string
@@ -984,6 +986,7 @@ export type Database = {
           lead_id?: string | null
           name?: string
           decision_maker_name?: string | null
+          decision_makers?: Json
           nif?: string | null
           notes?: string | null
           organization_id?: string

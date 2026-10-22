@@ -31,7 +31,9 @@ import {
   Zap,
   Euro,
   ChevronRight,
+  Users,
 } from "lucide-react";
+import { parseDecisionMakers } from "@/lib/decision-makers";
 import { formatDate, formatCurrency, getWhatsAppUrl } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PROPOSAL_STATUS_LABELS, PROPOSAL_STATUS_COLORS, type ProposalStatus, type Proposal } from "@/types/proposals";
@@ -159,6 +161,7 @@ export function ClientDetailsDrawer({
     other: 'Outro',
   }[client.source || ''] || client.source;
 
+  const decisionMakers = parseDecisionMakers(client.decision_makers, client.decision_maker_name);
   const hasAddress = client.address_line1 || client.city || client.postal_code || client.distrito || client.conselho;
 
   return (
@@ -253,6 +256,43 @@ export function ClientDetailsDrawer({
                     )}
                   </CardContent>
                 </Card>
+
+                {isP2G && decisionMakers.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Decisores
+                        <Badge variant="secondary" className="text-xs ml-auto">{decisionMakers.length}</Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {decisionMakers.map((person, index) => (
+                        <div key={index} className="space-y-1 rounded-lg border p-3 text-sm">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="font-medium">{person.name}</span>
+                            {person.role && <span className="text-xs text-muted-foreground">{person.role}</span>}
+                          </div>
+                          {person.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                              <a href={`tel:${person.phone}`} className="hover:underline">{person.phone}</a>
+                              <a href={getWhatsAppUrl(person.phone)} target="_blank" rel="noopener noreferrer" className="text-success hover:underline text-xs">
+                                WhatsApp
+                              </a>
+                            </div>
+                          )}
+                          {person.email && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                              <a href={`mailto:${person.email}`} className="text-primary hover:underline break-all">{person.email}</a>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Empresa */}
                 <Card>

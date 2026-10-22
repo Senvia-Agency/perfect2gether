@@ -1,4 +1,5 @@
 import { Lead } from "@/types";
+import type { Json } from "@/integrations/supabase/types";
 
 export type ClientStatus = 'active' | 'inactive' | 'vip';
 export type ClientSource = 'lead' | 'referral' | 'direct' | 'website' | 'other';
@@ -19,6 +20,7 @@ export interface CrmClient {
   company?: string | null;
   nif?: string | null;
   decision_maker_name?: string | null;
+  decision_makers?: Json;
   company_nif?: string | null;
   billing_target?: BillingTarget;
   

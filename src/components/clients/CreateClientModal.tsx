@@ -31,6 +31,8 @@ import { CLIENT_SOURCE_LABELS, ClientStatus, DEFAULT_CLIENT_FIELDS_SETTINGS, Bil
 import { isBillingActive } from "@/components/sales/SaleFiscalInfo";
 import { COUNTRIES } from "@/lib/countries";
 import { User, Building2 } from "lucide-react";
+import { DecisionMakersFields } from "./DecisionMakersFields";
+import { areDecisionMakersValid, decisionMakersPayload, emptyDecisionMaker, type DecisionMaker } from "@/lib/decision-makers";
 
 interface CreateClientModalProps {
   open: boolean;
@@ -61,7 +63,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
   const [phone, setPhone] = useState("");
   const [company, setCompany] = useState("");
   const [nif, setNif] = useState("");
-  const [decisionMakerName, setDecisionMakerName] = useState("");
+  const [decisionMakers, setDecisionMakers] = useState<DecisionMaker[]>(() => [emptyDecisionMaker()]);
   const [companyNif, setCompanyNif] = useState("");
   const [billingTarget, setBillingTarget] = useState<BillingTarget>("client");
   const [status, setStatus] = useState<ClientStatus>("active");
@@ -101,7 +103,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
   }, [open, initialData]);
 
   const isValid = useMemo(() => {
-    if (isP2g && !decisionMakerName.trim()) return false;
+    if (isP2g && !areDecisionMakersValid(decisionMakers)) return false;
     if (settings.name.visible && settings.name.required && !name.trim()) return false;
     if (!email.trim()) return false;
     if (!phone.trim()) return false;
@@ -114,7 +116,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
     if (!conselho.trim()) return false;
     if ((!isP2g && nifValidation.isDuplicate) || companyNifValidation.isDuplicate) return false;
     return true;
-  }, [isP2g, decisionMakerName, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
+  }, [isP2g, decisionMakers, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,7 +128,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
         company: company.trim() || undefined,
-        ...(isP2g ? { decision_maker_name: decisionMakerName.trim() } : { nif: nif.trim() || undefined }),
+        ...(isP2g ? decisionMakersPayload(decisionMakers) : { nif: nif.trim() || undefined }),
         company_nif: companyNif.trim() || undefined,
         billing_target: billingTarget,
         status,
@@ -159,7 +161,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
     setPhone("");
     setCompany("");
     setNif("");
-    setDecisionMakerName("");
+    setDecisionMakers([emptyDecisionMaker()]);
     setCompanyNif("");
     setBillingTarget("client");
     setStatus("active");
@@ -243,16 +245,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
                       )}
 
                       {isP2g && (
-                        <div className="space-y-2">
-                          <Label htmlFor="decision-maker-name">Nome Decisor/Contato *</Label>
-                          <Input
-                            id="decision-maker-name"
-                            value={decisionMakerName}
-                            onChange={(e) => setDecisionMakerName(e.target.value)}
-                            placeholder="Nome do decisor ou contacto"
-                            required
-                          />
-                        </div>
+                        <DecisionMakersFields idPrefix="create" value={decisionMakers} onChange={setDecisionMakers} />
                       )}
                       {!isP2g && settings.nif.visible && (
                         <div className="space-y-2">

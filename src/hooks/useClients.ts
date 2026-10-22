@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { getLeadCpes, buildLeadCpesPatch } from '@/lib/leadUtils';
 import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import type { CrmClient, ClientStatus } from '@/types/clients';
+import type { DecisionMaker } from '@/lib/decision-makers';
 
 export function useClients() {
   const { organization } = useAuth();
@@ -74,6 +75,7 @@ interface CreateClientData {
   company?: string;
   nif?: string;
   decision_maker_name?: string;
+  decision_makers?: DecisionMaker[];
   company_nif?: string;
   billing_target?: string;
   status?: ClientStatus;
