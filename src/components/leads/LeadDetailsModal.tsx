@@ -906,7 +906,7 @@ export function LeadDetailsModal({
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <MjCompanyDetails data={mjCompanyData} />
+                        <MjCompanyDetails data={mjCompanyData} compact />
                       </CardContent>
                     </Card>
                   )}

@@ -406,7 +406,7 @@ export default function Prospects() {
                         {mobileMjData && (
                           <div className="flex items-center justify-between gap-2">
                             <p><span className="font-medium text-foreground">Local:</span> {mjLocation(mobileMjData) || "—"}</p>
-                            <MjCompanyPopover companyName={prospect.company_name} data={mobileMjData} />
+                            <MjCompanyPopover companyName={prospect.company_name} nif={prospect.nif} data={mobileMjData} />
                           </div>
                         )}
                         {!isEligible ? (
@@ -465,7 +465,7 @@ export default function Prospects() {
                         <TableCell className="font-medium">
                           <div className="flex items-center justify-between gap-2">
                             <span>{prospect.company_name}</span>
-                            {mjData && <MjCompanyPopover companyName={prospect.company_name} data={mjData} />}
+                            {mjData && <MjCompanyPopover companyName={prospect.company_name} nif={prospect.nif} data={mjData} />}
                           </div>
                         </TableCell>
                         {isP2G && <TableCell>{prospect.nif || "—"}</TableCell>}
