@@ -5,6 +5,8 @@ import { useProfileName } from '@/hooks/useProfileName';
 import { getRoleLabel } from "@/lib/roles";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import { LeadAttachments } from "@/components/leads/LeadAttachments";
+import { MjCompanyDetails } from "@/components/prospects/MjCompanyDetails";
+import { readMjCompanyData } from "@/lib/prospects/mj-metadata";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { formatDate, formatDateTime, getWhatsAppUrl } from "@/lib/format";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -74,6 +76,7 @@ import {
   ArrowLeft,
   Copy,
   MapPin,
+  Building2,
   Facebook,
   Instagram,
   Twitter,
@@ -252,6 +255,11 @@ export function LeadDetailsModal({
       tiktok: (meta.tiktok as string) || null,
     };
   }, [lead?.custom_data]);
+
+  const mjCompanyData = useMemo(
+    () => readMjCompanyData((lead?.custom_data as Record<string, unknown> | null)?.metadata),
+    [lead?.custom_data],
+  );
 
   // Sync state when lead changes
   useEffect(() => {
@@ -885,6 +893,20 @@ export function LeadDetailsModal({
                             })}
                           </div>
                         )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {mjCompanyData && (
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Dados da empresa (MJ)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <MjCompanyDetails data={mjCompanyData} />
                       </CardContent>
                     </Card>
                   )}

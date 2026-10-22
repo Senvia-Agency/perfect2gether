@@ -232,13 +232,16 @@ async function runProspectJob(
   if (!jobId) throw new Error("Sem ID de job retornado");
 
   onProgress?.("running");
-  const maxPollTime = 10 * 60 * 1000;
-  const pollInterval = body.source === "mj" ? 3000 : 8000;
+  const isMj = body.source === "mj";
+  const maxPollTime = (isMj ? 45 : 10) * 60 * 1000;
+  const pollInterval = isMj ? 5000 : 8000;
   const startTime = Date.now();
 
   while (true) {
     if (Date.now() - startTime > maxPollTime) {
-      throw new Error("A geração excedeu o tempo máximo de 10 minutos");
+      throw new Error(isMj
+        ? "A pesquisa continua em segundo plano; os prospects aparecem quando terminar."
+        : "A geração excedeu o tempo máximo de 10 minutos");
     }
 
     await new Promise((r) => setTimeout(r, pollInterval));

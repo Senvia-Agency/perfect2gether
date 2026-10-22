@@ -6,6 +6,7 @@ import type { ProspectJobProgress as Progression } from "@/hooks/useProspects";
 interface ProspectJobProgressProps {
   title: string;
   progress: Progression;
+  hint: string;
 }
 
 function formatElapsed(seconds: number): string {
@@ -13,7 +14,7 @@ function formatElapsed(seconds: number): string {
   return minutes ? `${minutes} min ${seconds % 60} s` : `${seconds} s`;
 }
 
-export function ProspectJobProgress({ title, progress }: ProspectJobProgressProps) {
+export function ProspectJobProgress({ title, progress, hint }: ProspectJobProgressProps) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -32,10 +33,11 @@ export function ProspectJobProgress({ title, progress }: ProspectJobProgressProp
         <span className="tabular-nums text-muted-foreground">{progress.percent}%</span>
       </div>
       <Progress value={progress.percent} className="h-2 bg-primary/15" aria-label={`${progress.percent}% concluído`} />
-      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <span>{progress.label}</span>
-        <span className="tabular-nums">{formatElapsed(elapsed)} · costuma demorar menos de 1 min</span>
+        <span className="tabular-nums">{formatElapsed(elapsed)}</span>
       </div>
+      <p className="text-xs text-muted-foreground">{hint}</p>
     </div>
   );
 }

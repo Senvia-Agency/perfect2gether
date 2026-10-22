@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import { p2gMfaGate } from '../_shared/p2g-mfa-guard.ts';
-import { MJ_SOURCE, importMjProspects, mjProgressFromLog, mjRunError, type JobProgress } from '../_shared/mj-prospects.ts';
+import { MJ_SOURCE, finishMjJob, mjProgressFromLog, type JobProgress } from '../_shared/mj-prospects.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,6 +112,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    const isMj = (job.search_params as Record<string, unknown> | null)?.source === MJ_SOURCE;
+    const saving: JobProgress = { percent: 97, label: "A gravar os prospects…" };
+    const json = (body: unknown) => new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+    if (job.status === "importing") return json({ status: "running", progress: saving });
+
     // Check Apify run status
     const statusRes = await fetch(
       `${APIFY_BASE}/actor-runs/${job.apify_run_id}?token=${APIFY_API_TOKEN}`
@@ -121,14 +130,19 @@ Deno.serve(async (req) => {
 
     if (apifyStatus === "RUNNING" || apifyStatus === "READY") {
       let progress: JobProgress | undefined;
-      if ((job.search_params as Record<string, unknown> | null)?.source === MJ_SOURCE) {
+      if (isMj) {
         const logRes = await fetch(`${APIFY_BASE}/logs/${job.apify_run_id}?token=${APIFY_API_TOKEN}`);
         progress = logRes.ok ? mjProgressFromLog(await logRes.text()) : undefined;
       }
-      return new Response(JSON.stringify({ status: "running", progress }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return json({ status: "running", progress });
+    }
+
+    if (isMj) {
+      const outcome = await finishMjJob(serviceSupabase, job, apifyStatus, async () => {
+        const res = await fetch(`${APIFY_BASE}/actor-runs/${job.apify_run_id}/dataset/items?token=${APIFY_API_TOKEN}&format=json`);
+        return res.json();
       });
+      return json(outcome ?? { status: "running", progress: saving });
     }
 
     if (apifyStatus !== "SUCCEEDED") {
@@ -152,22 +166,6 @@ Deno.serve(async (req) => {
     );
     const items: ApifyItem[] = await datasetRes.json();
     const searchParams = job.search_params as Record<string, unknown> || {};
-
-    if (searchParams.source === MJ_SOURCE) {
-      const runError = mjRunError(items);
-      const result = runError ? null : await importMjProspects(serviceSupabase, job.organization_id, job.user_id, items);
-      await serviceSupabase
-        .from("prospect_generation_jobs")
-        .update(runError
-          ? { status: "failed", error: runError, completed_at: new Date().toISOString() }
-          : { status: "completed", result, completed_at: new Date().toISOString() })
-        .eq("id", jobId);
-
-      return new Response(JSON.stringify(runError ? { status: "failed", error: runError } : { status: "completed", result }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     if (!Array.isArray(items) || items.length === 0) {
       const result = { inserted: 0, updated: 0, skipped: 0, total: 0 };

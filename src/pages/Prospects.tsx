@@ -9,11 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { useGenerateMjProspects, useProspects, useProspectSalespeople, type ProspectJobProgress as ProspectJobProgression } from "@/hooks/useProspects";
 import { ProspectJobProgress } from "@/components/prospects/ProspectJobProgress";
+import { MjCompanyPopover } from "@/components/prospects/MjCompanyPopover";
+import { mjLocation, readMjCompanyData } from "@/lib/prospects/mj-metadata";
 import { useModules } from "@/hooks/useModules";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTeamScopedMembers } from "@/hooks/useTeamFilter";
 import { mapProspectsForExport, exportToCsv, exportToExcel } from "@/lib/export";
-import { getProspectCom, getProspectSegment } from "@/lib/prospects/segment";
+import { getProspectCom } from "@/lib/prospects/segment";
 import { normalizeString } from "@/lib/utils";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import { ImportProspectsDialog } from "@/components/prospects/ImportProspectsDialog";
@@ -25,12 +27,9 @@ import { toast } from "sonner";
 
 const MJ_INITIAL_PROGRESS: ProspectJobProgression = { percent: 2, label: "A iniciar o extrator…" };
 
-const formatConsumption = (value: number | null) => {
-  if (value === null || value === undefined) return "—";
-  return new Intl.NumberFormat("pt-PT", { maximumFractionDigits: 0 }).format(value);
-};
-
 const formatAssignedLabel = (name?: string | null) => name || "Não atribuído";
+const formatContact = (prospect: { contact_name: string | null; phone: string | null; email: string | null }) =>
+  [prospect.contact_name, prospect.phone || prospect.email].filter(Boolean).join(" · ") || "—";
 const isProspectEligibleForDistribution = (prospect: { assigned_to: string | null; converted_to_lead: boolean }) =>
   !prospect.assigned_to && !prospect.converted_to_lead;
 
@@ -247,10 +246,10 @@ export default function Prospects() {
                     generateMj.mutate(setMjProgress);
                   }}
                   disabled={generateMj.isPending}
-                  title="Empresas com publicações comerciais de ontem e hoje em publicacoes.mj.pt"
+                  title="Publicações comerciais de ontem em publicacoes.mj.pt, em todos os distritos. Corre também automaticamente todos os dias às 06:00."
                 >
                   {generateMj.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                  {generateMj.isPending ? "A pesquisar no MJ…" : "Empresas novas (MJ)"}
+                  {generateMj.isPending ? "A pesquisar no MJ…" : "Publicações MJ"}
                 </Button>
               </>
             )
@@ -276,7 +275,13 @@ export default function Prospects() {
           )}
         </div>
 
-        {generateMj.isPending && <ProspectJobProgress title="A pesquisar empresas novas no MJ" progress={mjProgress} />}
+        {generateMj.isPending && (
+          <ProspectJobProgress
+            title="A pesquisar publicações do MJ (todos os distritos)"
+            progress={mjProgress}
+            hint="Costuma demorar 15 a 25 minutos. Pode fechar esta página: a importação termina sozinha e os prospects aparecem aqui."
+          />
+        )}
 
         <Card>
           <CardContent className="space-y-4 p-4 md:p-6">
@@ -362,6 +367,7 @@ export default function Prospects() {
               {filteredProspects.map((prospect) => {
                 const isEligible = isProspectEligibleForDistribution(prospect);
                 const isSelected = selectedIds.includes(prospect.id);
+                const mobileMjData = readMjCompanyData(prospect.metadata);
 
                 return (
                   <Card key={prospect.id} className="border-border/70">
@@ -384,10 +390,10 @@ export default function Prospects() {
                         </Badge>
                       </div>
                       <div className="grid gap-2 text-sm text-muted-foreground">
-                        {isP2G && <p><span className="font-medium text-foreground">CPE:</span> {prospect.cpe || "—"}</p>}
-                        <p><span className="font-medium text-foreground">Segmento:</span> {isP2G ? (getProspectSegment(prospect) || "—") : (prospect.segment || "—")}</p>
+                        
+                        {!isP2G && <p><span className="font-medium text-foreground">Segmento:</span> {prospect.segment || "—"}</p>}
                         {isP2G && <p><span className="font-medium text-foreground">COM:</span> {getProspectCom(prospect) || "—"}</p>}
-                        {isP2G && <p><span className="font-medium text-foreground">kWh/Ano:</span> {formatConsumption(prospect.annual_consumption_kwh)}</p>}
+                        
                         {!isP2G && <p><span className="font-medium text-foreground">Morada:</span> {(prospect.metadata as any)?.address || "—"}</p>}
                         {!isP2G && (
                           <div className="flex items-center gap-2">
@@ -396,7 +402,13 @@ export default function Prospects() {
                           </div>
                         )}
                         <p><span className="font-medium text-foreground">Comercial:</span> {formatAssignedLabel(salespersonMap.get(prospect.assigned_to || ""))}</p>
-                        <p><span className="font-medium text-foreground">Contacto:</span> {prospect.phone || prospect.email || "—"}</p>
+                        <p><span className="font-medium text-foreground">Contacto:</span> {formatContact(prospect)}</p>
+                        {mobileMjData && (
+                          <div className="flex items-center justify-between gap-2">
+                            <p><span className="font-medium text-foreground">Local:</span> {mjLocation(mobileMjData) || "—"}</p>
+                            <MjCompanyPopover companyName={prospect.company_name} data={mobileMjData} />
+                          </div>
+                        )}
                         {!isEligible ? (
                           <p className="text-xs text-muted-foreground">Este prospect já foi atribuído ou convertido.</p>
                         ) : null}
@@ -421,11 +433,12 @@ export default function Prospects() {
                     </TableHead>
                     <TableHead>Empresa</TableHead>
                     {isP2G && <TableHead>NIF</TableHead>}
-                    {isP2G && <TableHead>CPE</TableHead>}
-                    <TableHead>Segmento</TableHead>
+                    {isP2G && <TableHead>Concelho / Distrito</TableHead>}
+                    
+                    {!isP2G && <TableHead>Segmento</TableHead>}
                     {isP2G && <TableHead>COM</TableHead>}
                     <TableHead>Contacto</TableHead>
-                    {isP2G && <TableHead>kWh/Ano</TableHead>}
+                    
                     {!isP2G && <TableHead>Website</TableHead>}
                     {!isP2G && <TableHead>Morada</TableHead>}
                     {!isP2G && <TableHead>Redes Sociais</TableHead>}
@@ -437,6 +450,7 @@ export default function Prospects() {
                   {filteredProspects.map((prospect) => {
                     const isEligible = isProspectEligibleForDistribution(prospect);
                     const isSelected = selectedIds.includes(prospect.id);
+                    const mjData = readMjCompanyData(prospect.metadata);
 
                     return (
                       <TableRow key={prospect.id} data-state={isSelected ? "selected" : undefined}>
@@ -448,13 +462,19 @@ export default function Prospects() {
                             aria-label={`Selecionar prospect ${prospect.company_name}`}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{prospect.company_name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center justify-between gap-2">
+                            <span>{prospect.company_name}</span>
+                            {mjData && <MjCompanyPopover companyName={prospect.company_name} data={mjData} />}
+                          </div>
+                        </TableCell>
                         {isP2G && <TableCell>{prospect.nif || "—"}</TableCell>}
-                        {isP2G && <TableCell className="max-w-[240px] truncate">{prospect.cpe || "—"}</TableCell>}
-                        <TableCell>{isP2G ? (getProspectSegment(prospect) || "—") : (prospect.segment || "—")}</TableCell>
+                        {isP2G && <TableCell className="max-w-[200px] truncate">{mjData ? (mjLocation(mjData) || "—") : "—"}</TableCell>}
+                        
+                        {!isP2G && <TableCell>{prospect.segment || "—"}</TableCell>}
                         {isP2G && <TableCell>{getProspectCom(prospect) || "—"}</TableCell>}
-                        <TableCell>{prospect.phone || prospect.email || "—"}</TableCell>
-                        {isP2G && <TableCell>{formatConsumption(prospect.annual_consumption_kwh)}</TableCell>}
+                        <TableCell>{formatContact(prospect)}</TableCell>
+                        
                         {!isP2G && (
                           <TableCell className="max-w-[180px] truncate">
                             {(prospect.metadata as any)?.website ? (
