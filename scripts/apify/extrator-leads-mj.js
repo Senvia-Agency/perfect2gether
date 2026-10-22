@@ -5,7 +5,7 @@
 //   capsolverKey          CapSolver key (required)
 //   distritos             ["Lisboa", "Porto"] or omitted/[] for every district
 //   periodo               "ontem" (default), "hoje" or "ontem-hoje"
-//   apenasConstituicoes   true to keep only company constitutions (default false)
+//   apenasConstituicoes   true (task default) keeps only new companies (constitutions)
 //
 // The portal caps every search at 200 results and each search needs a new
 // reCAPTCHA, so the search is split per district. Output: one row per company
