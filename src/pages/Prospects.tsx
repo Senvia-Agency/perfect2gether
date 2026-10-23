@@ -1,3 +1,5 @@
+import { useProspectSort } from '@/hooks/useProspectSort';
+import { ProspectSortHead } from '@/components/prospects/ProspectSortHead';
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,7 +67,7 @@ const SocialMediaLinks = ({ metadata }: { metadata: Record<string, unknown> | nu
 };
 
 export default function Prospects() {
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
   const { modules } = useModules();
   const { can } = usePermissions();
   const canImportProspects = can('prospects', 'import_export', 'import');
@@ -91,7 +93,7 @@ export default function Prospects() {
     () => new Map(salespeople.map((salesperson) => [salesperson.user_id, salesperson.full_name])),
     [salespeople]
   );
-  const filteredProspects = useMemo(() => {
+  const matchingProspects = useMemo(() => {
     return prospects.filter((prospect) => {
       const query = normalizeString(searchQuery);
       const matchesSearch =
@@ -113,6 +115,8 @@ export default function Prospects() {
       return matchesSearch && matchesSalesperson && matchesImported && matchesOpening;
     });
   }, [importedDates, openingDates, prospects, salespersonFilter, searchQuery]);
+
+  const { sort, toggle: toggleSort, sorted: filteredProspects } = useProspectSort(matchingProspects, salespersonMap, user?.id, organization?.id);
 
   const eligibleFilteredProspects = useMemo(
     () => filteredProspects.filter(isProspectEligibleForDistribution),
@@ -408,20 +412,20 @@ export default function Prospects() {
                         aria-label="Selecionar todos os prospects elegíveis filtrados"
                       />
                     </TableHead>
-                    <TableHead>Empresa</TableHead>
-                    {isP2G && <TableHead>NIF</TableHead>}
-                    {isP2G && <TableHead>Concelho / Distrito</TableHead>}
+                    <ProspectSortHead label="Empresa" field="company" sort={sort} onSort={toggleSort} />
+                    {isP2G && <ProspectSortHead label="NIF" field="nif" sort={sort} onSort={toggleSort} />}
+                    {isP2G && <ProspectSortHead label="Concelho / Distrito" field="location" sort={sort} onSort={toggleSort} />}
                     
-                    {!isP2G && <TableHead>Segmento</TableHead>}
-                    <TableHead className="whitespace-nowrap">Data de importação</TableHead>
-                    <TableHead className="whitespace-nowrap">Data de abertura</TableHead>
-                    <TableHead>Contacto</TableHead>
+                    {!isP2G && <ProspectSortHead label="Segmento" field="segment" sort={sort} onSort={toggleSort} />}
+                    <ProspectSortHead label="Data de importação" field="imported" sort={sort} onSort={toggleSort} />
+                    <ProspectSortHead label="Data de abertura" field="opening" sort={sort} onSort={toggleSort} />
+                    <ProspectSortHead label="Contacto" field="contact" sort={sort} onSort={toggleSort} />
                     
                     {!isP2G && <TableHead>Website</TableHead>}
                     {!isP2G && <TableHead>Morada</TableHead>}
                     {!isP2G && <TableHead>Redes Sociais</TableHead>}
-                    <TableHead>Comercial</TableHead>
-                    <TableHead>Estado</TableHead>
+                    <ProspectSortHead label="Comercial" field="salesperson" sort={sort} onSort={toggleSort} />
+                    <ProspectSortHead label="Estado" field="status" sort={sort} onSort={toggleSort} />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
