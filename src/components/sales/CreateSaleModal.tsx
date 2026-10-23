@@ -138,7 +138,7 @@ export function CreateSaleModal({
   const { finalPositiveStage } = useFinalStages();
   const updateLeadStatus = useUpdateLeadStatus();
   const { organization } = useAuth();
-  const { isAdmin, isBackOffice } = usePermissions();
+  const { isAdmin, isProfileAdmin, isSuperAdmin, isBackOffice } = usePermissions();
   const isTelecom = organization?.niche === 'telecom';
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
@@ -212,7 +212,7 @@ export function CreateSaleModal({
   const [edpProposalNumber, setEdpProposalNumber] = useState("");
   const [activationDate, setActivationDate] = useState<Date | undefined>(undefined);
   const restrictProposalSaleStatus = isPerfect2GetherOrg(organization?.id)
-    && !!(prefillProposal?.id || proposalId) && !isAdmin && !isBackOffice;
+    && !!(prefillProposal?.id || proposalId) && !isAdmin && !isProfileAdmin && !isSuperAdmin && !isBackOffice;
   const effectiveSaleStatus: SaleStatus = restrictProposalSaleStatus ? 'fulfilled' : saleStatus;
   const availableSaleStatuses: readonly SaleStatus[] = restrictProposalSaleStatus ? ['fulfilled'] : SALE_STATUSES;
 
