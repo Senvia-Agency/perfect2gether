@@ -11,7 +11,12 @@ on:
       - 'supabase/functions/**'
       - 'supabase/config.toml'
       - '.github/workflows/deploy-functions.yml'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      certificate_only:
+        description: Apply and deploy client certificate integration only
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -26,5 +31,14 @@ jobs:
         with:
           version: latest
 
+      - name: Apply client certificate migration
+        if: inputs.certificate_only == true
+        run: node scripts/deploy-client-certificate.mjs
+
+      - name: Deploy client certificate function
+        if: inputs.certificate_only == true
+        run: supabase functions deploy lookup-client-certificate --project-ref "$PROJECT_REF" --use-api
+
       - name: Deploy todas as edge functions
+        if: inputs.certificate_only != true
         run: supabase functions deploy --project-ref "$PROJECT_REF" --use-api

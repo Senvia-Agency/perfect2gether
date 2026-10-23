@@ -121,3 +121,6 @@ verify_jwt = false
 verify_jwt = false
 [functions.mj-prospects-webhook]
 verify_jwt = false
+
+[functions.lookup-client-certificate]
+verify_jwt = true
