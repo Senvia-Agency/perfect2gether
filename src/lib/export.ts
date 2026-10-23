@@ -1,9 +1,10 @@
+import { formatProspectDate, prospectImportDate, prospectOpeningDate } from '@/lib/prospects/dates';
 import * as XLSX from 'xlsx';
 import { format as formatDate } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import type { Lead } from '@/types';
 import type { CrmClient } from '@/types/clients';
-import { getProspectCom, getProspectSegment } from '@/lib/prospects/segment';
+import { getProspectSegment } from '@/lib/prospects/segment';
 import type { Prospect } from '@/types/prospects';
 import { PAYMENT_METHOD_LABELS, type SaleWithDetails } from '@/types/sales';
 import { NEGOTIATION_TYPE_LABELS, PROPOSAL_TYPE_LABELS } from '@/types/proposals';
@@ -79,11 +80,12 @@ export function mapProspectsForExport(
     'Email': prospect.email || '',
     'Telefone': prospect.phone || '',
     'Segmento': getProspectSegment(prospect) || '',
-    'COM': getProspectCom(prospect) || '',
     'kWh/Ano': prospect.annual_consumption_kwh || 0,
     'Comercial': prospect.assigned_to ? salespersonMap.get(prospect.assigned_to) || '—' : 'Não atribuído',
     'Estado': prospect.converted_to_lead ? 'Convertido' : 'Por distribuir',
-    'Data de Importação': formatExportDate(prospect.imported_at),
+    'Data de Importação': formatProspectDate(prospectImportDate(prospect.imported_at)),
+    'Data de Abertura': formatProspectDate(prospectOpeningDate(prospect).date),
+    'Origem da Data de Abertura': prospectOpeningDate(prospect).date ? (prospectOpeningDate(prospect).publication ? 'Publicação da constituição MJ' : 'Data de abertura') : '',
   }));
 }
 

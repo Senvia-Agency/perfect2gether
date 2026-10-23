@@ -15,7 +15,8 @@ import { useModules } from "@/hooks/useModules";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTeamScopedMembers } from "@/hooks/useTeamFilter";
 import { mapProspectsForExport, exportToCsv, exportToExcel } from "@/lib/export";
-import { getProspectCom } from "@/lib/prospects/segment";
+import { ProspectDateFilters } from '@/components/prospects/ProspectDateFilters';
+import { formatProspectDate, matchesProspectDateRange, prospectImportDate, prospectOpeningDate, type ProspectDateRange } from '@/lib/prospects/dates';
 import { normalizeString } from "@/lib/utils";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import { ImportProspectsDialog } from "@/components/prospects/ImportProspectsDialog";
@@ -77,7 +78,8 @@ export default function Prospects() {
   const { members: scopedSalespeople, canFilterByTeam, allOptionLabel } = useTeamScopedMembers(salespeople);
   const [searchQuery, setSearchQuery] = useState("");
   const [salespersonFilter, setSalespersonFilter] = useState("all");
-  const [comFilter, setComFilter] = useState("all");
+  const [importedDates, setImportedDates] = useState<ProspectDateRange>({ from: '', to: '' });
+  const [openingDates, setOpeningDates] = useState<ProspectDateRange>({ from: '', to: '' });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
@@ -89,22 +91,9 @@ export default function Prospects() {
     () => new Map(salespeople.map((salesperson) => [salesperson.user_id, salesperson.full_name])),
     [salespeople]
   );
-  const comOptions = useMemo(() => {
-    const values = Array.from(
-      new Set(
-        prospects
-          .map((prospect) => getProspectCom(prospect))
-          .filter((value): value is string => Boolean(value))
-      )
-    );
-
-    return values.sort((a, b) => a.localeCompare(b, "pt-PT"));
-  }, [prospects]);
-
   const filteredProspects = useMemo(() => {
     return prospects.filter((prospect) => {
       const query = normalizeString(searchQuery);
-      const prospectCom = getProspectCom(prospect);
       const matchesSearch =
         !query ||
         normalizeString(prospect.company_name).includes(query) ||
@@ -118,11 +107,12 @@ export default function Prospects() {
         (salespersonFilter === "unassigned" && !prospect.assigned_to) ||
         prospect.assigned_to === salespersonFilter;
 
-      const matchesCom = comFilter === "all" || prospectCom === comFilter;
+      const matchesImported = matchesProspectDateRange(prospectImportDate(prospect.imported_at), importedDates);
+      const matchesOpening = matchesProspectDateRange(prospectOpeningDate(prospect).date, openingDates);
 
-      return matchesSearch && matchesSalesperson && matchesCom;
+      return matchesSearch && matchesSalesperson && matchesImported && matchesOpening;
     });
-  }, [comFilter, prospects, salespersonFilter, searchQuery]);
+  }, [importedDates, openingDates, prospects, salespersonFilter, searchQuery]);
 
   const eligibleFilteredProspects = useMemo(
     () => filteredProspects.filter(isProspectEligibleForDistribution),
@@ -140,7 +130,7 @@ export default function Prospects() {
 
   useEffect(() => {
     setSelectedIds([]);
-  }, [searchQuery, salespersonFilter, comFilter]);
+  }, [searchQuery, salespersonFilter, importedDates, openingDates]);
 
   const totals = useMemo(() => {
     const assigned = prospects.filter((prospect) => !!prospect.assigned_to).length;
@@ -296,7 +286,7 @@ export default function Prospects() {
                 />
               </div>
 
-              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center">
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                 {canFilterByTeam && (
                   <Select value={salespersonFilter} onValueChange={setSalespersonFilter}>
                     <SelectTrigger>
@@ -314,22 +304,6 @@ export default function Prospects() {
                   </Select>
                 )}
 
-                {isP2G && (
-                <Select value={comFilter} onValueChange={setComFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filtrar por COM" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os COM</SelectItem>
-                    {comOptions.map((com) => (
-                      <SelectItem key={com} value={com}>
-                        {com}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                )}
-
                 {canDistributeProspects && (
                   <Button
                     onClick={() => setIsDistributeOpen(true)}
@@ -341,6 +315,7 @@ export default function Prospects() {
                   </Button>
                 )}
               </div>
+              <ProspectDateFilters imported={importedDates} opening={openingDates} onImportedChange={setImportedDates} onOpeningChange={setOpeningDates} />
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -368,6 +343,7 @@ export default function Prospects() {
                 const isEligible = isProspectEligibleForDistribution(prospect);
                 const isSelected = selectedIds.includes(prospect.id);
                 const mobileMjData = readMjCompanyData(prospect.metadata);
+                const opening = prospectOpeningDate(prospect);
 
                 return (
                   <Card key={prospect.id} className="border-border/70">
@@ -392,13 +368,14 @@ export default function Prospects() {
                       <div className="grid gap-2 text-sm text-muted-foreground">
                         
                         {!isP2G && <p><span className="font-medium text-foreground">Segmento:</span> {prospect.segment || "—"}</p>}
-                        {isP2G && <p><span className="font-medium text-foreground">COM:</span> {getProspectCom(prospect) || "—"}</p>}
+                        <p><span className="font-medium text-foreground">Importação:</span> {formatProspectDate(prospectImportDate(prospect.imported_at))}</p>
+                        <p><span className="font-medium text-foreground">Abertura:</span> {formatProspectDate(opening.date)}{opening.date && opening.publication && <span className="text-xs"> · publicação MJ</span>}</p>
                         
-                        {!isP2G && <p><span className="font-medium text-foreground">Morada:</span> {(prospect.metadata as any)?.address || "—"}</p>}
+                        {!isP2G && <p><span className="font-medium text-foreground">Morada:</span> {typeof prospect.metadata?.address === "string" ? prospect.metadata.address : "—"}</p>}
                         {!isP2G && (
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-foreground">Redes Sociais:</span>
-                            <SocialMediaLinks metadata={prospect.metadata as Record<string, unknown>} />
+                            <SocialMediaLinks metadata={prospect.metadata} />
                           </div>
                         )}
                         <p><span className="font-medium text-foreground">Comercial:</span> {formatAssignedLabel(salespersonMap.get(prospect.assigned_to || ""))}</p>
@@ -436,7 +413,8 @@ export default function Prospects() {
                     {isP2G && <TableHead>Concelho / Distrito</TableHead>}
                     
                     {!isP2G && <TableHead>Segmento</TableHead>}
-                    {isP2G && <TableHead>COM</TableHead>}
+                    <TableHead className="whitespace-nowrap">Data de importação</TableHead>
+                    <TableHead className="whitespace-nowrap">Data de abertura</TableHead>
                     <TableHead>Contacto</TableHead>
                     
                     {!isP2G && <TableHead>Website</TableHead>}
@@ -451,6 +429,8 @@ export default function Prospects() {
                     const isEligible = isProspectEligibleForDistribution(prospect);
                     const isSelected = selectedIds.includes(prospect.id);
                     const mjData = readMjCompanyData(prospect.metadata);
+                    const website = typeof prospect.metadata?.website === "string" ? prospect.metadata.website : "";
+                    const opening = prospectOpeningDate(prospect);
 
                     return (
                       <TableRow key={prospect.id} data-state={isSelected ? "selected" : undefined}>
@@ -472,25 +452,26 @@ export default function Prospects() {
                         {isP2G && <TableCell className="max-w-[200px] truncate">{mjData ? (mjLocation(mjData) || "—") : "—"}</TableCell>}
                         
                         {!isP2G && <TableCell>{prospect.segment || "—"}</TableCell>}
-                        {isP2G && <TableCell>{getProspectCom(prospect) || "—"}</TableCell>}
+                        <TableCell className="whitespace-nowrap tabular-nums">{formatProspectDate(prospectImportDate(prospect.imported_at))}</TableCell>
+                        <TableCell className="whitespace-nowrap tabular-nums">{formatProspectDate(opening.date)}{opening.date && opening.publication && <span className="block text-xs text-muted-foreground">publicação MJ</span>}</TableCell>
                         <TableCell>{formatContact(prospect)}</TableCell>
                         
                         {!isP2G && (
                           <TableCell className="max-w-[180px] truncate">
-                            {(prospect.metadata as any)?.website ? (
+                            {website ? (
                               <a
-                                href={(prospect.metadata as any).website.startsWith("http") ? (prospect.metadata as any).website : `https://${(prospect.metadata as any).website}`}
+                                href={website.startsWith("http") ? website : `https://${website}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-primary hover:underline"
                               >
-                                {(prospect.metadata as any).website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                                {website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                               </a>
                             ) : "—"}
                           </TableCell>
                         )}
-                        {!isP2G && <TableCell className="max-w-[200px] truncate">{(prospect.metadata as any)?.address || "—"}</TableCell>}
-                        {!isP2G && <TableCell><SocialMediaLinks metadata={prospect.metadata as Record<string, unknown>} /></TableCell>}
+                        {!isP2G && <TableCell className="max-w-[200px] truncate">{typeof prospect.metadata?.address === "string" ? prospect.metadata.address : "—"}</TableCell>}
+                        {!isP2G && <TableCell><SocialMediaLinks metadata={prospect.metadata} /></TableCell>}
                         <TableCell>{formatAssignedLabel(salespersonMap.get(prospect.assigned_to || ""))}</TableCell>
                         <TableCell>
                           <Badge variant={prospect.converted_to_lead ? "default" : "secondary"}>
