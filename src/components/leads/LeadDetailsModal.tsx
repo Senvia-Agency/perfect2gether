@@ -1,4 +1,5 @@
 import { Lead, STATUS_LABELS, LeadStatus, LeadTemperature, LeadTipologia, TEMPERATURE_LABELS, TEMPERATURE_STYLES, TIPOLOGIA_LABELS, TIPOLOGIA_STYLES, FormSettings, CustomField } from "@/types";
+import { LeadDecisionMakers } from "./LeadDecisionMakers";
 import { LeadClientSegmentSelect } from "./LeadClientSegmentSelect";
 import { getLeadClientSegment, withLeadClientSegment } from "@/lib/lead-classification";
 import { useProfileName } from '@/hooks/useProfileName';
@@ -92,7 +93,7 @@ import { SendLeadEmailModal } from "./SendLeadEmailModal";
 import { isPlaceholderEmail, displayEmail, getLeadCpes, buildLeadCpesPatch , canOwnLeads } from "@/lib/leadUtils";
 
 const TECHNICAL_TRACKING_KEYS = ['fbclid', 'gclid', 'fbc', 'fbp'] as const;
-const HIDDEN_CUSTOM_DATA_KEYS = ['metadata', 'prospect_id', 'source_file_name', 'prospect_source', 'cpe', 'cpes', 'client_segment'] as const;
+const HIDDEN_CUSTOM_DATA_KEYS = ['metadata', 'prospect_id', 'source_file_name', 'prospect_source', 'decision_makers', 'cpe', 'cpes', 'client_segment'] as const;
 
 const socialMediaIcons = [
   { key: "facebook", icon: Facebook, label: "Facebook" },
@@ -745,6 +746,8 @@ export function LeadDetailsModal({
               <div className="lg:col-span-2">
                 <div className="lg:sticky lg:top-0 space-y-6">
                   
+                  <LeadDecisionMakers customData={lead.custom_data} />
+
                   {/* Contact Info Card */}
                   <Card>
                     <CardHeader className="pb-3">

@@ -1,5 +1,11 @@
+import { ClientFormDraftNotice } from './ClientFormDraftNotice';
+import { useClientFormDraft } from '@/hooks/useClientFormDraft';
+import type { ClientFormDraft, ClientFormScope } from '@/lib/client-form-persistence';
+import { CertificateFields } from './CertificateFields';
+import { useClientCertificate } from '@/hooks/useClientCertificate';
+import { CRC_PATTERN, certificateRequired, clearCertificateIdentity, parseStoredCertificate, type ClientCertificate } from '@/lib/client-certificate';
 import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -46,7 +52,7 @@ interface EditClientModalProps {
 
 export function EditClientModal({ client, open, onOpenChange }: EditClientModalProps) {
   const labels = useClientLabels();
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
   const isP2g = isPerfect2GetherOrg(organization?.id);
   const { dataScope } = usePermissions();
   const { currentUserId, teamMemberIds } = useTeamFilter();
@@ -63,6 +69,9 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
   const [nif, setNif] = useState("");
   const [decisionMakers, setDecisionMakers] = useState<DecisionMaker[]>([]);
   const [companyNif, setCompanyNif] = useState("");
+  const [crcCode, setCrcCode] = useState("");
+  const [certificateData, setCertificateData] = useState<ClientCertificate | null>(null);
+  const [certificateCheckedAt, setCertificateCheckedAt] = useState<string | null>(null);
   const [billingTarget, setBillingTarget] = useState<BillingTarget>("client");
   const [status, setStatus] = useState<ClientStatus>("active");
   const [source, setSource] = useState("");
@@ -78,21 +87,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
   const [conselho, setConselho] = useState("");
   const [grupoEconomico, setGrupoEconomico] = useState("");
 
-  const updateClient = useUpdateClient();
-
-  const nifValidation = useNifValidation({
-    nif: isP2g ? '' : nif,
-    organizationId: organization?.id,
-    excludeClientId: client?.id,
-  });
-
-  const companyNifValidation = useNifValidation({
-    nif: companyNif,
-    organizationId: organization?.id,
-    excludeClientId: client?.id,
-  });
-
-  useEffect(() => {
+  const initializeForm = () => {
     if (client) {
       setName(client.name);
       setEmail(client.email || "");
@@ -101,6 +96,9 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
       setNif(client.nif || "");
       setDecisionMakers(withAtLeastOne(parseDecisionMakers(client.decision_makers, client.decision_maker_name)));
       setCompanyNif(client.company_nif || "");
+      setCrcCode(client.crc_code || "");
+      setCertificateData(parseStoredCertificate(client.certificate_data));
+      setCertificateCheckedAt(client.certificate_checked_at || null);
       setBillingTarget((client.billing_target as BillingTarget) || "client");
       setStatus(client.status);
       setSource(client.source || "");
@@ -115,9 +113,75 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
       setConselho(client.conselho || "");
       setGrupoEconomico(client.grupo_economico || "");
     }
-  }, [client]);
+  };
+  const restoreForm = (saved: ClientFormDraft) => {
+    setName(saved.name);
+    setEmail(saved.email);
+    setPhone(saved.phone);
+    setCompany(saved.company);
+    setNif(saved.nif);
+    setDecisionMakers(saved.decisionMakers.map(item => ({ name: item.name ?? "", role: item.role ?? "", phone: item.phone ?? "", email: item.email ?? "" })));
+    setCompanyNif(saved.companyNif);
+    setCrcCode(saved.crcCode);
+    setCertificateData(saved.certificateData);
+    setCertificateCheckedAt(saved.certificateCheckedAt);
+    setBillingTarget(saved.billingTarget);
+    setStatus(saved.status);
+    setSource(saved.source);
+    setNotes(saved.notes);
+    setAssignedTo(saved.assignedTo);
+    setAddressLine1(saved.addressLine1);
+    setAddressLine2(saved.addressLine2);
+    setCity(saved.city);
+    setPostalCode(saved.postalCode);
+    setCountry(saved.country);
+    setDistrito(saved.distrito);
+    setConselho(saved.conselho);
+    setGrupoEconomico(saved.grupoEconomico);
+  };
+  const scope = useMemo<ClientFormScope | null>(() => user?.id && organization?.id && isP2g && client
+    ? { userId: user.id, organizationId: organization.id, formContext: `edit:${client.id}` } : null, [user?.id, organization?.id, isP2g, client]);
+  const draft = useClientFormDraft({ open, scope, value: { name, email, phone, company, nif, decisionMakers, companyNif, crcCode, certificateData, certificateCheckedAt, billingTarget, status, source, notes, assignedTo, addressLine1, addressLine2, city, postalCode, country, distrito, conselho, grupoEconomico }, onRestore: restoreForm, onInitialize: initializeForm });
+
+  const updateClient = useUpdateClient();
+  const needsCertificate = certificateRequired(isP2g);
+  const applyCertificate = (data: ClientCertificate, checkedAt: string) => {
+    setCertificateData(data);
+    setCertificateCheckedAt(checkedAt);
+    setCompanyNif(data.nipc);
+    setCompany(data.denominacao);
+    if (isP2g) setName(data.denominacao);
+  };
+  const certificate = useClientCertificate({ open: open && draft.ready, crcCode, scope, onSuccess: applyCertificate });
+  const discardDraft = () => { certificate.clearRecovery(); draft.discard(); };
+  const changeCrcCode = (value: string) => {
+    if (value === crcCode) return;
+    if (certificateData) {
+      const identity = clearCertificateIdentity({ name, company, companyNif }, certificateData);
+      if (isP2g) setName(identity.name);
+      setCompany(identity.company);
+      setCompanyNif(identity.companyNif);
+    }
+    setCrcCode(value);
+    setCertificateData(null);
+    setCertificateCheckedAt(null);
+  };
+
+  const nifValidation = useNifValidation({
+    nif: isP2g ? '' : nif,
+    organizationId: organization?.id,
+    excludeClientId: client?.id,
+  });
+
+  const companyNifValidation = useNifValidation({
+    nif: companyNif,
+    organizationId: organization?.id,
+    excludeClientId: client?.id,
+  });
+
 
   const isValid = useMemo(() => {
+    if (!draft.ready || certificate.pending || (needsCertificate && !CRC_PATTERN.test(crcCode.trim())) || (crcCode.trim() && !CRC_PATTERN.test(crcCode.trim()))) return false;
     if (isP2g && !areDecisionMakersValid(decisionMakers)) return false;
     // Imported/legacy clients can have incomplete records. Allow staff to
     // complete those fields over several visits without requiring every
@@ -135,7 +199,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
     if (client?.conselho?.trim() && !conselho.trim()) return false;
     if ((!isP2g && nifValidation.isDuplicate) || companyNifValidation.isDuplicate) return false;
     return true;
-  }, [client, isP2g, decisionMakers, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate]);
+  }, [client, isP2g, decisionMakers, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate, certificate.pending, needsCertificate, crcCode, draft.ready]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +214,9 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
         company: company.trim() || null,
         ...(isP2g ? decisionMakersPayload(decisionMakers) : { nif: nif.trim() || null }),
         company_nif: companyNif.trim() || null,
+        crc_code: crcCode.trim() || null,
+        certificate_data: certificateData,
+        certificate_checked_at: certificateCheckedAt,
         billing_target: billingTarget,
         status,
         source: source || null,
@@ -166,6 +233,8 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
       },
       {
         onSuccess: () => {
+          certificate.clearRecovery();
+          draft.clear();
           onOpenChange(false);
         },
       }
@@ -186,6 +255,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="max-w-6xl mx-auto p-4 sm:p-6">
+            {scope && <ClientFormDraftNotice restored={draft.restored} error={draft.error} disabled={updateClient.isPending} onDiscard={discardDraft} />}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
               {/* Left Column */}
               <div className="lg:col-span-3 space-y-4">
@@ -261,6 +331,7 @@ export function EditClientModal({ client, open, onOpenChange }: EditClientModalP
                   </CardContent>
                 </Card>
 
+                {isP2g && <CertificateFields idPrefix="edit" code={crcCode} required={needsCertificate} data={certificateData} checkedAt={certificateCheckedAt} pending={certificate.pending} error={certificate.error} disabled={updateClient.isPending || !organization?.id} onCodeChange={changeCrcCode} onLookup={() => { void certificate.lookup(); }} phase={certificate.phase} startedAt={certificate.startedAt} elapsedMs={certificate.elapsedMs} notice={certificate.notice} canResume={certificate.canResume} storageUnavailable={certificate.storageUnavailable} />}
                 {/* Company */}
                 {settings.company.visible && (
                   <Card>

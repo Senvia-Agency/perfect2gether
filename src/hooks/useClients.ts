@@ -7,6 +7,7 @@ import { getLeadCpes, buildLeadCpesPatch } from '@/lib/leadUtils';
 import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import type { CrmClient, ClientStatus } from '@/types/clients';
 import type { DecisionMaker } from '@/lib/decision-makers';
+import type { Json } from '@/integrations/supabase/types';
 
 export function useClients() {
   const { organization } = useAuth();
@@ -77,6 +78,12 @@ interface CreateClientData {
   decision_maker_name?: string;
   decision_makers?: DecisionMaker[];
   company_nif?: string;
+  crc_code?: string | null;
+  certificate_data?: Json | null;
+  certificate_checked_at?: string | null;
+  distrito?: string;
+  conselho?: string;
+  grupo_economico?: string;
   billing_target?: string;
   status?: ClientStatus;
   source?: string;

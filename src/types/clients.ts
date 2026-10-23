@@ -22,6 +22,9 @@ export interface CrmClient {
   decision_maker_name?: string | null;
   decision_makers?: Json;
   company_nif?: string | null;
+  crc_code?: string | null;
+  certificate_data?: Json | null;
+  certificate_checked_at?: string | null;
   billing_target?: BillingTarget;
   
   // Address

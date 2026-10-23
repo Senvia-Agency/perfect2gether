@@ -911,6 +911,9 @@ export type Database = {
           billing_target: string
           city: string | null
           code: string | null
+          crc_code: string | null
+          certificate_data: Json | null
+          certificate_checked_at: string | null
           company: string | null
           company_nif: string | null
           country: string | null
@@ -944,6 +947,9 @@ export type Database = {
           billing_target?: string
           city?: string | null
           code?: string | null
+          crc_code?: string | null
+          certificate_data?: Json | null
+          certificate_checked_at?: string | null
           company?: string | null
           company_nif?: string | null
           country?: string | null
@@ -977,6 +983,9 @@ export type Database = {
           billing_target?: string
           city?: string | null
           code?: string | null
+          crc_code?: string | null
+          certificate_data?: Json | null
+          certificate_checked_at?: string | null
           company?: string | null
           company_nif?: string | null
           country?: string | null
