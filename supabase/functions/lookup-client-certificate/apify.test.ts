@@ -29,14 +29,14 @@ test('polls running and failed runs without fetching datasets', async () => {
   expect(calls).toHaveLength(2);
 });
 test('validates completed dataset and rejects malformed output', async () => {
-  const run = { data: { id: 'run', status: 'SUCCEEDED', defaultDatasetId: 'dataset' } };
+  const run = { data: { id: 'run', status: 'SUCCEEDED', finishedAt: '2026-10-23T08:00:00.000Z', defaultDatasetId: 'dataset' } };
   const { api } = mockApi([run, [fixture], run, [{ nipc: 123 }]]);
-  expect(await api.status('run')).toEqual({ status: 'SUCCEEDED', data: fixture });
+  expect(await api.status('run')).toEqual({ status: 'SUCCEEDED', data: fixture, checkedAt: '2026-10-23T08:00:00.000Z' });
   await expect(api.status('run')).rejects.toThrow();
 });
 
 test('semantic failures cannot produce a succeeded certificate', async () => {
-  const run = { data: { id: 'run', status: 'SUCCEEDED', defaultDatasetId: 'dataset' } };
+  const run = { data: { id: 'run', status: 'SUCCEEDED', finishedAt: '2026-10-23T08:00:00.000Z', defaultDatasetId: 'dataset' } };
   const { api } = mockApi([run, [{ ...fixture, ok: false, erro: 'private provider diagnostic' }], run, [{ ...fixture, nipc: null }]]);
   const failed = await api.status('run');
   expect(failed.status).toBe('FAILED');
@@ -44,3 +44,4 @@ test('semantic failures cannot produce a succeeded certificate', async () => {
   expect(JSON.stringify(failed)).not.toContain('private provider diagnostic');
   expect((await api.status('run')).status).toBe('FAILED');
 });
+
