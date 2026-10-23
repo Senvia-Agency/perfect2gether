@@ -1,3 +1,5 @@
+import { useProspectCompanyFilters } from '@/hooks/useProspectCompanyFilters';
+import { ProspectCompanyFilters } from '@/components/prospects/ProspectCompanyFilters';
 import { useProspectSort } from '@/hooks/useProspectSort';
 import { ProspectSortHead } from '@/components/prospects/ProspectSortHead';
 import { useEffect, useMemo, useState } from "react";
@@ -87,6 +89,8 @@ export default function Prospects() {
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isDistributeOpen, setIsDistributeOpen] = useState(false);
   const isP2G = isPerfect2GetherOrg(organization?.id);
+  const companyFilters = useProspectCompanyFilters(prospects);
+  const companyFilteredProspects = isP2G ? companyFilters.filtered : prospects;
   const generateMj = useGenerateMjProspects();
   const [mjProgress, setMjProgress] = useState<ProspectJobProgression>(MJ_INITIAL_PROGRESS);
   const salespersonMap = useMemo(
@@ -94,7 +98,7 @@ export default function Prospects() {
     [salespeople]
   );
   const matchingProspects = useMemo(() => {
-    return prospects.filter((prospect) => {
+    return companyFilteredProspects.filter((prospect) => {
       const query = normalizeString(searchQuery);
       const matchesSearch =
         !query ||
@@ -114,7 +118,7 @@ export default function Prospects() {
 
       return matchesSearch && matchesSalesperson && matchesImported && matchesOpening;
     });
-  }, [importedDates, openingDates, prospects, salespersonFilter, searchQuery]);
+  }, [importedDates, openingDates, companyFilteredProspects, salespersonFilter, searchQuery]);
 
   const { sort, toggle: toggleSort, sorted: filteredProspects } = useProspectSort(matchingProspects, salespersonMap, user?.id, organization?.id);
 
@@ -134,7 +138,7 @@ export default function Prospects() {
 
   useEffect(() => {
     setSelectedIds([]);
-  }, [searchQuery, salespersonFilter, importedDates, openingDates]);
+  }, [searchQuery, salespersonFilter, importedDates, openingDates, companyFilters.district, companyFilters.municipality, companyFilters.cae]);
 
   const totals = useMemo(() => {
     const assigned = prospects.filter((prospect) => !!prospect.assigned_to).length;
@@ -319,6 +323,7 @@ export default function Prospects() {
                   </Button>
                 )}
               </div>
+              {isP2G && <ProspectCompanyFilters filters={companyFilters} />}
               <ProspectDateFilters imported={importedDates} opening={openingDates} onImportedChange={setImportedDates} onOpeningChange={setOpeningDates} />
             </div>
 
