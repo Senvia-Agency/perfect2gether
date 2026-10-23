@@ -1,3 +1,5 @@
+import { usePermissions } from '@/hooks/usePermissions';
+import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import {
@@ -136,6 +138,7 @@ export function CreateSaleModal({
   const { finalPositiveStage } = useFinalStages();
   const updateLeadStatus = useUpdateLeadStatus();
   const { organization } = useAuth();
+  const { isAdmin, isBackOffice } = usePermissions();
   const isTelecom = organization?.niche === 'telecom';
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
@@ -208,6 +211,10 @@ export function CreateSaleModal({
   const [saleStatus, setSaleStatus] = useState<SaleStatus>("in_progress");
   const [edpProposalNumber, setEdpProposalNumber] = useState("");
   const [activationDate, setActivationDate] = useState<Date | undefined>(undefined);
+  const restrictProposalSaleStatus = isPerfect2GetherOrg(organization?.id)
+    && !!(prefillProposal?.id || proposalId) && !isAdmin && !isBackOffice;
+  const effectiveSaleStatus: SaleStatus = restrictProposalSaleStatus ? 'fulfilled' : saleStatus;
+  const availableSaleStatuses: readonly SaleStatus[] = restrictProposalSaleStatus ? ['fulfilled'] : SALE_STATUSES;
 
   // Draft payments state
   const [draftPayments, setDraftPayments] = useState<DraftPayment[]>([]);
@@ -708,7 +715,7 @@ export function CreateSaleModal({
     }
 
     // Validar data de ativação quando estado é Concluída (apenas telecom)
-    if (isTelecom && saleStatus === 'delivered' && !activationDate) {
+    if (isTelecom && effectiveSaleStatus === 'delivered' && !activationDate) {
       toast.error("A Data de Ativação é obrigatória para vendas com estado Concluída.");
       return;
     }
@@ -745,7 +752,7 @@ export function CreateSaleModal({
         // Sem esta ligação, o comercial atribuído deixa de ver a venda criada
         // por um Back Office ou administrador.
         lead_id: prefillProposal?.lead_id || proposals?.find(p => p.id === proposalId)?.lead_id || undefined,
-        status: saleStatus,
+        status: effectiveSaleStatus,
         total_value: total,
         subtotal: subtotal,
         discount: discountValue,
@@ -996,12 +1003,12 @@ export function CreateSaleModal({
 
                       <div className="space-y-2">
                         <Label>Estado da Venda</Label>
-                        <Select value={saleStatus} onValueChange={(v) => setSaleStatus(v as SaleStatus)}>
+                        <Select value={effectiveSaleStatus} onValueChange={(v) => setSaleStatus(v as SaleStatus)}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {SALE_STATUSES.map(s => (
+                            {availableSaleStatuses.map(s => (
                               <SelectItem key={s} value={s}>
                                 {SALE_STATUS_LABELS[s]}
                               </SelectItem>
@@ -1011,7 +1018,7 @@ export function CreateSaleModal({
                       </div>
 
                       {/* Data de Ativação - quando estado é Concluída (apenas telecom) */}
-                      {isTelecom && saleStatus === 'delivered' && (
+                      {isTelecom && effectiveSaleStatus === 'delivered' && (
                         <div className="col-span-1 sm:col-span-2 space-y-2">
                           <Label>Data de Ativação <span className="text-destructive">*</span></Label>
                           <Popover>
