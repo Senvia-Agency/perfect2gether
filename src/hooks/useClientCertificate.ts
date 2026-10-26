@@ -1,3 +1,4 @@
+import { API_EXTRACTIONS_BLOCKED, API_CREDITS_MESSAGE } from '@/lib/api-extraction-credits';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -144,6 +145,7 @@ export function useClientCertificate(options: UseClientCertificateOptions) {
   };
 
   const invokeRecovery = async (record: CertificateRecovery, request: number): Promise<void> => {
+    if (API_EXTRACTIONS_BLOCKED) return;
     const currentScope = userId && organizationId && formContext
       ? { userId, organizationId, formContext }
       : null;
@@ -259,7 +261,7 @@ export function useClientCertificate(options: UseClientCertificateOptions) {
     const currentScope = userId && organizationId && formContext
       ? { userId, organizationId, formContext }
       : null;
-    if (!currentScope || !CRC_PATTERN.test(normalizedCrc)) return;
+    if (API_EXTRACTIONS_BLOCKED || !currentScope || !CRC_PATTERN.test(normalizedCrc)) return;
     const storage = getBrowserStorage();
     if (!storage) {
       setState({ ...INITIAL_STATE, error: STORAGE_ERROR, storageUnavailable: true });
@@ -285,7 +287,7 @@ export function useClientCertificate(options: UseClientCertificateOptions) {
   }, [userId, organizationId, formContext, normalizedCrc]);
 
   useEffect(() => {
-    if (!open || !recovery.current || inFlight.current || timer.current) return;
+    if (API_EXTRACTIONS_BLOCKED || !open || !recovery.current || inFlight.current || timer.current) return;
     void invokeRef.current(recovery.current, generation.current);
   }, [open, scopeKey, normalizedCrc]);
 
@@ -308,6 +310,10 @@ export function useClientCertificate(options: UseClientCertificateOptions) {
   }, []);
 
   const lookup = async (): Promise<void> => {
+    if (API_EXTRACTIONS_BLOCKED) {
+      setState({ ...INITIAL_STATE, error: API_CREDITS_MESSAGE });
+      return;
+    }
     if (!open || inFlight.current || timer.current || !CRC_PATTERN.test(normalizedCrc)) return;
     const currentScope = activeScope();
     if (!currentScope) return;

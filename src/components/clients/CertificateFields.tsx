@@ -1,11 +1,10 @@
-import { FileText, Loader2, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ApiCreditsButton } from '@/components/ApiCreditsButton';
+import { FileText, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
-  CRC_PATTERN,
   formatCertificateElapsed,
   type CertificateImportPhase,
   type ClientCertificate,
@@ -33,7 +32,7 @@ interface CertificateFieldsProps {
 export function CertificateFields(props: CertificateFieldsProps) {
   const {
     idPrefix, code, required, data, checkedAt, pending, phase, startedAt, elapsedMs,
-    error, notice, canResume, storageUnavailable, disabled, onCodeChange, onLookup,
+    error, notice, canResume, storageUnavailable, disabled, onCodeChange,
   } = props;
   const stage = phase === 'EXTRACTING' ? 'A extrair dados oficiais' : 'Pedido em fila';
   return <Card>
@@ -43,10 +42,9 @@ export function CertificateFields(props: CertificateFieldsProps) {
         <Label htmlFor={`${idPrefix}-crc`}>Código CRC {required && '*'}</Label>
         <div className="flex flex-col sm:flex-row gap-2">
           <Input id={`${idPrefix}-crc`} value={code} onChange={e => onCodeChange(e.target.value)} placeholder="0000-0000-0000" required={required} pattern="[0-9]{4}-[0-9]{4}-[0-9]{4}" maxLength={14} disabled={disabled} aria-describedby={`${idPrefix}-crc-help`} />
-          <Button type="button" variant="outline" onClick={onLookup} disabled={disabled || pending || storageUnavailable || !CRC_PATTERN.test(code.trim())}>
-            {pending ? <Loader2 className="h-4 w-4 mr-2 animate-spin motion-reduce:animate-none" /> : <Search className="h-4 w-4 mr-2" />}
-            {pending ? 'A importar…' : canResume ? 'Retomar importação' : 'Buscar'}
-          </Button>
+          <ApiCreditsButton disabled={disabled}>
+            <Search className="h-4 w-4 mr-2" />Buscar
+          </ApiCreditsButton>
         </div>
         <p id={`${idPrefix}-crc-help`} className="text-xs text-muted-foreground">Consulte a certidão para preencher os dados oficiais da empresa.</p>
         {pending && <div role="status" aria-live="polite" className="space-y-3 rounded-lg border bg-muted/40 p-3">

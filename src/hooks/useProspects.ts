@@ -1,3 +1,4 @@
+import { API_EXTRACTIONS_BLOCKED, API_CREDITS_MESSAGE } from '@/lib/api-extraction-credits';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeFunction } from "@/lib/invokeFunction";
@@ -263,6 +264,7 @@ export function useGenerateMjProspects() {
 
   return useMutation({
     mutationFn: async (onProgress?: (progress: ProspectJobProgress) => void) => {
+      if (API_EXTRACTIONS_BLOCKED) throw new Error(API_CREDITS_MESSAGE);
       if (!organization?.id) throw new Error("Organização não encontrada");
       return runProspectJob({ organizationId: organization.id, source: "mj" }, (_status, progress) => {
         if (progress) onProgress?.(progress);
