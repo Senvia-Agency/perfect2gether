@@ -21,13 +21,13 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
   const monthEnd = format(endOfMonth(ref), "yyyy-MM-dd");
 
   return useQuery({
-    queryKey: ["month-sales-metrics", orgId, monthStart, "booked-sales-commissions-v2"],
+    queryKey: ["month-sales-metrics", orgId, monthStart, "assigned-sales-commissions-v3"],
     queryFn: async (): Promise<UserSalesMetrics[]> => {
       if (!orgId) return [];
 
       const isP2G = isPerfect2GetherOrg(orgId);
       const salesQuery = supabase.from("sales")
-        .select("id, created_by, proposal_id")
+        .select("id, created_by, proposal_id, client:crm_clients(assigned_to), lead:leads(assigned_to)")
         .eq("organization_id", orgId)
         .gte("sale_date", monthStart)
         .lte("sale_date", monthEnd);
@@ -97,7 +97,7 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
       const grouped = new Map<string, { contracts: number; energia: number; solar: number; comissao: number }>();
 
       for (const sale of sales) {
-        const uid = sale.created_by;
+        const uid = isP2G ? (sale.client?.assigned_to ?? sale.lead?.assigned_to ?? sale.created_by) : sale.created_by;
         if (!uid) continue;
 
         if (!grouped.has(uid)) {

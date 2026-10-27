@@ -95,3 +95,12 @@ test('creating, editing, cancelling and deleting sales refreshes monthly dashboa
     assert.ok(keys.includes('month-sales-metrics'), name);
   }
 });
+
+test('administrator-created sale belongs to the assigned client consultant', async () => {
+ const rows = await run({ sales: [{ ...sale('0016', 'delivered', '2026-10-26'), created_by: 'admin', client: { assigned_to: 'filipe' }, lead: { assigned_to: 'other' } }] });
+ assert.deepEqual(rows, [{userId:'filipe', nifs:1, energia:41.33, solar:0, comissao:74.2}]);
+});
+test('unassigned client falls back to the lead consultant then the creator', async () => {
+ const rows = await run({ sales: [{...sale('lead'), client:{assigned_to:null}, lead:{assigned_to:'lead-consultant'}}, sale('creator')] });
+ assert.deepEqual(rows.map(row => row.userId), ['lead-consultant','consultant']);
+});

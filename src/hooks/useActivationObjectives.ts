@@ -66,7 +66,7 @@ export function useActivationObjectives(referenceDate?: Date) {
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("sales")
-        .select("created_by, proposal_type, activation_date, proposal_id")
+        .select("created_by, proposal_type, activation_date, proposal_id, client:crm_clients(assigned_to), lead:leads(assigned_to)")
         .eq("organization_id", orgId)
         .not("activation_date", "is", null)
         .gte("activation_date", currentMonthStart)
@@ -85,7 +85,7 @@ export function useActivationObjectives(referenceDate?: Date) {
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("sales")
-        .select("created_by, proposal_type, activation_date, proposal_id")
+        .select("created_by, proposal_type, activation_date, proposal_id, client:crm_clients(assigned_to), lead:leads(assigned_to)")
         .eq("organization_id", orgId)
         .not("activation_date", "is", null)
         .gte("activation_date", currentYearStart)
@@ -199,7 +199,8 @@ export function useActivationObjectives(referenceDate?: Date) {
       const matchType = proposalType === "energia"
         ? isEligibleEnergyActivation
         : resolvedProposalType === "servicos";
-      const matchUser = userId ? s.created_by === userId : true;
+      const assignedUserId = usesMonthlyObjectives ? (s.client?.assigned_to ?? s.lead?.assigned_to ?? s.created_by) : s.created_by;
+      const matchUser = userId ? assignedUserId === userId : true;
 
       return matchType && matchUser;
     });
@@ -221,7 +222,7 @@ export function useActivationObjectives(referenceDate?: Date) {
       const kwp = s.proposal_id ? (kwpByProposal[s.proposal_id] || 0) : 0;
       return total + kwp;
     }, 0);
-  }, [monthlyActivations, annualActivations, proposalMetadataById, cpesByProposal, kwpByProposal]);
+  }, [monthlyActivations, annualActivations, proposalMetadataById, cpesByProposal, kwpByProposal, usesMonthlyObjectives]);
 
   // Upsert objective
   const saveObjective = useMutation({

@@ -8,7 +8,7 @@ const org = '96a3950e-31be-4c6d-abed-b82968c0d7e9';
 const source = ts.transpileModule(readFileSync('src/hooks/useActivationObjectives.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-function run({ organization = org, month = '2026-10-15', energy = 312.5, solar = 18.25, missing = false, loading = false } = {}) {
+function run({ organization = org, month = '2026-10-15', energy = 312.5, solar = 18.25, missing = false, loading = false, activations = [] } = {}) {
   const exports = {};
   let requestedMonth;
   const objective = { user_id: 'consultant', total_energia_mwh: energy, total_solar_kwp: solar };
@@ -18,7 +18,7 @@ function run({ organization = org, month = '2026-10-15', energy = 312.5, solar =
       useQuery: options => ({ data: options.queryKey[0] === 'activation-objectives' ? [
         { user_id: 'consultant', period_type: 'monthly', proposal_type: 'energia', month: '2026-10-01', target_quantity: 999 },
         { user_id: 'consultant', period_type: 'annual', proposal_type: 'energia', month: '2026-01-01', target_quantity: 5000 },
-      ] : [], isLoading: false }),
+      ] : options.queryKey[0]?.startsWith('activations-') ? activations : options.queryKey[0] === 'activation-proposal-cpes' ? [{proposal_id:'proposal',consumo_anual:41330}] : options.queryKey[0] === 'activation-proposals-metadata' ? [{id:'proposal',proposal_type:'energia',negotiation_type:'angariacao'}] : [], isLoading: false }),
       useMutation: options => options,
       useQueryClient: () => ({}),
     },
@@ -54,4 +54,12 @@ test('the selected month and updated objective reach the shared monthly source',
 test('monthly source loading is included and other organizations retain their own activation objectives', () => {
   assert.equal(run({ loading: true }).hook.isLoading, true);
   assert.equal(run({ organization: 'another-org' }).hook.getTarget('consultant', 'monthly', 'energia'), 999);
+});
+
+test('admin-created activations count for the assigned consultant, not the admin', () => {
+ const {hook}=run({activations:[{created_by:'admin',proposal_id:'proposal',proposal_type:'energia',client:{assigned_to:'consultant'},lead:{assigned_to:'other'}}]});
+ assert.equal(hook.countActivations('consultant','monthly','energia'),41.33);
+ assert.equal(hook.countActivations('admin','monthly','energia'),0);
+ assert.equal(hook.countActivations(null,'monthly','energia'),41.33);
+ assert.equal(hook.countActivations('consultant','annual','energia'),41.33);
 });
