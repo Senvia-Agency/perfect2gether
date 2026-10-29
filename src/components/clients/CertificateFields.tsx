@@ -1,5 +1,6 @@
 import { ApiCreditsButton } from '@/components/ApiCreditsButton';
-import { FileText, Search } from 'lucide-react';
+import { Check, FileText, RefreshCw, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,14 +26,18 @@ interface CertificateFieldsProps {
   readonly canResume: boolean;
   readonly storageUnavailable: boolean;
   readonly disabled: boolean;
+  readonly readOnly?: boolean;
   readonly onCodeChange: (code: string) => void;
   readonly onLookup: () => void;
+  readonly onApply?: () => void;
+  readonly onRenew?: () => void;
 }
 
 export function CertificateFields(props: CertificateFieldsProps) {
   const {
     idPrefix, code, required, data, checkedAt, pending, phase, startedAt, elapsedMs,
-    error, notice, canResume, storageUnavailable, disabled, onCodeChange,
+    error, notice, canResume, storageUnavailable, disabled, readOnly = false,
+    onCodeChange, onApply, onRenew,
   } = props;
   const stage = phase === 'EXTRACTING' ? 'A extrair dados oficiais' : 'Pedido em fila';
   return <Card>
@@ -41,12 +46,22 @@ export function CertificateFields(props: CertificateFieldsProps) {
       <div className="space-y-2">
         <Label htmlFor={`${idPrefix}-crc`}>Código CRC {required && '*'}</Label>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Input id={`${idPrefix}-crc`} value={code} onChange={e => onCodeChange(e.target.value)} placeholder="0000-0000-0000" required={required} pattern="[0-9]{4}-[0-9]{4}-[0-9]{4}" maxLength={14} disabled={disabled} aria-describedby={`${idPrefix}-crc-help`} />
-          <ApiCreditsButton disabled={disabled}>
-            <Search className="h-4 w-4 mr-2" />Buscar
-          </ApiCreditsButton>
+          <Input id={`${idPrefix}-crc`} value={code} onChange={e => onCodeChange(e.target.value)} placeholder="0000-0000-0000" required={required} pattern="[0-9]{4}-[0-9]{4}-[0-9]{4}" maxLength={14} disabled={disabled} readOnly={readOnly} aria-readonly={readOnly} aria-describedby={`${idPrefix}-crc-help`} />
+          {readOnly ? (
+            onRenew && <Button type="button" variant="outline" disabled={disabled} onClick={onRenew}>
+              <RefreshCw className="mr-2 h-4 w-4" />Renovar CRC
+            </Button>
+          ) : (
+            <ApiCreditsButton disabled={disabled}>
+              <Search className="h-4 w-4 mr-2" />Buscar
+            </ApiCreditsButton>
+          )}
         </div>
-        <p id={`${idPrefix}-crc-help`} className="text-xs text-muted-foreground">Consulte a certidão para preencher os dados oficiais da empresa.</p>
+        <p id={`${idPrefix}-crc-help`} className="text-xs text-muted-foreground">
+          {readOnly
+            ? 'O código atual é só de leitura. Use a renovação para guardar uma nova versão sem apagar o histórico.'
+            : 'O CRC é opcional. Se indicar um código, use o formato 0000-0000-0000.'}
+        </p>
         {pending && <div role="status" aria-live="polite" className="space-y-3 rounded-lg border bg-muted/40 p-3">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
@@ -75,6 +90,9 @@ export function CertificateFields(props: CertificateFieldsProps) {
           <p className="text-xs text-muted-foreground">Os gerentes são dados oficiais e não alteram os contactos dos decisores.</p>
         </section>
         {checkedAt && <p className="text-xs text-muted-foreground">Consultada em {new Date(checkedAt).toLocaleString('pt-PT')}</p>}
+        {onApply && !readOnly && <Button type="button" variant="outline" onClick={onApply} disabled={disabled}>
+          <Check className="mr-2 h-4 w-4" />Aplicar dados revistos
+        </Button>}
       </div>}
     </CardContent>
   </Card>;

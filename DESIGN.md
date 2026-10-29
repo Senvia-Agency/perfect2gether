@@ -16,6 +16,9 @@ Label every icon control; keyboard send Enter and newline Shift+Enter; visible f
 ## 8. Privacy and debt
 No message text in push payloads. Not end-to-end encrypted: membership protection at database/Storage level. Temporary file URLs expire quickly. Native notification permission remains user-driven. No claim of production delivery from local tests.
 
+## Client certificate import state
+Client create/edit forms use the existing Card, Button, Input and Progress primitives. A running CRC import shows an indeterminate semantic-primary activity bar, the real server stage (queued or extracting), elapsed time and reassurance that the form may be closed or reloaded. It never shows a fabricated completion percentage. Transport interruption, expired authentication and unavailable browser storage stay visible beside the CRC field; focus, reduced-motion behavior and destructive/error tokens follow the existing form contract.
+
 ## Messages redesign — supplied Realize reference
 Preserve the P2G navigation, font and semantic purple primary. The initial view is a searchable colleague directory with two-column white cards, soft borders/shadows, generous 20–24px padding, circular colored initials and a discrete chat action. No fabricated departments, jobs or online indicators. One column on narrow screens. Separate Conversations view retains the two-pane inbox and thread with clearer hierarchy. Dialogs have an explicit 36rem maximum, rounded corners, proper header/body/footer and searchable participant rows. The supplied screenshot is a direction for the directory anatomy, not a request to replace P2G branding/navigation. Actual team data and privacy rules remain authoritative.
 
@@ -46,3 +49,6 @@ Message action pills stay hidden at rest and appear on message hover, keyboard f
 
 ## Ponto global e RH (19 October)
 Clock in a shared desktop top bar and compact mobile bar beside actual account/notification controls. Existing P2G font, white/lavender tokens, 40px minimum targets. Rounded clock pill, status dot plus label, tabular hours; popover at most384px,24px corners, pale summary and inset timeline. Visible actions depend on current server-derived state. Manual corrections and notes use accessible forms, clear pending/error labels; no GPS denial blocks a punch. Mobile collision padding12px and dvh-bounded scrolling. RH Ponto follows existing module shell; no extra main-menu destination. Own-only attendance, explicit organization-scoped manager/configuration permissions. Clock failure never blocks login or existing pages.
+
+## Prospect date filters
+Preserve current cards, table and mobile prospect cards. Replace COM with import and opening dates. Two labeled fieldsets each contain native date inputs De/Até, stack on small screens and sit side by side when space allows. Inclusive ranges combine; invalid ranges show a role=alert message. A quiet Limpar datas action clears both ranges. Table dates stay on one line; mobile cards use labeled date rows. Opening dates sourced only from a constitution publication must display the qualifier publicação MJ. Unknown dates display a dash, never the import date. No new tokens, motion or database permissions.

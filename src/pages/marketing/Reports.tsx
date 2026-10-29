@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Mail, Eye, MousePointer, AlertTriangle, Loader2, Send, CheckCircle, ShieldAlert, Ban, RefreshCw, Bot, Megaphone } from "lucide-react";
+import { ArrowLeft, Mail, Eye, MousePointer, AlertTriangle, Loader2, Send, CheckCircle, ShieldAlert, Ban, RefreshCw, Bot, Megaphone, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,19 @@ import { EMAIL_SEND_STATUS_LABELS, EMAIL_SEND_STATUS_STYLES, type EmailSendStatu
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
+import { isEdpUiAvailable } from "@/modules/edp/environment";
+import { getEdpTransportLabel, type EdpTransportStatus } from "@/modules/edp/logic";
 
 type Period = '7d' | '30d' | '90d';
-type SourceFilter = 'all' | 'campaign' | 'automation';
+type SourceFilter = 'all' | 'campaign' | 'automation' | 'edp';
+
+type EmailReportOrigin = {
+  readonly campaign_id: string | null;
+  readonly automation_id: string | null;
+  readonly template_automation_id: string | null;
+  readonly origin: string | null;
+  readonly sale_id: string | null;
+};
 
 export default function Reports() {
   const [period, setPeriod] = useState<Period>('30d');
@@ -28,6 +38,7 @@ export default function Reports() {
   const { data: campaigns } = useCampaigns();
   const { data: templates } = useEmailTemplates();
   const queryClient = useQueryClient();
+  const edpUiAvailable = isEdpUiAvailable();
 
   const handleSourceChange = (v: SourceFilter) => {
     setSource(v);
@@ -38,9 +49,17 @@ export default function Reports() {
     queryClient.invalidateQueries({ queryKey: ['email-stats'] });
   };
 
-  const getOriginLabel = (event: { campaign_id: string | null; automation_id: string | null; template_automation_id: string | null }) => {
+  const getOriginLabel = (event: EmailReportOrigin) => {
+    if (event.origin === 'edp') {
+      return (
+        <div className="flex items-center gap-1.5">
+          <Zap className="h-3 w-3 text-amber-600" />
+          <span>Processo EDP{event.sale_id ? ` · ${event.sale_id.slice(0, 8)}` : ''}</span>
+        </div>
+      );
+    }
     if (event.campaign_id) {
-      const camp = campaigns?.find((c: any) => c.id === event.campaign_id);
+      const camp = campaigns?.find((campaign) => campaign.id === event.campaign_id);
       return (
         <div className="flex items-center gap-1.5">
           <Megaphone className="h-3 w-3 text-blue-500" />
@@ -61,7 +80,7 @@ export default function Reports() {
   };
 
   const metrics = stats ? [
-    { label: "Enviados", value: stats.sent, icon: Send, color: "text-foreground", sub: `${stats.total} totais` },
+    { label: source === 'edp' ? "Aceites" : "Enviados", value: stats.sent, icon: Send, color: "text-foreground", sub: source === 'edp' ? `${stats.total} tentativas EDP` : `${stats.total} totais` },
     { label: "Entregues", value: stats.delivered, icon: CheckCircle, color: "text-emerald-500", sub: `${stats.deliveredRate}% taxa de entrega` },
     { label: "Abertos", value: stats.opened, icon: Eye, color: "text-blue-500", sub: `${stats.openRate}% taxa de abertura` },
     { label: "Clicados", value: stats.clicked, icon: MousePointer, color: "text-purple-500", sub: `${stats.clickRate}% taxa de clique` },
@@ -113,6 +132,7 @@ export default function Reports() {
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="campaign">Campanhas</SelectItem>
               <SelectItem value="automation">Automações</SelectItem>
+              {edpUiAvailable && <SelectItem value="edp">Processos EDP</SelectItem>}
             </SelectContent>
           </Select>
 
@@ -123,8 +143,8 @@ export default function Reports() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as campanhas</SelectItem>
-                {campaigns?.map((c: any) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                {campaigns?.map((campaign) => (
+                  <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -137,8 +157,8 @@ export default function Reports() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as automações</SelectItem>
-                {templates?.filter((t: any) => t.automation_enabled).map((t: any) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                {templates?.filter((template) => template.automation_enabled).map((template) => (
+                  <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -167,10 +187,14 @@ export default function Reports() {
               <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-4 flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Sem confirmações de entrega neste período</p>
+                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                    {source === 'edp' ? 'Aceitação do transporte sem prova de entrega' : 'Sem confirmações de entrega neste período'}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Há {stats.sent} {stats.sent === 1 ? 'email enviado' : 'emails enviados'} sem confirmação de entrega no período selecionado.
-                    {' '}Os eventos de envios mais antigos podem ser consultados em «90 dias», quando disponíveis.
+                    {source === 'edp'
+                      ? `Há ${stats.sent} ${stats.sent === 1 ? 'tentativa aceite' : 'tentativas aceites'} pelo transporte, sem confirmação externa de entrega.`
+                      : `Há ${stats.sent} ${stats.sent === 1 ? 'email enviado' : 'emails enviados'} sem confirmação de entrega no período selecionado.`}
+                    {' '}Os eventos mais antigos podem ser consultados em «90 dias», quando disponíveis.
                   </p>
                 </div>
               </div>
@@ -259,7 +283,7 @@ export default function Reports() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {stats.events.slice(0, 100).map((event: any) => (
+                        {stats.events.slice(0, 100).map((event) => (
                           <TableRow key={event.id}>
                             <TableCell className="font-medium truncate max-w-[150px]">
                               {event.recipient_name || '—'}
@@ -268,7 +292,14 @@ export default function Reports() {
                               {event.recipient_email}
                             </TableCell>
                             <TableCell>{getOriginLabel(event)}</TableCell>
-                            <TableCell>{getStatusBadge(event.status)}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {event.origin === 'edp' && !event.synthetic_event && isEdpTransportStatus(event.transport_status)
+                                  ? <Badge variant="outline">{getEdpTransportLabel(event.transport_status)}</Badge>
+                                  : getStatusBadge(event.status)}
+                                {event.synthetic_event && <Badge variant="secondary">Evento de teste</Badge>}
+                              </div>
+                            </TableCell>
                             <TableCell className="hidden md:table-cell text-muted-foreground text-xs">
                               {event.sent_at ? format(new Date(event.sent_at), "dd/MM HH:mm") : '—'}
                             </TableCell>
@@ -297,4 +328,8 @@ export default function Reports() {
         ) : null}
     </div>
   );
+}
+
+function isEdpTransportStatus(value: string | null): value is EdpTransportStatus {
+  return value === 'accepted' || value === 'failed' || value === 'uncertain';
 }

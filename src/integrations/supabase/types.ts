@@ -903,6 +903,36 @@ export type Database = {
           },
         ]
       }
+      client_certificate_versions: {
+        Row: { certificate_data: Json; client_id: string; crc_code: string | null; id: string; organization_id: string; recorded_at: string; recorded_by: string | null; source: string; source_metadata: Json; superseded_at: string | null; valid_from: string | null; valid_until: string | null }
+        Insert: { certificate_data?: Json; client_id: string; crc_code?: string | null; id?: string; organization_id: string; recorded_at?: string; recorded_by?: string | null; source: string; source_metadata?: Json; superseded_at?: string | null; valid_from?: string | null; valid_until?: string | null }
+        Update: { certificate_data?: Json; client_id?: string; crc_code?: string | null; id?: string; organization_id?: string; recorded_at?: string; recorded_by?: string | null; source?: string; source_metadata?: Json; superseded_at?: string | null; valid_from?: string | null; valid_until?: string | null }
+        Relationships: [{ foreignKeyName: "client_certificate_versions_client_id_fkey"; columns: ["client_id"]; isOneToOne: false; referencedRelation: "crm_clients"; referencedColumns: ["id"] }]
+      }
+      client_document_versions: {
+        Row: { bucket_id: string; client_id: string; created_at: string; created_by: string | null; document_id: string; id: string; mime_type: string; organization_id: string; original_name: string; sha256: string; side: string; size_bytes: number; storage_path: string; validity_confirmed_by: string | null; validity_confirmed_on: string | null; validity_suggested_on: string | null }
+        Insert: { bucket_id?: string; client_id: string; created_at?: string; created_by?: string | null; document_id: string; id?: string; mime_type: string; organization_id: string; original_name: string; sha256: string; side: string; size_bytes: number; storage_path: string; validity_confirmed_by?: string | null; validity_confirmed_on?: string | null; validity_suggested_on?: string | null }
+        Update: { bucket_id?: string; client_id?: string; created_at?: string; created_by?: string | null; document_id?: string; id?: string; mime_type?: string; organization_id?: string; original_name?: string; sha256?: string; side?: string; size_bytes?: number; storage_path?: string; validity_confirmed_by?: string | null; validity_confirmed_on?: string | null; validity_suggested_on?: string | null }
+        Relationships: [{ foreignKeyName: "client_document_versions_document_scope_fkey"; columns: ["document_id", "client_id", "organization_id"]; isOneToOne: false; referencedRelation: "client_documents"; referencedColumns: ["id", "client_id", "organization_id"] }]
+      }
+      client_documents: {
+        Row: { archived_at: string | null; category: string; client_id: string; created_at: string; created_by: string | null; id: string; label: string; organization_id: string; person_id: string | null; updated_at: string }
+        Insert: { archived_at?: string | null; category: string; client_id: string; created_at?: string; created_by?: string | null; id?: string; label: string; organization_id: string; person_id?: string | null; updated_at?: string }
+        Update: { archived_at?: string | null; category?: string; client_id?: string; created_at?: string; created_by?: string | null; id?: string; label?: string; organization_id?: string; person_id?: string | null; updated_at?: string }
+        Relationships: [{ foreignKeyName: "client_documents_client_id_fkey"; columns: ["client_id"]; isOneToOne: false; referencedRelation: "crm_clients"; referencedColumns: ["id"] }, { foreignKeyName: "client_documents_person_id_fkey"; columns: ["person_id"]; isOneToOne: false; referencedRelation: "client_people"; referencedColumns: ["id"] }]
+      }
+      client_people: {
+        Row: { client_id: string; created_at: string; created_by: string | null; email: string | null; id: string; name: string; nif: string | null; organization_id: string; phone: string | null; source: string; source_metadata: Json; source_ref: string | null; updated_at: string }
+        Insert: { client_id: string; created_at?: string; created_by?: string | null; email?: string | null; id?: string; name: string; nif?: string | null; organization_id: string; phone?: string | null; source: string; source_metadata?: Json; source_ref?: string | null; updated_at?: string }
+        Update: { client_id?: string; created_at?: string; created_by?: string | null; email?: string | null; id?: string; name?: string; nif?: string | null; organization_id?: string; phone?: string | null; source?: string; source_metadata?: Json; source_ref?: string | null; updated_at?: string }
+        Relationships: [{ foreignKeyName: "client_people_client_id_fkey"; columns: ["client_id"]; isOneToOne: false; referencedRelation: "crm_clients"; referencedColumns: ["id"] }]
+      }
+      client_person_roles: {
+        Row: { client_id: string; created_at: string; organization_id: string; person_id: string; role: string; source: string }
+        Insert: { client_id: string; created_at?: string; organization_id: string; person_id: string; role: string; source: string }
+        Update: { client_id?: string; created_at?: string; organization_id?: string; person_id?: string; role?: string; source?: string }
+        Relationships: [{ foreignKeyName: "client_person_roles_person_scope_fkey"; columns: ["person_id", "client_id", "organization_id"]; isOneToOne: false; referencedRelation: "client_people"; referencedColumns: ["id", "client_id", "organization_id"] }]
+      }
       crm_clients: {
         Row: {
           address_line1: string | null
@@ -930,6 +960,7 @@ export type Database = {
           phone: string | null
           postal_code: string | null
           source: string | null
+          source_metadata: Json
           status: string | null
           total_comissao: number | null
           total_kwp: number | null
@@ -966,6 +997,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           source?: string | null
+          source_metadata?: Json
           status?: string | null
           total_comissao?: number | null
           total_kwp?: number | null
@@ -1002,6 +1034,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           source?: string | null
+          source_metadata?: Json
           status?: string | null
           total_comissao?: number | null
           total_kwp?: number | null
@@ -1470,17 +1503,22 @@ export type Database = {
           clicked_at: string | null
           client_id: string | null
           created_at: string
+          edp_dispatch_id: string | null
           error_message: string | null
           id: string
           opened_at: string | null
           organization_id: string
+          origin: string
           recipient_email: string
           recipient_name: string | null
+          sale_id: string | null
           sent_at: string | null
           sent_by: string | null
           status: string
           subject: string
+          synthetic_event: boolean
           template_id: string | null
+          transport_status: string | null
         }
         Insert: {
           template_automation_id?: string | null
@@ -1490,17 +1528,22 @@ export type Database = {
           clicked_at?: string | null
           client_id?: string | null
           created_at?: string
+          edp_dispatch_id?: string | null
           error_message?: string | null
           id?: string
           opened_at?: string | null
           organization_id: string
+          origin?: string
           recipient_email: string
           recipient_name?: string | null
+          sale_id?: string | null
           sent_at?: string | null
           sent_by?: string | null
           status?: string
           subject: string
+          synthetic_event?: boolean
           template_id?: string | null
+          transport_status?: string | null
         }
         Update: {
           template_automation_id?: string | null
@@ -1510,17 +1553,22 @@ export type Database = {
           clicked_at?: string | null
           client_id?: string | null
           created_at?: string
+          edp_dispatch_id?: string | null
           error_message?: string | null
           id?: string
           opened_at?: string | null
           organization_id?: string
+          origin?: string
           recipient_email?: string
           recipient_name?: string | null
+          sale_id?: string | null
           sent_at?: string | null
           sent_by?: string | null
           status?: string
           subject?: string
+          synthetic_event?: boolean
           template_id?: string | null
+          transport_status?: string | null
         }
         Relationships: [
           {
@@ -1545,10 +1593,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "email_sends_edp_dispatch_id_fkey"
+            columns: ["edp_dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "edp_dispatches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "email_sends_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sends_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
             referencedColumns: ["id"]
           },
           {
@@ -4693,9 +4755,82 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      client_certificate_history: {
+        Row: {
+          certificate_data: Json | null
+          client_id: string | null
+          crc_code: string | null
+          id: string | null
+          is_current: boolean | null
+          organization_id: string | null
+          recorded_at: string | null
+          recorded_by: string | null
+          source: string | null
+          source_metadata: Json | null
+          valid_from: string | null
+          valid_until: string | null
+          version_id: string | null
+        }
+        Relationships: []
+      }
+      client_people_roles: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          email: string | null
+          is_complete: boolean | null
+          name: string | null
+          nif: string | null
+          organization_id: string | null
+          person_id: string | null
+          person_source: string | null
+          phone: string | null
+          role: string | null
+          role_source: string | null
+          source_ref: string | null
+          source_metadata: Json | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      edp_report_rows: {
+        Row: {
+          accepted_at: string | null
+          attachment_manifest: Json | null
+          client_id: string | null
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string | null
+          dispatch_id: string | null
+          dispatch_state: string | null
+          email_status: string | null
+          error_message: string | null
+          message_id: string | null
+          opened_at: string | null
+          organization_id: string | null
+          sale_id: string | null
+          sent_at: string | null
+          snapshot: Json | null
+          synthetic_event: boolean | null
+          transport_status: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      create_client_with_people: { Args: { p_client_patch: Json; p_people: Json }; Returns: Json }
+      edp_archive_document: { Args: { p_document_id: string }; Returns: Json }
+      edp_assert_client_document_write: { Args: { p_client_id: string }; Returns: undefined }
+      edp_get_sale_context: { Args: { p_sale_id: string }; Returns: Json }
+      edp_get_settings: { Args: Record<string, never>; Returns: Json }
+      edp_reserve_dispatch: { Args: { p_expected_revision: number; p_idempotency_key: string; p_sale_id: string }; Returns: Json }
+      edp_save_draft: { Args: { p_expected_revision: number; p_payload: Json; p_sale_id: string }; Returns: Json }
+      edp_save_settings: { Args: { p_checklist: Json; p_expected_revision: number; p_settings: Json }; Returns: Json }
+      renew_client_certificate: {
+        Args: { p_certificate_data?: Json; p_client_id: string; p_crc_code?: string | null; p_expected_current_version_id?: string | null; p_source?: string; p_source_metadata?: Json; p_valid_from?: string | null; p_valid_until?: string | null }
+        Returns: Database["public"]["Tables"]["client_certificate_versions"]["Row"]
+      }
+      save_client_people_roles: { Args: { p_client_id: string; p_client_patch?: Json; p_expected_updated_at: string; p_people?: Json }; Returns: Json }
       p2g_release: { Args: { action: string; payload: Json }; Returns: Json };
       p2g_clock: { Args: { action: string; payload: Json }; Returns: Json };
       p2g_chat: {

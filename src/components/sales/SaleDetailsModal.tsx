@@ -83,6 +83,8 @@ import { openPdfInNewTab } from "@/lib/download";
 import { useSaleActivationHistory } from "@/hooks/useSaleActivationHistory";
 import { useSaleFieldsSettings } from "@/hooks/useSaleFieldsSettings";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
+import { EdpSaleEntry } from "@/modules/edp/components/EdpSaleEntry";
+import { isEdpUiAvailable } from "@/modules/edp/environment";
 
 interface SaleDetailsModalProps {
   sale: SaleWithDetails | null;
@@ -104,7 +106,9 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
   const { organization } = useAuth();
   const { isAdmin, isBackOffice, can } = usePermissions();
   const isP2G = isPerfect2GetherOrg(organization?.id);
+  const isEdpUiAvailableForHost = isEdpUiAvailable();
   const canManageP2GSale = isAdmin || isBackOffice;
+  const canManageEdpProcess = canManageP2GSale || can('clients', 'list', 'edit');
   const canEditSale = (!isP2G || canManageP2GSale) && can('sales', 'sales', 'edit');
   const canIssueInvoice = (!isP2G || canManageP2GSale) && can('finance', 'invoices', 'issue');
   const canCancelInvoice = (!isP2G || canManageP2GSale) && can('finance', 'invoices', 'cancel');
@@ -400,6 +404,23 @@ export function SaleDetailsModal({ sale, open, onOpenChange, onEdit }: SaleDetai
                       )}
                     </CardContent>
                   </Card>
+
+                  {isEdpUiAvailableForHost && isP2GEnergySale && sale.client && (
+                    <Card>
+                      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Processo EDP</p>
+                          <p className="text-xs text-muted-foreground">Prepare dados, anexos, revisão e histórico sem alterar o estado da venda.</p>
+                        </div>
+                        <EdpSaleEntry
+                          saleId={sale.id}
+                          clientId={sale.client.id}
+                          clientName={sale.client.name}
+                          canManage={canManageEdpProcess}
+                        />
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Client Card */}
                   {(sale.client || sale.lead) && (

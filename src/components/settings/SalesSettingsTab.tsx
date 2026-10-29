@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { useOrganization, useUpdateOrganization } from "@/hooks/useOrganization";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ShoppingCart, Info, Percent } from "lucide-react";
+import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
+import { EdpSettingsCard } from "@/modules/edp/components/EdpSettingsCard";
 
 interface SalesSettings {
   lock_delivered_sales?: boolean;
@@ -23,8 +25,9 @@ interface SalesSettings {
 export function SalesSettingsTab() {
   const { data: org } = useOrganization();
   const updateOrganization = useUpdateOrganization();
-  const { can } = usePermissions();
+  const { can, isAdmin, isProfileAdmin } = usePermissions();
   const canEditGeneral = can('settings', 'general', 'edit');
+  const isP2G = isPerfect2GetherOrg(org?.id);
 
   const currentSettings: SalesSettings = (org?.sales_settings as SalesSettings) || {};
 
@@ -233,6 +236,7 @@ export function SalesSettingsTab() {
           )}
         </CardContent>
       </Card>
+      {isP2G && (isAdmin || isProfileAdmin) && <EdpSettingsCard />}
     </div>
   );
 }

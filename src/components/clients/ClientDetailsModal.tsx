@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules } from "@/hooks/useModules";
 import { useProfileName } from "@/hooks/useProfileName";
@@ -23,12 +24,14 @@ import {
   FileText,
   Euro,
   ShoppingBag,
-  ExternalLink
+  ExternalLink,
+  Files,
 } from "lucide-react";
 import { CrmClient, CLIENT_STATUS_LABELS, CLIENT_STATUS_STYLES, CLIENT_SOURCE_LABELS } from "@/types/clients";
 import { formatDate, formatDateTime, getWhatsAppUrl, formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { LeadAttachments } from "@/components/leads/LeadAttachments";
+import { ClientDocumentsCard } from "./ClientDocumentsCard";
 
 interface ClientDetailsModalProps {
   client: CrmClient | null;
@@ -46,8 +49,16 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
   const showEnergy = isTelecom && modules.energy;
   const { can } = usePermissions();
   const canEditClient = can('clients', 'list', 'edit');
+  const [documentUploadRequest, setDocumentUploadRequest] = useState(0);
+  const documentsSectionRef = useRef<HTMLDivElement>(null);
 
   if (!client) return null;
+
+  const handleDocumentsShortcut = () => {
+    if (canEditClient) setDocumentUploadRequest((current) => current + 1);
+    documentsSectionRef.current?.scrollIntoView({ block: 'start' });
+    documentsSectionRef.current?.focus({ preventScroll: true });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,6 +80,18 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
               <DialogDescription className="mt-1">
                 Cliente desde {formatDate(client.created_at)}
               </DialogDescription>
+              {isP2G && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={handleDocumentsShortcut}
+                >
+                  <Files className="mr-1 h-4 w-4" aria-hidden="true" />
+                  Documentos
+                </Button>
+              )}
             </div>
             <Badge
               variant="outline"
@@ -211,6 +234,23 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
                 <div className="px-3 py-2 bg-muted rounded-md text-sm">
                   {CLIENT_SOURCE_LABELS[client.source] || client.source}
                 </div>
+              </div>
+            </>
+          )}
+
+          {isP2G && (
+            <>
+              <Separator />
+              <div
+                ref={documentsSectionRef}
+                tabIndex={-1}
+                className="scroll-mt-4 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <ClientDocumentsCard
+                  clientId={client.id}
+                  canManage={canEditClient}
+                  openUploadRequest={documentUploadRequest}
+                />
               </div>
             </>
           )}

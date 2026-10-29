@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { certificateSchema, CRC_PATTERN } from './client-certificate';
+import { certificateSchema, CRC_PATTERN, jsonValueSchema } from './client-certificate';
 
 export const CLIENT_FORM_STORAGE_TTL_MS = 24 * 60 * 60 * 1_000;
 
@@ -18,12 +18,33 @@ const clientFormScopeSchema = z.object({
 
 export type ClientFormScope = z.infer<typeof clientFormScopeSchema>;
 
+const clientPersonProvenanceSchema = {
+  id: z.string().uuid().optional(),
+  nif: z.string().nullable().optional(),
+  source: z.enum(['legacy', 'manual', 'mj', 'crc_lookup']).optional(),
+  sourceRef: z.string().nullable().optional(),
+  sourceMetadata: z.record(jsonValueSchema).optional(),
+  roleSource: z.enum(['legacy', 'manual', 'mj', 'crc_lookup']).optional(),
+};
+
 const decisionMakerSchema = z.object({
   name: z.string(),
   role: z.string(),
   phone: z.string(),
   email: z.string(),
-}).required();
+  ...clientPersonProvenanceSchema,
+}).required().partial({
+  id: true, nif: true, source: true, sourceRef: true, sourceMetadata: true, roleSource: true,
+});
+
+const legalManagerSchema = z.object({
+  name: z.string(),
+  phone: z.string(),
+  email: z.string(),
+  ...clientPersonProvenanceSchema,
+}).required().partial({
+  id: true, nif: true, source: true, sourceRef: true, sourceMetadata: true, roleSource: true,
+});
 
 export const clientFormDraftSchema = z.object({
   name: z.string(),
@@ -32,6 +53,7 @@ export const clientFormDraftSchema = z.object({
   company: z.string(),
   nif: z.string(),
   decisionMakers: z.array(decisionMakerSchema),
+  legalManagers: z.array(legalManagerSchema).optional(),
   companyNif: z.string(),
   crcCode: z.string(),
   certificateData: certificateSchema.nullable(),
@@ -49,7 +71,7 @@ export const clientFormDraftSchema = z.object({
   distrito: z.string(),
   conselho: z.string(),
   grupoEconomico: z.string(),
-}).required();
+}).required().partial({ legalManagers: true });
 
 export type ClientFormDraft = z.infer<typeof clientFormDraftSchema>;
 

@@ -38,7 +38,17 @@ import { isBillingActive } from "@/components/sales/SaleFiscalInfo";
 import { COUNTRIES } from "@/lib/countries";
 import { User, Building2 } from "lucide-react";
 import { DecisionMakersFields } from "./DecisionMakersFields";
-import { areDecisionMakersValid, decisionMakersPayload, emptyDecisionMaker, type DecisionMaker } from "@/lib/decision-makers";
+import { LegalManagersFields } from "./LegalManagersFields";
+import {
+  areDecisionMakersValid,
+  areLegalManagersValid,
+  buildClientPeoplePayload,
+  emptyDecisionMaker,
+  hasClientPeopleContactConflict,
+  mergeCertificateLegalManagers,
+  type DecisionMaker,
+  type LegalManager,
+} from "@/lib/decision-makers";
 
 interface CreateClientModalProps {
   open: boolean;
@@ -70,6 +80,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
   const [company, setCompany] = useState("");
   const [nif, setNif] = useState("");
   const [decisionMakers, setDecisionMakers] = useState<DecisionMaker[]>(() => [emptyDecisionMaker()]);
+  const [legalManagers, setLegalManagers] = useState<LegalManager[]>([]);
   const [companyNif, setCompanyNif] = useState("");
   const [crcCode, setCrcCode] = useState("");
   const [certificateData, setCertificateData] = useState<ClientCertificate | null>(null);
@@ -96,6 +107,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
     setCompany("");
     setNif("");
     setDecisionMakers([emptyDecisionMaker()]);
+    setLegalManagers([]);
     setCompanyNif("");
     setCrcCode("");
     setCertificateData(null);
@@ -120,7 +132,12 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
     setPhone(saved.phone);
     setCompany(saved.company);
     setNif(saved.nif);
-    setDecisionMakers(saved.decisionMakers.map(item => ({ name: item.name ?? "", role: item.role ?? "", phone: item.phone ?? "", email: item.email ?? "" })));
+    setDecisionMakers(saved.decisionMakers.map(item => ({
+      ...item, name: item.name ?? "", role: item.role ?? "", phone: item.phone ?? "", email: item.email ?? "",
+    })));
+    setLegalManagers((saved.legalManagers ?? []).map(item => ({
+      ...item, name: item.name ?? "", phone: item.phone ?? "", email: item.email ?? "",
+    })));
     setCompanyNif(saved.companyNif);
     setCrcCode(saved.crcCode);
     setCertificateData(saved.certificateData);
@@ -141,16 +158,21 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
   };
   const scope = useMemo<ClientFormScope | null>(() => user?.id && organization?.id && isP2g
     ? { userId: user.id, organizationId: organization.id, formContext: 'create' } : null, [user?.id, organization?.id, isP2g]);
-  const draft = useClientFormDraft({ open, scope, value: { name, email, phone, company, nif, decisionMakers, companyNif, crcCode, certificateData, certificateCheckedAt, billingTarget, status, source, notes, assignedTo, addressLine1, addressLine2, city, postalCode, country, distrito, conselho, grupoEconomico }, onRestore: restoreForm, onInitialize: resetForm });
+  const draft = useClientFormDraft({ open, scope, value: { name, email, phone, company, nif, decisionMakers, legalManagers, companyNif, crcCode, certificateData, certificateCheckedAt, billingTarget, status, source, notes, assignedTo, addressLine1, addressLine2, city, postalCode, country, distrito, conselho, grupoEconomico }, onRestore: restoreForm, onInitialize: resetForm });
 
   const createClient = useCreateClient();
   const needsCertificate = certificateRequired(isP2g);
   const applyCertificate = (data: ClientCertificate, checkedAt: string) => {
     setCertificateData(data);
     setCertificateCheckedAt(checkedAt);
+  };
+  const applyCertificateData = () => {
+    if (!certificateData) return;
+    const data = certificateData;
     setCompanyNif(data.nipc);
     setCompany(data.denominacao);
     if (isP2g) setName(data.denominacao);
+    setLegalManagers(current => mergeCertificateLegalManagers(current, data.gerentes));
   };
   const certificate = useClientCertificate({ open: open && draft.ready, crcCode, scope, onSuccess: applyCertificate });
   const discardDraft = () => { certificate.clearRecovery(); draft.discard(); };
@@ -181,6 +203,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
   const isValid = useMemo(() => {
     if (!draft.ready || certificate.pending || (needsCertificate && !CRC_PATTERN.test(crcCode.trim())) || (crcCode.trim() && !CRC_PATTERN.test(crcCode.trim()))) return false;
     if (isP2g && !areDecisionMakersValid(decisionMakers)) return false;
+    if (isP2g && (!areLegalManagersValid(legalManagers) || hasClientPeopleContactConflict(decisionMakers, legalManagers))) return false;
     if (settings.name.visible && settings.name.required && !name.trim()) return false;
     if (!email.trim()) return false;
     if (!phone.trim()) return false;
@@ -193,7 +216,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
     if (!conselho.trim()) return false;
     if ((!isP2g && nifValidation.isDuplicate) || companyNifValidation.isDuplicate) return false;
     return true;
-  }, [isP2g, decisionMakers, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate, certificate.pending, needsCertificate, crcCode, draft.ready]);
+  }, [isP2g, decisionMakers, legalManagers, name, email, phone, company, nif, companyNif, addressLine1, notes, distrito, conselho, settings, nifValidation.isDuplicate, companyNifValidation.isDuplicate, certificate.pending, needsCertificate, crcCode, draft.ready]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,7 +228,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
         company: company.trim() || undefined,
-        ...(isP2g ? decisionMakersPayload(decisionMakers) : { nif: nif.trim() || undefined }),
+        ...(isP2g ? { people: buildClientPeoplePayload(decisionMakers, legalManagers) } : { nif: nif.trim() || undefined }),
         company_nif: companyNif.trim() || undefined,
         crc_code: crcCode.trim() || null,
         certificate_data: certificateData,
@@ -309,6 +332,12 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
                       {isP2g && (
                         <DecisionMakersFields idPrefix="create" value={decisionMakers} onChange={setDecisionMakers} />
                       )}
+                      {isP2g && (
+                        <LegalManagersFields idPrefix="create" value={legalManagers} onChange={setLegalManagers} />
+                      )}
+                      {isP2g && hasClientPeopleContactConflict(decisionMakers, legalManagers) && (
+                        <p role="alert" className="text-sm text-destructive sm:col-span-2">A mesma pessoa tem contactos diferentes nas funções de decisor e gerente. Reveja antes de guardar.</p>
+                      )}
                       {!isP2g && settings.nif.visible && (
                         <div className="space-y-2">
                           <Label htmlFor="nif">
@@ -332,7 +361,7 @@ export function CreateClientModal({ open, onOpenChange, onCreated, initialData }
                   </CardContent>
                 </Card>
 
-                {isP2g && <CertificateFields idPrefix="create" code={crcCode} required={needsCertificate} data={certificateData} checkedAt={certificateCheckedAt} pending={certificate.pending} error={certificate.error} disabled={createClient.isPending || !organization?.id} onCodeChange={changeCrcCode} onLookup={() => { void certificate.lookup(); }} phase={certificate.phase} startedAt={certificate.startedAt} elapsedMs={certificate.elapsedMs} notice={certificate.notice} canResume={certificate.canResume} storageUnavailable={certificate.storageUnavailable} />}
+                {isP2g && <CertificateFields idPrefix="create" code={crcCode} required={needsCertificate} data={certificateData} checkedAt={certificateCheckedAt} pending={certificate.pending} error={certificate.error} disabled={createClient.isPending || !organization?.id} onCodeChange={changeCrcCode} onLookup={() => { void certificate.lookup(); }} onApply={certificateData ? applyCertificateData : undefined} phase={certificate.phase} startedAt={certificate.startedAt} elapsedMs={certificate.elapsedMs} notice={certificate.notice} canResume={certificate.canResume} storageUnavailable={certificate.storageUnavailable} />}
                 {/* Company Card */}
                 {settings.company.visible && (
                   <Card>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useModules } from "@/hooks/useModules";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
 import {
@@ -31,6 +31,7 @@ import {
   Zap,
   Euro,
   ChevronRight,
+  Files,
   Users,
 } from "lucide-react";
 import { parseDecisionMakers } from "@/lib/decision-makers";
@@ -51,6 +52,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useClientLabels } from "@/hooks/useClientLabels";
 import { useClientHistory } from "@/hooks/useClientHistory";
+import { useClientPeopleRoles } from "@/hooks/useClientEdpData";
 import { useUpdateClient } from "@/hooks/useClients";
 import { useDeleteCommunication } from "@/hooks/useClientCommunications";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -60,8 +62,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ClientTimeline } from "./ClientTimeline";
 import { AddCommunicationModal } from "./AddCommunicationModal";
 import { CpeList } from "./CpeList";
+import { ClientCertificateHistoryCard } from "./ClientCertificateHistoryCard";
+import { ClientDocumentsCard } from "./ClientDocumentsCard";
+import { ClientPeopleCard } from "./ClientPeopleCard";
+import { ClientSourceMetadataCard } from "./ClientSourceMetadataCard";
+import { RenewClientCertificateModal } from "./RenewClientCertificateModal";
 import type { CrmClient } from "@/types/clients";
 import type { CommunicationType, CommunicationDirection } from "@/types/communications";
+import type { ClientCertificateHistoryRow } from "@/lib/client-certificate";
 
 interface ClientDetailsDrawerProps {
   client: CrmClient | null;
@@ -99,12 +107,17 @@ export function ClientDetailsDrawer({
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
   const { data: cpes = [] } = useCpes(isTelecom ? client?.id : null);
+  const clientPeople = useClientPeopleRoles(isP2G && open ? client?.id ?? null : null);
   const CpeIcon = isTelecom ? Zap : Router;
 
   const [showAddCommunication, setShowAddCommunication] = useState(false);
   const [defaultCommType, setDefaultCommType] = useState<CommunicationType>('note');
   const [defaultCommDirection, setDefaultCommDirection] = useState<CommunicationDirection>('outbound');
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [renewCertificateVersion, setRenewCertificateVersion] = useState<ClientCertificateHistoryRow | null>(null);
+  const [showCertificateRenewal, setShowCertificateRenewal] = useState(false);
+  const [documentUploadRequest, setDocumentUploadRequest] = useState(0);
+  const documentsSectionRef = useRef<HTMLDivElement>(null);
 
   const getTeamMemberName = (userId: string | null | undefined) => {
     if (!userId) return null;
@@ -141,6 +154,12 @@ export function ClientDetailsDrawer({
     setIsEditingNotes(false);
   };
 
+  const handleDocumentsShortcut = () => {
+    if (canEditClient) setDocumentUploadRequest((current) => current + 1);
+    documentsSectionRef.current?.scrollIntoView({ block: 'start' });
+    documentsSectionRef.current?.focus({ preventScroll: true });
+  };
+
   const statusStyle = {
     active: { bg: 'bg-success/10', text: 'text-success', border: 'border-success/20' },
     inactive: { bg: 'bg-muted', text: 'text-muted-foreground', border: 'border-muted' },
@@ -175,12 +194,20 @@ export function ClientDetailsDrawer({
               <FileText className="h-5 w-5 text-primary" />
               Detalhes do {labels.singular} #{client.code}
             </DialogTitle>
-            {canEditClient && (
-              <Button variant="outline" size="sm" onClick={() => onEdit(client)}>
-                <Edit className="h-4 w-4 mr-1" />
-                Editar ficha
-              </Button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {isP2G && (
+                <Button type="button" variant="outline" size="sm" onClick={handleDocumentsShortcut}>
+                  <Files className="mr-1 h-4 w-4" aria-hidden="true" />
+                  Documentos
+                </Button>
+              )}
+              {canEditClient && (
+                <Button type="button" variant="outline" size="sm" onClick={() => onEdit(client)}>
+                  <Edit className="h-4 w-4 mr-1" />
+                  Editar ficha
+                </Button>
+              )}
+            </div>
           </div>
           <DialogDescription className="sr-only">Detalhes do cliente {client.name}</DialogDescription>
         </DialogHeader>
@@ -257,7 +284,9 @@ export function ClientDetailsDrawer({
                   </CardContent>
                 </Card>
 
-                {isP2G && decisionMakers.length > 0 && (
+                {isP2G && (clientPeople.data?.length ?? 0) > 0 && <ClientPeopleCard rows={clientPeople.data ?? []} />}
+
+                {isP2G && (clientPeople.data?.length ?? 0) === 0 && decisionMakers.length > 0 && (
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
@@ -292,6 +321,28 @@ export function ClientDetailsDrawer({
                       ))}
                     </CardContent>
                   </Card>
+                )}
+
+                {isP2G && <ClientCertificateHistoryCard
+                  clientId={client.id}
+                  onRenew={canEditClient ? currentVersion => {
+                    setRenewCertificateVersion(currentVersion);
+                    setShowCertificateRenewal(true);
+                  } : undefined}
+                />}
+
+                {isP2G && (
+                  <div
+                    ref={documentsSectionRef}
+                    tabIndex={-1}
+                    className="scroll-mt-4 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <ClientDocumentsCard
+                      clientId={client.id}
+                      canManage={canEditClient}
+                      openUploadRequest={documentUploadRequest}
+                    />
+                  </div>
                 )}
 
                 {/* Empresa */}
@@ -346,6 +397,8 @@ export function ClientDetailsDrawer({
                     )}
                   </CardContent>
                 </Card>
+
+                {isP2G && <ClientSourceMetadataCard value={client.source_metadata} />}
 
                 {/* CPEs - Telecom only */}
                 {showEnergy && (
@@ -670,6 +723,12 @@ export function ClientDetailsDrawer({
       proposal={selectedProposal}
       open={!!selectedProposal}
       onOpenChange={(open) => { if (!open) setSelectedProposal(null); }}
+    />
+    <RenewClientCertificateModal
+      target={{ id: client.id, name: client.name }}
+      currentVersion={renewCertificateVersion}
+      open={showCertificateRenewal}
+      onOpenChange={setShowCertificateRenewal}
     />
   </>
   );

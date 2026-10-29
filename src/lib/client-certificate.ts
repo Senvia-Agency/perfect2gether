@@ -1,6 +1,17 @@
 import { z } from 'zod';
+import type { Json } from '@/integrations/supabase/types';
 
 export const CRC_PATTERN = /^\d{4}-\d{4}-\d{4}$/;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function isJson(value: unknown): value is Json {
+  if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) return true;
+  if (Array.isArray(value)) return value.every(isJson);
+  if (typeof value !== 'object') return false;
+  return Object.values(value).every(item => item === undefined || isJson(item));
+}
+
+export const jsonValueSchema = z.custom<Json>(isJson);
 export const certificateSchema = z.object({
   nipc: z.string().regex(/^\d{9}$/),
   denominacao: z.string().trim().min(1),
@@ -10,6 +21,57 @@ export const certificateSchema = z.object({
   erro: z.string().nullable().optional(),
 });
 export type ClientCertificate = z.infer<typeof certificateSchema>;
+export type ClientCertificateRenewalTarget = {
+  readonly id: string;
+  readonly name: string;
+};
+
+export const clientCertificateHistoryRowSchema = z.object({
+  version_id: z.string().uuid(),
+  organization_id: z.string().uuid(),
+  client_id: z.string().uuid(),
+  crc_code: z.string().regex(CRC_PATTERN).nullable(),
+  certificate_data: jsonValueSchema.nullable(),
+  valid_from: z.string().regex(ISO_DATE_PATTERN).nullable(),
+  valid_until: z.string().regex(ISO_DATE_PATTERN).nullable(),
+  source: z.enum(['legacy', 'manual', 'crc_lookup']),
+  source_metadata: jsonValueSchema,
+  recorded_by: z.string().uuid().nullable(),
+  recorded_at: z.string().datetime({ offset: true }),
+  is_current: z.boolean(),
+});
+export type ClientCertificateHistoryRow = z.infer<typeof clientCertificateHistoryRowSchema>;
+export type ClientCertificateValidity = 'valid' | 'expired' | 'unknown';
+
+const caeSchema = z.object({
+  principal: z.string().trim().min(1),
+  secundarios: z.array(z.string().trim().min(1)),
+});
+const clientOriginSchema = z.object({
+  lead_id: z.string().uuid(),
+  lead_source: z.string().trim().min(1).optional(),
+  prospect_id: z.string().uuid().optional(),
+  source_file_name: z.string().trim().min(1).optional(),
+  source_portal: z.string().trim().min(1).optional(),
+  publication_date: z.string().regex(ISO_DATE_PATTERN).optional(),
+});
+export const clientSourceMetadataSchema = z.object({
+  lead_source: z.string().trim().min(1).optional(),
+  prospect_id: z.string().uuid().optional(),
+  source_file_name: z.string().trim().min(1).optional(),
+  source_portal: z.string().trim().min(1).optional(),
+  publication_date: z.string().regex(ISO_DATE_PATTERN).optional(),
+  cae: caeSchema.optional(),
+  cae_source: z.string().trim().min(1).optional(),
+  cae_review: z.object({
+    incoming: caeSchema,
+    source_portal: z.string().trim().min(1).optional(),
+    publication_date: z.string().regex(ISO_DATE_PATTERN).optional(),
+    lead_id: z.string().uuid().optional(),
+  }).optional(),
+  origins: z.array(clientOriginSchema).optional(),
+}).passthrough();
+export type ClientSourceMetadata = z.infer<typeof clientSourceMetadataSchema>;
 export const certificateImportPhaseSchema = z.enum(['QUEUED', 'EXTRACTING']);
 export type CertificateImportPhase = z.infer<typeof certificateImportPhaseSchema>;
 
@@ -64,8 +126,25 @@ export function parseStoredCertificate(value: unknown): ClientCertificate | null
   return result.success ? result.data : null;
 }
 
-export function certificateRequired(isP2g: boolean) {
-  return isP2g;
+export function parseCertificateHistory(value: unknown): ClientCertificateHistoryRow[] {
+  return z.array(clientCertificateHistoryRowSchema).parse(value);
+}
+
+export function parseClientSourceMetadata(value: unknown): ClientSourceMetadata | null {
+  const result = clientSourceMetadataSchema.safeParse(value);
+  return result.success ? result.data : null;
+}
+
+export function certificateValidity(
+  validUntil: string | null,
+  todayIsoDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Lisbon' }),
+): ClientCertificateValidity {
+  if (!validUntil || !ISO_DATE_PATTERN.test(validUntil) || !ISO_DATE_PATTERN.test(todayIsoDate)) return 'unknown';
+  return validUntil < todayIsoDate ? 'expired' : 'valid';
+}
+
+export function certificateRequired(_isP2g: boolean): boolean {
+  return false;
 }
 
 

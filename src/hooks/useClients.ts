@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { getLeadCpes, buildLeadCpesPatch } from '@/lib/leadUtils';
 import { isPerfect2GetherOrg } from '@/lib/perfect2gether';
 import type { CrmClient, ClientStatus } from '@/types/clients';
-import type { DecisionMaker } from '@/lib/decision-makers';
+import type { ClientPersonRolePayload, DecisionMaker } from '@/lib/decision-makers';
+import { clientPeoplePayloadJson, compactClientPatch, parseClientMutationResult } from '@/hooks/useClientEdpData';
 import type { Json } from '@/integrations/supabase/types';
 
 export function useClients() {
@@ -95,6 +96,35 @@ interface CreateClientData {
   postal_code?: string;
   country?: string;
   assigned_to?: string;
+  people?: readonly ClientPersonRolePayload[];
+}
+
+function createClientPatch(data: CreateClientData): Json {
+  return compactClientPatch({
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    company: data.company,
+    nif: data.nif,
+    company_nif: data.company_nif,
+    crc_code: data.crc_code,
+    certificate_data: data.certificate_data,
+    certificate_checked_at: data.certificate_checked_at,
+    distrito: data.distrito,
+    conselho: data.conselho,
+    grupo_economico: data.grupo_economico,
+    billing_target: data.billing_target,
+    status: data.status,
+    source: data.source,
+    notes: data.notes,
+    lead_id: data.lead_id,
+    address_line1: data.address_line1,
+    address_line2: data.address_line2,
+    city: data.city,
+    postal_code: data.postal_code,
+    country: data.country,
+    assigned_to: data.assigned_to,
+  });
 }
 
 export function useCreateClient() {
@@ -106,10 +136,20 @@ export function useCreateClient() {
     mutationFn: async (data: CreateClientData) => {
       if (!organizationId) throw new Error('No organization');
 
+      if (data.people !== undefined) {
+        const { data: client, error } = await supabase.rpc('create_client_with_people', {
+          p_client_patch: createClientPatch(data),
+          p_people: clientPeoplePayloadJson(data.people),
+        });
+        if (error) throw error;
+        return parseClientMutationResult(client, 'criar o cliente');
+      }
+
+      const { people: _people, ...clientData } = data;
       const { data: client, error } = await supabase
         .from('crm_clients')
         .insert({
-          ...data,
+          ...clientData,
           organization_id: organizationId,
           status: data.status || 'active',
         })
