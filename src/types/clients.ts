@@ -39,6 +39,7 @@ export interface CrmClient {
   
   status: ClientStatus;
   source?: string | null;
+  source_metadata?: Json;
   notes?: string | null;
   
   total_proposals: number;

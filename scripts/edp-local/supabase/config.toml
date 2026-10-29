@@ -1,0 +1,55 @@
+project_id = "p2g-edp-local"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+admin_email = "admin@p2g.local"
+sender_name = "P2G Local"
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+inspector_port = 8083
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:8080"
+additional_redirect_urls = ["http://127.0.0.1:8080/**", "http://localhost:8080/**"]
+enable_signup = true
+enable_anonymous_sign_ins = false
+jwt_expiry = 3600
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+double_confirm_changes = false
+
+[auth.email.smtp]
+host = "inbucket"
+port = 2500
+admin_email = "admin@p2g.local"
+sender_name = "P2G Local"
+
+[analytics]
+enabled = false

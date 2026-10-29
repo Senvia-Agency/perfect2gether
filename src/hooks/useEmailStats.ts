@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { subDays, format } from 'date-fns';
 
 type Period = '7d' | '30d' | '90d';
-type SourceFilter = 'all' | 'campaign' | 'automation';
+type SourceFilter = 'all' | 'campaign' | 'automation' | 'edp';
 
 function getPeriodStart(period: Period): string {
   const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
@@ -45,6 +45,8 @@ export function useEmailStats(
         } else {
           query = query.or('automation_id.not.is.null,template_automation_id.not.is.null');
         }
+      } else if (source === 'edp') {
+        query = query.eq('origin', 'edp');
       }
 
       const { data, error } = await query;

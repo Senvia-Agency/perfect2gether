@@ -1,0 +1,4 @@
+.env.local
+supabase/.temp/
+supabase/migrations/
+supabase/functions/

@@ -3,15 +3,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { emptyDecisionMaker, isDecisionMakerEmailValid, type DecisionMaker } from "@/lib/decision-makers";
+import { Badge } from "@/components/ui/badge";
+import {
+  emptyDecisionMaker,
+  isDecisionMakerEmailValid,
+  isUnchangedLegacyDecisionMaker,
+  type DecisionMaker,
+} from "@/lib/decision-makers";
 
 interface DecisionMakersFieldsProps {
-  idPrefix: string;
-  value: DecisionMaker[];
-  onChange: (value: DecisionMaker[]) => void;
+  readonly idPrefix: string;
+  readonly value: DecisionMaker[];
+  readonly original?: readonly DecisionMaker[];
+  readonly onChange: (value: DecisionMaker[]) => void;
 }
 
-export function DecisionMakersFields({ idPrefix, value, onChange }: DecisionMakersFieldsProps) {
+export function DecisionMakersFields({ idPrefix, value, original = [], onChange }: DecisionMakersFieldsProps) {
   const update = (index: number, field: keyof DecisionMaker, text: string) =>
     onChange(value.map((item, i) => (i === index ? { ...item, [field]: text } : item)));
   const remove = (index: number) => onChange(value.filter((_, i) => i !== index));
@@ -25,14 +32,19 @@ export function DecisionMakersFields({ idPrefix, value, onChange }: DecisionMake
           {value.length} {value.length === 1 ? "decisor" : "decisores"}
         </span>
       </div>
+      <p className="text-xs text-muted-foreground">Cada decisor precisa de nome, telefone e email. O NIF permite reutilizar a mesma pessoa como gerente legal.</p>
 
       {value.map((item, index) => {
         const id = `${idPrefix}-decision-maker-${index}`;
         const emailInvalid = !isDecisionMakerEmailValid(item.email);
+        const unchangedLegacy = isUnchangedLegacyDecisionMaker(item, index, original);
         return (
-          <fieldset key={index} aria-label={`Decisor ${index + 1}`} className="space-y-3 rounded-lg border p-3">
+          <fieldset key={item.id ?? index} aria-label={`Decisor ${index + 1}`} className="space-y-3 rounded-lg border p-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Decisor {index + 1}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium">Decisor {index + 1}</p>
+                {unchangedLegacy && <Badge variant="secondary" className="text-xs">Legado incompleto</Badge>}
+              </div>
               {value.length > 1 && (
                 <Button
                   type="button"
@@ -67,22 +79,34 @@ export function DecisionMakersFields({ idPrefix, value, onChange }: DecisionMake
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Telefone</Label>
+                <Label htmlFor={`${id}-nif`}>NIF</Label>
+                <Input
+                  id={`${id}-nif`}
+                  inputMode="numeric"
+                  value={item.nif ?? ""}
+                  onChange={(e) => update(index, "nif", e.target.value)}
+                  placeholder="NIF da pessoa"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Telefone *</Label>
                 <PhoneInput value={item.phone} onChange={(phone) => update(index, "phone", phone)} placeholder="912 345 678" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`${id}-email`}>Email</Label>
+                <Label htmlFor={`${id}-email`}>Email *</Label>
                 <Input
                   id={`${id}-email`}
                   type="email"
                   value={item.email}
                   onChange={(e) => update(index, "email", e.target.value)}
                   placeholder="email@exemplo.pt"
-                  aria-invalid={emailInvalid}
+                  required={!unchangedLegacy}
+                  aria-invalid={emailInvalid || (!unchangedLegacy && !item.email.trim())}
                 />
-                {emailInvalid && <p className="text-xs text-destructive">Email inválido.</p>}
+                {emailInvalid && <p className="text-xs text-destructive">Introduza um email válido.</p>}
               </div>
             </div>
+            {unchangedLegacy && <p className="text-xs text-muted-foreground">Pode guardar alterações noutros campos. Se editar este decisor, complete o telefone e o email.</p>}
           </fieldset>
         );
       })}
