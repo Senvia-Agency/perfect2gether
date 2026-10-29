@@ -166,7 +166,9 @@ export function useCreateClient() {
     },
     onError: (error) => {
       console.error('Error creating client:', error);
-      toast.error('Erro ao criar cliente');
+      // Mostrar a causa (ex.: permissão, validação da BD) em vez de só a mensagem genérica.
+      const detail = error && typeof error === 'object' && 'message' in error && typeof error.message === 'string' ? error.message : undefined;
+      toast.error('Erro ao criar cliente', detail ? { description: detail } : undefined);
     },
   });
 }

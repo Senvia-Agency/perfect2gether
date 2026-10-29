@@ -24,6 +24,8 @@ import { toEdpApiError } from "./api-errors";
 
 export type EdpDocumentUploadInput = {
   readonly clientId: string;
+  /** Documento existente: o ficheiro entra como nova versão em vez de criar outro documento. */
+  readonly documentId?: string;
   readonly personId: string | null;
   readonly category: string;
   readonly label: string;
@@ -77,6 +79,7 @@ export async function uploadEdpDocument(input: EdpDocumentUploadInput): Promise<
   const body = new FormData();
   body.set("action", "upload");
   body.set("client_id", input.clientId);
+  if (input.documentId) body.set("document_id", input.documentId);
   if (input.personId) body.set("person_id", input.personId);
   body.set("category", input.category);
   body.set("label", input.label);

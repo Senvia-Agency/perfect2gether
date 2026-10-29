@@ -8,6 +8,7 @@ import {
   MODULE_SCHEMA,
   SystemKey,
 } from '@/hooks/useOrganizationProfiles';
+import { isEdpWorkflowActor } from '@/lib/edp-permissions';
 
 const FULL_PERMISSIONS = buildAllPermissions(true);
 
@@ -25,12 +26,16 @@ export function usePermissions() {
       
       const { data: member } = await supabase
         .from('organization_members')
-        .select('profile_id')
+        .select('profile_id, role, is_active')
         .eq('user_id', user.id)
         .eq('organization_id', organization.id)
         .single();
-      
-      if (!member?.profile_id) return null;
+
+      if (!member) return null;
+      const membership = { memberRole: member.role as string, memberActive: member.is_active, hasProfile: member.profile_id !== null };
+      if (!member.profile_id) {
+        return { ...membership, permissions: null, dataScope: null, systems: ['p2g'] as SystemKey[], dashboardWidgets: null, profileName: null, baseRole: null };
+      }
 
       const { data: profile } = await supabase
         .from('organization_profiles')
@@ -41,6 +46,7 @@ export function usePermissions() {
       if (!profile) return null;
       const p = profile as any;
       return {
+        ...membership,
         permissions: p.module_permissions ? convertLegacyToGranular(p.module_permissions) : null,
         dataScope: p.data_scope as string | null,
         systems: (p.systems as SystemKey[]) || ['p2g'],
@@ -56,6 +62,7 @@ export function usePermissions() {
   const isBackOffice = profileData?.profileName === 'Back Office';
   // Admin pelo perfil (base_role) sem o papel global 'admin' em user_roles
   const isProfileAdmin = profileData?.baseRole === 'admin';
+  const canManageClientDocuments = isEdpWorkflowActor(isAdmin, profileData ?? null);
   const dataScope: 'own' | 'team' | 'all' = isSuperAdmin || isAdmin
     ? 'all'
     : (profileData?.dataScope as 'own' | 'team' | 'all') || 'own';
@@ -100,6 +107,7 @@ export function usePermissions() {
     isAdmin,
     isProfileAdmin,
     isBackOffice,
+    isEdpWorkflowActor: canManageClientDocuments,
     isViewer,
     isSuperAdmin,
     dataScope,

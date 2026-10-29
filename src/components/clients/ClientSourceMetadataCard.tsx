@@ -23,7 +23,7 @@ export function ClientSourceMetadataCard({ value }: ClientSourceMetadataCardProp
         <CardTitle className="flex items-center gap-2 text-base">
           <Building2 className="h-4 w-4" />
           Origem e atividade
-          {metadata.cae_review && <Badge variant="outline" className="ml-auto border-warning/40 bg-warning/10 text-warning-foreground">Revisão necessária</Badge>}
+          {metadata.cae_review && <Badge variant="outline" className="ml-auto border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300">Revisão necessária</Badge>}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -56,9 +56,9 @@ export function ClientSourceMetadataCard({ value }: ClientSourceMetadataCardProp
         )}
 
         {metadata.cae_review && (
-          <section role="alert" className="space-y-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+          <section role="alert" className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/15 p-3 text-sm">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-800 dark:text-amber-300" />
               <div className="space-y-1">
                 <p className="font-medium">CAE recebido não aplicado automaticamente</p>
                 <p className="text-muted-foreground">O CAE atual foi preservado. Compare antes de aplicar o CAE {metadata.cae_review.incoming.principal}.</p>

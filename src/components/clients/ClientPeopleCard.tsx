@@ -45,13 +45,37 @@ function PersonRow({ row }: { readonly row: ClientPersonRoleRow }) {
           <a href={`mailto:${row.email}`} className="break-all text-primary hover:underline">{row.email}</a>
         </div>
       )}
-      {row.role === "decision_maker" && !row.is_complete && <p className="text-xs text-warning-foreground">Contacto legado incompleto.</p>}
+      {row.role === "decision_maker" && !row.is_complete && <p className="text-xs text-amber-800 dark:text-amber-300">Contacto legado incompleto.</p>}
     </div>
   );
 }
 
-export function ClientPeopleCard({ rows }: ClientPeopleCardProps) {
+function PeopleByRole({ rows }: ClientPeopleCardProps) {
+  return (
+    <>
+      {clientPersonRoles.map(role => {
+        const people = rows.filter(row => row.role === role);
+        if (people.length === 0) return null;
+        return (
+          <section key={role} className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-medium">{roleLabels[role]}</h3>
+              <Badge variant="secondary" className="text-xs">{people.length}</Badge>
+            </div>
+            <div className="space-y-2">
+              {people.map(row => <PersonRow key={`${row.person_id}-${row.role}`} row={row} />)}
+            </div>
+          </section>
+        );
+      })}
+    </>
+  );
+}
+
+export function ClientPeopleCard({ rows, embedded = false }: ClientPeopleCardProps & { readonly embedded?: boolean }) {
   if (rows.length === 0) return null;
+  // Embebido: só a lista por papel, para caber dentro de outro cartão.
+  if (embedded) return <div className="space-y-5"><PeopleByRole rows={rows} /></div>;
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -61,21 +85,7 @@ export function ClientPeopleCard({ rows }: ClientPeopleCardProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        {clientPersonRoles.map(role => {
-          const people = rows.filter(row => row.role === role);
-          if (people.length === 0) return null;
-          return (
-            <section key={role} className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-medium">{roleLabels[role]}</h3>
-                <Badge variant="secondary" className="text-xs">{people.length}</Badge>
-              </div>
-              <div className="space-y-2">
-                {people.map(row => <PersonRow key={`${row.person_id}-${row.role}`} row={row} />)}
-              </div>
-            </section>
-          );
-        })}
+        <PeopleByRole rows={rows} />
       </CardContent>
     </Card>
   );

@@ -26,7 +26,11 @@ export function parseLocalizedNumber(value: string): number {
  * Format date to PT-PT format (DD/MM/YYYY)
  */
 export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  // "YYYY-MM-DD" é lido pelo Date como meia-noite UTC, o que mostra o dia anterior em fusos negativos (Açores).
+  const dateOnly = typeof date === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(date) : null;
+  const d = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleDateString('pt-PT', {
     day: '2-digit',
     month: '2-digit',

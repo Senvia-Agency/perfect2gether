@@ -52,7 +52,7 @@ export function AppSidebar({
 
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 h-dvh w-64 p2g-navigation border-r shadow-[4px_0_24px_-20px_rgba(67,40,119,0.2)]">
+      <aside className="pointer-events-auto fixed left-0 top-0 z-40 h-dvh w-64 p2g-navigation border-r shadow-[4px_0_24px_-20px_rgba(67,40,119,0.2)]">
         <div className="flex h-full flex-col">
           <div className="flex h-[76px] shrink-0 items-center px-6">
             <img
