@@ -44,6 +44,7 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState<CrmClient | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
+  const [returnToDetails, setReturnToDetails] = useState(false);
   const [filters, setFilters] = usePersistedState<ClientFiltersState>("clients-filters-v3", defaultFilters);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -133,9 +134,30 @@ export default function Clients() {
 
   const handleEdit = (client: CrmClient) => {
     setSelectedClient(client);
+    setReturnToDetails(false);
     setShowDetailsDrawer(false);
     setShowEditModal(true);
   };
+
+  // Editar a partir da ficha: ao fechar a edição volta-se à ficha, não à lista.
+  const handleEditFromDetails = (client: CrmClient) => {
+    handleEdit(client);
+    setReturnToDetails(true);
+  };
+
+  const handleEditModalChange = (open: boolean) => {
+    setShowEditModal(open);
+    if (!open && returnToDetails) {
+      setReturnToDetails(false);
+      setShowDetailsDrawer(true);
+    }
+  };
+
+  // A ficha lê o cliente da lista para refletir logo o que foi guardado na edição.
+  const detailsClient = useMemo(
+    () => clients?.find((client) => client.id === selectedClient?.id) ?? selectedClient,
+    [clients, selectedClient],
+  );
 
   const handleView = (client: CrmClient) => {
     setSelectedClient(client);
@@ -483,14 +505,14 @@ export default function Clients() {
       <EditClientModal
         client={selectedClient}
         open={showEditModal}
-        onOpenChange={setShowEditModal}
+        onOpenChange={handleEditModalChange}
       />
 
       <ClientDetailsDrawer
-        client={selectedClient}
+        client={detailsClient}
         open={showDetailsDrawer}
         onOpenChange={setShowDetailsDrawer}
-        onEdit={handleEdit}
+        onEdit={handleEditFromDetails}
         onNewProposal={(client) => {
           setProposalClientId(client.id);
           setShowCreateProposal(true);

@@ -18,7 +18,7 @@ export function MobileHeader({
   const { organization } = useAuth();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[60] p2g-navigation border-b safe-top">
+    <header className="pointer-events-auto fixed top-0 left-0 right-0 z-[60] p2g-navigation border-b safe-top">
       <div className="h-14 flex items-center justify-between gap-2 px-3">
         <Button variant="ghost" size="icon" onClick={onMenuToggle} className="rounded-xl bg-violet-50 text-violet-600 hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-300" aria-label="Abrir menu">
           <Menu className="h-5 w-5" />

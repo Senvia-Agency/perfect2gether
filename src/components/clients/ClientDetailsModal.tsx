@@ -47,7 +47,7 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
   const isP2G = isPerfect2GetherOrg(organization?.id);
   const { modules } = useModules();
   const showEnergy = isTelecom && modules.energy;
-  const { can } = usePermissions();
+  const { can, isEdpWorkflowActor } = usePermissions();
   const canEditClient = can('clients', 'list', 'edit');
   const [documentUploadRequest, setDocumentUploadRequest] = useState(0);
   const documentsSectionRef = useRef<HTMLDivElement>(null);
@@ -55,7 +55,7 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
   if (!client) return null;
 
   const handleDocumentsShortcut = () => {
-    if (canEditClient) setDocumentUploadRequest((current) => current + 1);
+    if (isEdpWorkflowActor) setDocumentUploadRequest((current) => current + 1);
     documentsSectionRef.current?.scrollIntoView({ block: 'start' });
     documentsSectionRef.current?.focus({ preventScroll: true });
   };
@@ -248,7 +248,7 @@ export function ClientDetailsModal({ client, open, onOpenChange, onEdit }: Clien
               >
                 <ClientDocumentsCard
                   clientId={client.id}
-                  canManage={canEditClient}
+                  canManage={isEdpWorkflowActor}
                   openUploadRequest={documentUploadRequest}
                 />
               </div>

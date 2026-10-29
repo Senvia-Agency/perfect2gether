@@ -40,7 +40,8 @@ export function prepareClientDocumentUploadMetadata(
 ): { readonly category: ClientDocumentCategory; readonly label: string; readonly side: EdpDocumentSide } {
   return {
     category: input.category,
-    label: input.customLabel.trim() || input.fileName.trim() || input.category,
+    // O servidor aceita nomes até 200 caracteres; nomes de ficheiro maiores eram rejeitados.
+    label: (input.customLabel.trim() || input.fileName.trim() || input.category).slice(0, 200),
     side: input.category === 'CC' ? input.side : 'single',
   };
 }
@@ -194,4 +195,82 @@ export function clientDocumentValidity(version: Pick<
 
 export function clientDocumentSideLabel(side: EdpDocumentSide): string {
   return SIDE_LABELS[side];
+}
+
+export const REQUIRED_CLIENT_DOCUMENT_CATEGORIES = ['CC', 'Comprovativo de morada', 'CRC', 'Fatura'] as const satisfies readonly ClientDocumentCategory[];
+export type RequiredClientDocumentCategory = (typeof REQUIRED_CLIENT_DOCUMENT_CATEGORIES)[number];
+
+export type ClientDocumentDateStatus = 'valid' | 'expiring' | 'expired' | 'unknown';
+export type ClientDocumentRequirementStatus = ClientDocumentDateStatus | 'missing' | 'partial';
+
+export type ClientDocumentRequirement = {
+  readonly category: RequiredClientDocumentCategory;
+  readonly status: ClientDocumentRequirementStatus;
+  readonly document: ClientDocumentArchiveItem | null;
+  readonly version: EdpDocumentVersion | null;
+  readonly validUntil: string | null;
+  readonly missingSide: 'front' | 'back' | null;
+};
+
+const EXPIRING_WINDOW_DAYS = 30;
+
+export function lisbonToday(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Lisbon' });
+}
+
+function addDays(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+export function clientDocumentDateStatus(validUntil: string | null, today: string): ClientDocumentDateStatus {
+  if (!validUntil) return 'unknown';
+  if (validUntil < today) return 'expired';
+  if (validUntil <= addDays(today, EXPIRING_WINDOW_DAYS)) return 'expiring';
+  return 'valid';
+}
+
+/** Estado de um documento obrigatório, a partir da versão mais recente dos documentos ativos dessa categoria. */
+export function summarizeClientDocumentRequirement(
+  category: RequiredClientDocumentCategory,
+  documents: readonly ClientDocumentArchiveItem[],
+  today: string,
+): ClientDocumentRequirement {
+  const candidates = documents
+    .filter((item) => !item.archivedAt && item.category === category)
+    .flatMap((item) => item.versions.map((version) => ({ item, version })))
+    .sort((left, right) => right.version.created_at.localeCompare(left.version.created_at));
+  const latest = candidates[0];
+  if (!latest) return { category, status: 'missing', document: null, version: null, validUntil: null, missingSide: null };
+
+  let missingSide: 'front' | 'back' | null = null;
+  let current = [latest];
+  if (category === 'CC') {
+    // O cartão é de uma pessoa: só contam as faces dessa pessoa, e uma face antiga não completa um cartão novo.
+    const owned = candidates.filter(({ item }) => item.personId === latest.item.personId);
+    const single = owned.find(({ version }) => version.side === 'single');
+    const newerThanSingle = (side: EdpDocumentSide) =>
+      owned.find(({ version }) => version.side === side && (!single || version.created_at > single.version.created_at));
+    const front = newerThanSingle('front');
+    const back = newerThanSingle('back');
+    if (front || back) {
+      missingSide = !front ? 'front' : !back ? 'back' : null;
+      current = [front, back].filter((candidate) => candidate !== undefined);
+    }
+  }
+  // A data sugerida só é fiável onde a única data futura impressa é a validade (CC, certidão);
+  // numa fatura costuma ser o prazo de pagamento.
+  const trustsSuggestion = category === 'CC' || category === 'CRC';
+  const validUntil = current
+    .map(({ version }) => (trustsSuggestion ? clientDocumentValidity(version).date : version.validity_confirmed_on))
+    .find((date) => date !== null) ?? null;
+  return {
+    category,
+    status: missingSide ? 'partial' : clientDocumentDateStatus(validUntil, today),
+    document: latest.item,
+    version: latest.version,
+    validUntil,
+    missingSide,
+  };
 }

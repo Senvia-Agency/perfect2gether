@@ -28,7 +28,8 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
   overlayClassName,
   ...props
 }, ref) => <DialogPortal>
-    <DialogOverlay className={overlayClassName} />
+    {/* Ecrã inteiro: o overlay não cobre a barra lateral, que continua clicável (pointer-events-auto no AppSidebar). */}
+    <DialogOverlay className={cn(variant === "fullScreen" && "md:left-64", overlayClassName)} />
     <DialogPrimitive.Content
       ref={ref}
       onOpenAutoFocus={(e) => {
