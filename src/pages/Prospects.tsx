@@ -1,4 +1,5 @@
 import { ApiCreditsButton } from '@/components/ApiCreditsButton';
+import { API_EXTRACTIONS_BLOCKED } from '@/lib/api-extraction-credits';
 import { useProspectCompanyFilters } from '@/hooks/useProspectCompanyFilters';
 import { ProspectCompanyFilters } from '@/components/prospects/ProspectCompanyFilters';
 import { useProspectSort } from '@/hooks/useProspectSort';
@@ -238,9 +239,24 @@ export default function Prospects() {
                   <Upload className="mr-2 h-4 w-4" />
                   Importar
                 </Button>
-                <ApiCreditsButton>
-                  <Sparkles className="mr-2 h-4 w-4" />Publicações MJ
-                </ApiCreditsButton>
+                {API_EXTRACTIONS_BLOCKED ? (
+                  <ApiCreditsButton>
+                    <Sparkles className="mr-2 h-4 w-4" />Publicações MJ
+                  </ApiCreditsButton>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setMjProgress(MJ_INITIAL_PROGRESS);
+                      generateMj.mutate(setMjProgress);
+                    }}
+                    disabled={generateMj.isPending}
+                    title="Publicações comerciais de ontem em publicacoes.mj.pt, em todos os distritos. Corre também automaticamente todos os dias às 06:00."
+                  >
+                    {generateMj.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                    {generateMj.isPending ? "A pesquisar no MJ…" : "Publicações MJ"}
+                  </Button>
+                )}
               </>
             )
           ) : (
