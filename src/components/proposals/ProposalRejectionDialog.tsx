@@ -63,7 +63,7 @@ export function ProposalRejectionDialog({ proposal, open, onOpenChange, onSucces
                 <div className="space-y-2"><Label htmlFor="rejection-end">Fim *</Label><Input id="rejection-end" type="datetime-local" required value={form.end} onChange={event => setField('end', event.target.value)} /></div>
               </div>
               <div className="space-y-2"><Label htmlFor="rejection-link">Link da reunião (opcional)</Label><Input id="rejection-link" type="url" value={form.meetingLink} onChange={event => setField('meetingLink', event.target.value)} placeholder="https://…" /></div>
-              <p className="text-xs text-muted-foreground">A reunião ficará na sua agenda, associada a esta proposta.</p>
+              <p className="text-xs text-muted-foreground">A reunião ficará na sua agenda com o nome e o NIF da empresa e um lembrete ativo de 15 minutos.</p>
             </div>
           </fieldset>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
