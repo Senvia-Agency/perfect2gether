@@ -136,7 +136,7 @@ export function TeamPerformanceTable() {
     enabled: !!orgId && memberIds.length > 0,
   });
 
-  const { data: salesData, isLoading: salesLoading } = useQuery({
+  const { data: salesData = [], isLoading: salesLoading } = useQuery({
     queryKey: ["team-perf-sales", orgId, monthStart, monthEnd, memberIds],
     queryFn: async () => {
       if (!orgId || memberIds.length === 0) return [];
