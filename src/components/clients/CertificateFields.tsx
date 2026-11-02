@@ -1,11 +1,13 @@
 import { ApiCreditsButton } from '@/components/ApiCreditsButton';
-import { Check, FileText, RefreshCw, Search } from 'lucide-react';
+import { API_EXTRACTIONS_BLOCKED } from '@/lib/api-extraction-credits';
+import { Check, FileText, Loader2, RefreshCw, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
+  CRC_PATTERN,
   formatCertificateElapsed,
   type CertificateImportPhase,
   type ClientCertificate,
@@ -37,7 +39,7 @@ export function CertificateFields(props: CertificateFieldsProps) {
   const {
     idPrefix, code, required, data, checkedAt, pending, phase, startedAt, elapsedMs,
     error, notice, canResume, storageUnavailable, disabled, readOnly = false,
-    onCodeChange, onApply, onRenew,
+    onCodeChange, onLookup, onApply, onRenew,
   } = props;
   const stage = phase === 'EXTRACTING' ? 'A extrair dados oficiais' : 'Pedido em fila';
   return <Card>
@@ -51,10 +53,15 @@ export function CertificateFields(props: CertificateFieldsProps) {
             onRenew && <Button type="button" variant="outline" disabled={disabled} onClick={onRenew}>
               <RefreshCw className="mr-2 h-4 w-4" />Renovar CRC
             </Button>
-          ) : (
+          ) : API_EXTRACTIONS_BLOCKED ? (
             <ApiCreditsButton disabled={disabled}>
               <Search className="h-4 w-4 mr-2" />Buscar
             </ApiCreditsButton>
+          ) : (
+            <Button type="button" variant="outline" onClick={onLookup} disabled={disabled || pending || storageUnavailable || !CRC_PATTERN.test(code.trim())}>
+              {pending ? <Loader2 className="h-4 w-4 mr-2 animate-spin motion-reduce:animate-none" /> : <Search className="h-4 w-4 mr-2" />}
+              {pending ? 'A importar…' : canResume ? 'Retomar importação' : 'Buscar'}
+            </Button>
           )}
         </div>
         <p id={`${idPrefix}-crc-help`} className="text-xs text-muted-foreground">
