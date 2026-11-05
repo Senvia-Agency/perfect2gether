@@ -18,6 +18,8 @@ import { EditMetricsModal } from "./EditMetricsModal";
 import { PrintCardButton } from "./PrintCardButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
+import { serviceKwp } from "@/lib/service-kwp";
 
 function formatNumber(val: number) {
   return new Intl.NumberFormat("pt-PT", { maximumFractionDigits: 2 }).format(val);
@@ -74,12 +76,12 @@ export function MetricsPanel() {
   const monthEndStr = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
 
   const { data: proposalsRaw = [], isLoading: proposalsLoading, isError: proposalsError } = useQuery({
-    queryKey: ["metrics-proposals-ops", orgId, monthStart],
+    queryKey: ["metrics-proposals-ops", orgId, monthStart, "assigned-v2"],
     queryFn: async () => {
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("proposals")
-        .select("id, created_by, proposal_type, kwp, consumo_anual, comissao, servicos_details, client_id")
+        .select("id, created_by, proposal_type, kwp, consumo_anual, comissao, servicos_details, client_id, client:crm_clients(assigned_to), lead:leads(assigned_to)")
         .eq("organization_id", orgId)
         .gte("proposal_date", monthStart)
         .lte("proposal_date", monthEndStr)
@@ -160,20 +162,21 @@ export function MetricsPanel() {
     return allMemberList;
   }, [allMemberList, dataScope, canFilterByTeam, selectedMemberId, isTeamLeader, teamMemberIds, user?.id]);
 
+  // P2G: proposals often come from the back office, so they belong to the client's consultant (same as Vendas).
+  const isP2G = isPerfect2GetherOrg(orgId);
+
   const ritmoRows: RitmoRow[] = useMemo(() => {
     return filteredMembers.map((m) => {
-      const userProposals = proposalsRaw.filter(p => p.created_by === m.user_id);
-      
+      const userProposals = proposalsRaw.filter(p => (
+        isP2G ? (p.client?.assigned_to ?? p.lead?.assigned_to ?? p.created_by) : p.created_by
+      ) === m.user_id);
+
       const energiaKeys = new Set<string>();
       const solarKeys = new Set<string>();
       let energia = 0, solar = 0, comissao = 0;
       for (const p of userProposals) {
         const cpeTotals = proposalCpeTotals.get(p.id);
-        const serviceDetails = p.servicos_details as Record<string, { kwp?: number }> | null;
-        const serviceKwp = serviceDetails && typeof serviceDetails === "object"
-          ? Object.values(serviceDetails).reduce((sum, product) => sum + (Number(product?.kwp) || 0), 0)
-          : 0;
-        const proposalSolarKwp = Number(p.kwp) || serviceKwp || cpeTotals?.kwp || 0;
+        const proposalSolarKwp = serviceKwp(p.servicos_details, p.kwp) || cpeTotals?.kwp || 0;
         const nif = p.client_id ? clientNifMap.get(p.client_id) : null;
         const dedupeKey = nif || p.client_id;
         if (p.proposal_type === "energia") {
@@ -198,7 +201,7 @@ export function MetricsPanel() {
         comissao,
       };
     });
-  }, [filteredMembers, proposalsRaw, proposalCpeTotals, clientNifMap, user?.id]);
+  }, [filteredMembers, proposalsRaw, proposalCpeTotals, clientNifMap, user?.id, isP2G]);
 
   const sumRitmo = (rows: RitmoRow[]) =>
     rows.reduce((acc, r) => ({

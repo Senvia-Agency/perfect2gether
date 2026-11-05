@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isPerfect2GetherOrg } from "@/lib/perfect2gether";
+import { serviceKwp } from "@/lib/service-kwp";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 
 export interface UserSalesMetrics {
@@ -21,13 +22,13 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
   const monthEnd = format(endOfMonth(ref), "yyyy-MM-dd");
 
   return useQuery({
-    queryKey: ["month-sales-metrics", orgId, monthStart, "assigned-sales-commissions-v3"],
+    queryKey: ["month-sales-metrics", orgId, monthStart, "assigned-sales-commissions-v4"],
     queryFn: async (): Promise<UserSalesMetrics[]> => {
       if (!orgId) return [];
 
       const isP2G = isPerfect2GetherOrg(orgId);
       const salesQuery = supabase.from("sales")
-        .select("id, created_by, proposal_id, client:crm_clients(assigned_to), lead:leads(assigned_to)")
+        .select("id, created_by, proposal_id, proposal_type, servicos_details, kwp, client:crm_clients(assigned_to), lead:leads(assigned_to)")
         .eq("organization_id", orgId)
         .gte("sale_date", monthStart)
         .lte("sale_date", monthEnd);
@@ -70,24 +71,16 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
       if (proposalIds.length > 0) {
         const { data: proposals, error: proposalsError } = await supabase
           .from("proposals")
-          .select("id, proposal_type, negotiation_type, servicos_details")
+          .select("id, proposal_type, negotiation_type, servicos_details, kwp")
           .in("id", proposalIds);
 
         if (proposalsError) throw proposalsError;
         if (proposals) {
           for (const p of proposals) {
-            let totalKwp = 0;
-            const details = p.servicos_details as Record<string, { kwp?: number }> | null;
-            if (details && typeof details === "object") {
-              for (const prod of Object.values(details)) {
-                totalKwp += prod?.kwp || 0;
-              }
-            }
-
             proposalMetricsById.set(p.id, {
               proposalType: p.proposal_type,
               negotiationType: p.negotiation_type,
-              solar: totalKwp,
+              solar: serviceKwp(p.servicos_details, p.kwp),
             });
           }
         }
@@ -111,10 +104,13 @@ export function useMonthSalesMetrics(referenceDate?: Date) {
         const countsForEnergyMetrics =
           proposalMetrics?.proposalType === "energia" &&
           eligibleEnergyNegotiationTypes.has(proposalMetrics.negotiationType || "");
+        // Solar is a services sale: its kWp comes from the proposal, or from the sale itself when it has none.
+        const isSolarSale = (proposalMetrics?.proposalType ?? sale.proposal_type) === "servicos";
+        const saleSolarKwp = proposalMetrics?.solar || serviceKwp(sale.servicos_details, sale.kwp);
 
         g.contracts += 1;
         g.energia += countsForEnergyMetrics ? (cpeData?.consumo ?? 0) / 1000 : 0;
-        g.solar += countsForEnergyMetrics ? proposalMetrics?.solar || 0 : 0;
+        g.solar += isSolarSale ? saleSolarKwp : 0;
         g.comissao += countsForEnergyMetrics ? cpeData?.comissao ?? 0 : 0;
       }
 
