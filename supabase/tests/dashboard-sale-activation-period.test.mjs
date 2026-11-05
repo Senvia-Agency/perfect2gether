@@ -8,11 +8,16 @@ const org = '96a3950e-31be-4c6d-abed-b82968c0d7e9';
 const source = ts.transpileModule(readFileSync('src/hooks/useMonthSalesMetrics.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-const sale = (id, status = 'in_progress', activation = null) => ({ id, organization_id: org, created_by: 'consultant', proposal_id: 'proposal', sale_date: '2026-10-15', status, activation_date: activation });
-function run({ sales = [sale('one')], month = '2026-10-15', organization = org, failure } = {}) {
+const serviceKwpModule = {};
+new Function('exports', ts.transpileModule(readFileSync('src/lib/service-kwp.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText)(serviceKwpModule);
+const sale =(id, status = 'in_progress', activation = null) => ({ id, organization_id: org, created_by: 'consultant', proposal_id: 'proposal', sale_date: '2026-10-15', status, activation_date: activation });
+const energyProposal = { id: 'proposal', proposal_type: 'energia', negotiation_type: 'angariacao', servicos_details: null, kwp: null };
+function run({ sales = [sale('one')], month = '2026-10-15', organization = org, failure, proposals = [energyProposal] } = {}) {
   const tables = {
     sales,
-    proposals: [{ id: 'proposal', proposal_type: 'energia', negotiation_type: 'angariacao', servicos_details: null }],
+    proposals,
     proposal_cpes: [{ proposal_id: 'proposal', consumo_anual: 41330, comissao: 74.2 }],
   };
   const supabase = { from(table) {
@@ -33,6 +38,7 @@ function run({ sales = [sale('one')], month = '2026-10-15', organization = org, 
     '@/integrations/supabase/client': { supabase },
     '@/contexts/AuthContext': { useAuth: () => ({ organization: { id: organization } }) },
     '@/lib/perfect2gether': { isPerfect2GetherOrg: id => id === org },
+    '@/lib/service-kwp': serviceKwpModule,
   };
   const exports = {};
   new Function('exports', 'require', source)(exports, id => mocks[id] ?? require(id));
@@ -103,4 +109,23 @@ test('administrator-created sale belongs to the assigned client consultant', asy
 test('unassigned client falls back to the lead consultant then the creator', async () => {
  const rows = await run({ sales: [{...sale('lead'), client:{assigned_to:null}, lead:{assigned_to:'lead-consultant'}}, sale('creator')] });
  assert.deepEqual(rows.map(row => row.userId), ['lead-consultant','consultant']);
+});
+
+test('solar sale counts its kWp in Vendas (coverings excluded) without energy or commission', async () => {
+ const solarProposal = { id: 'solar', proposal_type: 'servicos', negotiation_type: null, kwp: null, servicos_details: { Paineis: { name: 'Painéis Solares', kwp: 12.5 }, Coberturas: { name: 'Coberturas', kwp: 3 } } };
+ const rows = await run({ sales: [{ ...sale('solar'), proposal_id: 'solar' }], proposals: [solarProposal] });
+ assert.deepEqual(rows, [{ userId: 'consultant', nifs: 1, energia: 0, solar: 12.5, comissao: 0 }]);
+});
+test('legacy solar proposal with only top-level kWp still counts', async () => {
+ const legacy = { id: 'legacy', proposal_type: 'servicos', negotiation_type: null, kwp: 8, servicos_details: null };
+ const rows = await run({ sales: [{ ...sale('legacy'), proposal_id: 'legacy' }], proposals: [legacy] });
+ assert.equal(rows[0].solar, 8);
+});
+test('solar sale without a proposal uses the kWp recorded on the sale', async () => {
+ const rows = await run({ sales: [{ ...sale('direct'), proposal_id: null, proposal_type: 'servicos', kwp: null, servicos_details: { Paineis: { kwp: 6 } } }], proposals: [] });
+ assert.equal(rows[0].solar, 6);
+});
+test('energy sales never add solar kWp', async () => {
+ const rows = await run({ proposals: [{ ...energyProposal, kwp: 99 }] });
+ assert.equal(rows[0].solar, 0);
 });
